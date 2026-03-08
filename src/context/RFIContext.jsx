@@ -168,11 +168,17 @@ export function RFIProvider({ children }) {
                 .subscribe();
         }
 
+        const refreshInterval = setInterval(() => {
+            fetchAllRFIs();
+            if (user) fetchNotifications();
+        }, 15000);
+
         return () => {
+            clearInterval(refreshInterval);
             supabase.removeChannel(rfiSubscription);
             if (notifSubscription) supabase.removeChannel(notifSubscription);
         };
-    }, [fetchAllRFIs]);
+    }, [fetchAllRFIs, fetchConsultants, fetchNotifications, user]);
 
     // Format for DB insertion (camelCase -> snake_case)
     const formatForDB = (rfi) => ({
@@ -236,8 +242,10 @@ export function RFIProvider({ children }) {
                 );
                 await logAuditEvent(insertedData[0].id, 'assigned', { assignee: assignedTo });
             }
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error creating RFI:", error);
+            throw error;
         }
     }
 
@@ -260,6 +268,7 @@ export function RFIProvider({ children }) {
                     rfiId
                 );
             }
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error assigning RFI:", error);
         }
@@ -323,6 +332,7 @@ export function RFIProvider({ children }) {
                 rfiId
             );
             await logAuditEvent(rfiId, 'approved');
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error approving RFI:", error);
         }
@@ -355,6 +365,7 @@ export function RFIProvider({ children }) {
                 rfiId
             );
             await logAuditEvent(rfiId, 'rejected', { remarks });
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error rejecting RFI:", error);
         }
@@ -382,6 +393,7 @@ export function RFIProvider({ children }) {
                 rfiId
             );
             await logAuditEvent(rfiId, 'info_requested', { remarks });
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error requesting info on RFI:", error);
         }
@@ -413,6 +425,7 @@ export function RFIProvider({ children }) {
                 );
             }
             await logAuditEvent(rfiId, 'resubmitted');
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error re-submitting RFI:", error);
         }
@@ -493,6 +506,7 @@ export function RFIProvider({ children }) {
         try {
             const { error } = await supabase.from('rfis').delete().eq('id', rfiId);
             if (error) throw error;
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error deleting RFI:", error);
         }
@@ -510,6 +524,7 @@ export function RFIProvider({ children }) {
 
             const { error } = await supabase.from('rfis').update(dbUpdates).eq('id', rfiId);
             if (error) throw error;
+            await fetchAllRFIs();
         } catch (error) {
             console.error("Error updating RFI:", error);
         }
@@ -666,3 +681,4 @@ export function useRFI() {
     if (!ctx) throw new Error('useRFI must be used within RFIProvider');
     return ctx;
 }
+

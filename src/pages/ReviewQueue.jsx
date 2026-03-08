@@ -68,10 +68,10 @@ export default function ReviewQueue() {
                         <h1>🔍 Review Queue</h1>
                         <p className="subtitle" style={{ marginTop: '0.25rem' }}>Manage & export daily inspections</p>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <div className="export-actions" style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div className="review-header-controls">
+                        <div className="export-actions review-export-actions">
                             <button
-                                className="btn btn-ghost btn-sm export-icon-btn"
+                                className="btn btn-ghost btn-sm export-icon-btn pdf-icon-btn"
                                 onClick={() => exportToPDF(filteredItems, `ClearLine_Inspections_${currentDate}`)}
                                 title="Export to PDF"
                                 aria-label="Export to PDF"
@@ -79,7 +79,7 @@ export default function ReviewQueue() {
                                 <FileText size={16} />
                             </button>
                             <button
-                                className="btn btn-ghost btn-sm export-icon-btn"
+                                className="btn btn-ghost btn-sm export-icon-btn excel-icon-btn"
                                 onClick={() => exportToExcel(filteredItems, `ClearLine_Inspections_${currentDate}`)}
                                 title="Export to Excel"
                                 aria-label="Export to Excel"

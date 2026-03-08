@@ -193,18 +193,18 @@ h6 {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: auto;
+  height: auto;
+  padding: 0.15rem;
   background: transparent;
-  border: 1px solid var(--clr-border);
+  border: none;
   color: var(--clr-text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   cursor: pointer;
   transition: var(--transition-fast);
 }
 
 .header-project-icon-btn:hover {
-  background-color: var(--clr-bg-hover);
   color: var(--clr-brand-primary);
 }
 
@@ -1714,6 +1714,33 @@ h6 {
   justify-content: center;
 }
 
+.pdf-icon-btn {
+  color: #b91c1c;
+}
+
+.excel-icon-btn {
+  color: #166534;
+}
+
+.review-header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.review-export-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.review-header-controls .date-navigator {
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .review-mini-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1731,6 +1758,23 @@ h6 {
 
   .mini-stat-value {
     font-size: 1.15rem;
+  }
+
+  .review-header-controls {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.65rem;
+  }
+
+  .review-header-controls .date-navigator {
+    width: 100%;
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
+  }
+
+  .review-header-controls .date-nav-today-btn {
+    margin-left: 0;
+    width: 100%;
   }
 }
 
