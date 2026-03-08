@@ -11,7 +11,7 @@ import InfoRequestModal from '../components/InfoRequestModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, MessageSquare, Filter, Download, Image as ImageIcon, X, UserCheck, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, X, FileText, FileSpreadsheet } from 'lucide-react';
 
 export default function ReviewQueue() {
     const { user } = useAuth();
@@ -71,18 +71,20 @@ export default function ReviewQueue() {
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div className="export-actions" style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
-                                className="btn btn-ghost btn-sm"
+                                className="btn btn-ghost btn-sm export-icon-btn"
                                 onClick={() => exportToPDF(filteredItems, `ClearLine_Inspections_${currentDate}`)}
                                 title="Export to PDF"
+                                aria-label="Export to PDF"
                             >
-                                <Download size={16} /> PDF
+                                <FileText size={16} />
                             </button>
                             <button
-                                className="btn btn-ghost btn-sm"
+                                className="btn btn-ghost btn-sm export-icon-btn"
                                 onClick={() => exportToExcel(filteredItems, `ClearLine_Inspections_${currentDate}`)}
                                 title="Export to Excel"
+                                aria-label="Export to Excel"
                             >
-                                <Download size={16} /> Excel
+                                <FileSpreadsheet size={16} />
                             </button>
                             <button
                                 className="btn btn-sm"
@@ -100,20 +102,20 @@ export default function ReviewQueue() {
                 {/* Mini Stats (Acts as filters) */}
                 <div className="review-mini-stats">
                     <div className="mini-stat pending" onClick={() => setFilter('to_review')} style={{ cursor: 'pointer', border: filter === 'to_review' ? '2px solid var(--clr-brand-secondary)' : '' }}>
-                        <span className="mini-stat-value">{queue.all.length}</span>
                         <span className="mini-stat-label">To Review</span>
+                        <span className="mini-stat-value">{queue.all.length}</span>
                     </div>
                     <div className="mini-stat approved" onClick={() => setFilter('approved')} style={{ cursor: 'pointer', border: filter === 'approved' ? '2px solid var(--clr-success)' : '' }}>
-                        <span className="mini-stat-value">{todayApproved.length}</span>
                         <span className="mini-stat-label">Approved Today</span>
+                        <span className="mini-stat-value">{todayApproved.length}</span>
                     </div>
                     <div className="mini-stat rejected" onClick={() => setFilter('rejected')} style={{ cursor: 'pointer', border: filter === 'rejected' ? '2px solid var(--clr-danger)' : '' }}>
-                        <span className="mini-stat-value">{todayRejected.length}</span>
                         <span className="mini-stat-label">Rejected Today</span>
+                        <span className="mini-stat-value">{todayRejected.length}</span>
                     </div>
                     <div className="mini-stat assigned" onClick={() => setFilter('my_assigned')} style={{ cursor: 'pointer', border: filter === 'my_assigned' ? '2px solid var(--clr-brand-primary)' : '' }}>
-                        <span className="mini-stat-value">{queue.all.filter(r => r.assignedTo === user.id).length}</span>
                         <span className="mini-stat-label">Assigned to Me</span>
+                        <span className="mini-stat-value">{queue.all.filter(r => r.assignedTo === user.id).length}</span>
                     </div>
                 </div>
 

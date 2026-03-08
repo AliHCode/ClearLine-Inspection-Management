@@ -3,7 +3,6 @@ import { useProject } from '../context/ProjectContext';
 import { LogOut, Menu, X, Building, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import UserAvatar from './UserAvatar';
 import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
@@ -12,6 +11,7 @@ export default function Header() {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
     if (!user) return null;
 
@@ -29,48 +29,70 @@ export default function Header() {
 
             {/* Project Selector */}
             {activeProject && (
-                <div className="header-project-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', marginRight: '2rem' }}>
-                    <Building size={16} color="var(--clr-text-muted)" />
-                    <select
-                        value={activeProject.id}
-                        onChange={(e) => changeActiveProject(e.target.value)}
-                        style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', fontWeight: '500', color: 'var(--clr-text-main)', outline: 'none', cursor: 'pointer' }}
+                <div className="header-project-area">
+                    <div className="header-project-selector">
+                        <Building size={16} color="var(--clr-text-muted)" />
+                        <select
+                            value={activeProject.id}
+                            onChange={(e) => changeActiveProject(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', fontWeight: '500', color: 'var(--clr-text-main)', outline: 'none', cursor: 'pointer' }}
+                        >
+                            {projects.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button
+                        className="header-project-icon-btn"
+                        onClick={() => {
+                            setProjectMenuOpen(!projectMenuOpen);
+                            setMenuOpen(false);
+                        }}
+                        aria-label="Switch project"
                     >
-                        {projects.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                    </select>
+                        <Building size={18} />
+                    </button>
+
+                    {projectMenuOpen && (
+                        <div className="header-project-dropdown">
+                            <div className="header-project-dropdown-title">Select Project</div>
+                            {projects.map((p) => (
+                                <button
+                                    key={p.id}
+                                    className={`header-dropdown-item ${p.id === activeProject.id ? 'active' : ''}`}
+                                    onClick={() => {
+                                        changeActiveProject(p.id);
+                                        setProjectMenuOpen(false);
+                                    }}
+                                >
+                                    <Building size={16} />
+                                    {p.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
             <div className="header-user-info">
                 <NotificationCenter />
-                <div className="header-user-details">
-                    <span className="header-username">{user.name}</span>
-                    <span className="header-role-text" data-role={user.role}>
-                        {roleLabel}
-                    </span>
-                </div>
-                <UserAvatar name={user.name} size={40} />
             </div>
 
             <div className="header-divider"></div>
 
-            <button className="header-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+            <button className="header-menu-btn" onClick={() => { setMenuOpen(!menuOpen); setProjectMenuOpen(false); }}>
                 {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
             {menuOpen && (
                 <div className="header-dropdown">
-                    <div className="header-dropdown-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <UserAvatar name={user.name} size={48} />
-                        <div>
-                            <strong>{user.name}</strong>
-                            <span>{user.company}</span>
-                            <span className="header-role-text" data-role={user.role}>
-                                {roleLabel}
-                            </span>
-                        </div>
+                    <div className="header-dropdown-info">
+                        <strong>{user.name}</strong>
+                        <span>{user.company}</span>
+                        <span className="header-role-text" data-role={user.role}>
+                            {roleLabel}
+                        </span>
                     </div>
                     <hr />
                     <button
@@ -111,26 +133,6 @@ export default function Header() {
                             <Shield size={16} /> Admin Panel
                         </button>
                     )}
-                    {/* Mobile Project Selector (Native Icon Overlay) */}
-                    <div className="mobile-project-selector" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%', padding: '0.75rem', background: 'var(--clr-bg-secondary)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
-                        <Building size={20} className="brand-accent" />
-                        <span style={{ marginLeft: '0.5rem', fontWeight: '500' }}>Switch Project</span>
-                        <select
-                            value={activeProject?.id || ''}
-                            onChange={(e) => { changeActiveProject(e.target.value); setMenuOpen(false); }}
-                            style={{
-                                position: 'absolute',
-                                top: 0, left: 0, width: '100%', height: '100%',
-                                opacity: 0, cursor: 'pointer', appearance: 'none'
-                            }}
-                        >
-                            {projects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <hr />
                     <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">
                         <LogOut size={16} /> Sign Out
                     </button>
