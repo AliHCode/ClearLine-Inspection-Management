@@ -15,7 +15,11 @@ import {
     ClipboardCheck,
     AlertTriangle,
     Users,
+    Download,
+    Plus,
 } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 
 export default function ConsultantDashboard() {
     const { user } = useAuth();
@@ -58,9 +62,14 @@ export default function ConsultantDashboard() {
                         <h1>Welcome, {user.name}</h1>
                         <p className="subtitle">{user.company} — Consultant Dashboard</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => navigate('/consultant/review')}>
-                        <FileSearch size={18} /> Review RFIs
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button className="btn btn-primary" onClick={() => navigate('/consultant/review')}>
+                            <FileSearch size={18} /> Review RFIs
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => navigate('/contractor/rfi-sheet')}>
+                            <Plus size={18} /> File RFIs
+                        </button>
+                    </div>
                 </div>
 
                 {queue.all.length > 0 && (
@@ -78,28 +87,73 @@ export default function ConsultantDashboard() {
                     </div>
                 )}
 
-                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                    <StatsCard
-                        icon={<FileSearch size={22} />}
-                        label="Pending Review"
-                        value={stats.queueTotal}
-                        color="#6366f1"
-                        subtitle="Awaiting your action"
-                    />
-                    <StatsCard
-                        icon={<CheckCircle size={22} />}
-                        label="Approved Today"
-                        value={stats.reviewedApprovedToday}
-                        color="#10b981"
-                        subtitle="Caught up"
-                    />
-                    <StatsCard
-                        icon={<XCircle size={22} />}
-                        label="Rejected Today"
-                        value={stats.reviewedRejectedToday}
-                        color="#ef4444"
-                        subtitle="Sent back"
-                    />
+                {/* RFIs Project Table - Ensures consultants see all including their own */}
+                <div className="dashboard-section" style={{ marginBottom: '2rem' }}>
+                    <div className="section-header">
+                        <h2><ClipboardCheck size={20} /> Latest Project RFIs</h2>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            {rfis.length > 0 && (
+                                <div className="export-actions" style={{ display: 'flex', gap: '0.25rem', marginRight: '1rem' }}>
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => exportToPDF(rfis, `ClearLine_Project_Report`)}
+                                        title="Export to PDF"
+                                    >
+                                        <Download size={16} /> PDF
+                                    </button>
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => exportToExcel(rfis, `ClearLine_Project_Report`)}
+                                        title="Export to Excel"
+                                    >
+                                        <Download size={16} /> Excel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {rfis.length === 0 ? (
+                        <div className="empty-state">
+                            <ClipboardCheck size={48} />
+                            <h3>No RFIs in this Project</h3>
+                            <p>Once contractors file RFIs, they will appear here.</p>
+                        </div>
+                    ) : (
+                        <div className="rfi-table-wrapper">
+                            <table className="rfi-table">
+                                <thead>
+                                    <tr>
+                                        <th className="col-serial">#</th>
+                                        <th className="col-desc">Description</th>
+                                        <th className="col-loc">Location</th>
+                                        <th className="col-type">Type</th>
+                                        <th>Date</th>
+                                        <th>Filed By</th>
+                                        <th className="col-status">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rfis.slice(0, 8).map((rfi) => (
+                                        <tr key={rfi.id}>
+                                            <td className="col-serial">{rfi.serialNo}</td>
+                                            <td className="col-desc">{rfi.description}</td>
+                                            <td className="col-loc">{rfi.location}</td>
+                                            <td className="col-type">{rfi.inspectionType}</td>
+                                            <td>{rfi.filedDate}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>{rfi.filerName}</span>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>{rfi.filerCompany}</span>
+                                                </div>
+                                            </td>
+                                            <td className="col-status"><StatusBadge status={rfi.status} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* --- ANALYTICS CHARTS SECTION --- */}

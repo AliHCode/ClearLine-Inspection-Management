@@ -88,12 +88,20 @@ export default function Header() {
                         </button>
                     )}
                     {user.role === 'consultant' && (
-                        <button
-                            onClick={() => { navigate('/consultant/review'); setMenuOpen(false); }}
-                            className={`header-dropdown-item ${location.pathname.includes('review') ? 'active' : ''}`}
-                        >
-                            Review Queue
-                        </button>
+                        <>
+                            <button
+                                onClick={() => { navigate('/consultant/review'); setMenuOpen(false); }}
+                                className={`header-dropdown-item ${location.pathname.includes('review') ? 'active' : ''}`}
+                            >
+                                Review Queue
+                            </button>
+                            <button
+                                onClick={() => { navigate('/contractor/rfi-sheet'); setMenuOpen(false); }}
+                                className={`header-dropdown-item ${location.pathname.includes('rfi-sheet') ? 'active' : ''}`}
+                            >
+                                File RFIs
+                            </button>
+                        </>
                     )}
                     {isAdmin && (
                         <button

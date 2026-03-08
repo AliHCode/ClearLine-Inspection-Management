@@ -5,16 +5,22 @@ export default function DateNavigator({ currentDate, onDateChange }) {
     const today = getToday();
     const isToday = currentDate === today;
 
+    function adjustDate(days) {
+        const [year, month, day] = currentDate.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        d.setDate(d.getDate() + days);
+        const yStr = d.getFullYear();
+        const mStr = String(d.getMonth() + 1).padStart(2, '0');
+        const dStr = String(d.getDate()).padStart(2, '0');
+        onDateChange(`${yStr}-${mStr}-${dStr}`);
+    }
+
     function goBack() {
-        const d = new Date(currentDate + 'T00:00:00');
-        d.setDate(d.getDate() - 1);
-        onDateChange(d.toISOString().split('T')[0]);
+        adjustDate(-1);
     }
 
     function goForward() {
-        const d = new Date(currentDate + 'T00:00:00');
-        d.setDate(d.getDate() + 1);
-        onDateChange(d.toISOString().split('T')[0]);
+        adjustDate(1);
     }
 
     function goToday() {
