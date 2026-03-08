@@ -21,7 +21,7 @@ export default function RfiStatusPieChart({ data }) {
     return (
         <div className="chart-container" style={{ width: '100%', height: 320 }}>
             <h3 className="chart-title">Inspection Status</h3>
-            <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                     <Pie
                         data={data}

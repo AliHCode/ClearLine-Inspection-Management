@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
+import { useProject } from '../context/ProjectContext';
 import { getToday, formatDateDisplay } from '../utils/rfiLogic';
 import Header from '../components/Header';
 import DateNavigator from '../components/DateNavigator';
