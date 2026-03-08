@@ -93,39 +93,70 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Projects Policies
+DROP POLICY IF EXISTS "Projects viewable by authenticated" ON public.projects;
 CREATE POLICY "Projects viewable by authenticated" ON public.projects FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated can insert Projects" ON public.projects;
 CREATE POLICY "Authenticated can insert Projects" ON public.projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Profiles Policies
+DROP POLICY IF EXISTS "Profiles viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles viewable by everyone" ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- RFIs Policies
+DROP POLICY IF EXISTS "RFIs viewable by authenticated" ON public.rfis;
 CREATE POLICY "RFIs viewable by authenticated" ON public.rfis FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Contractors can insert RFIs" ON public.rfis;
 CREATE POLICY "Contractors can insert RFIs" ON public.rfis FOR INSERT WITH CHECK (auth.uid() = filed_by);
+
+DROP POLICY IF EXISTS "Authenticated users can update RFIs" ON public.rfis;
 CREATE POLICY "Authenticated users can update RFIs" ON public.rfis FOR UPDATE USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Contractors can delete own pending RFIs" ON public.rfis;
 CREATE POLICY "Contractors can delete own pending RFIs" ON public.rfis FOR DELETE USING (auth.uid() = filed_by AND status = 'pending');
 
 -- Comments Policies
+DROP POLICY IF EXISTS "Comments viewable by authenticated" ON public.comments;
 CREATE POLICY "Comments viewable by authenticated" ON public.comments FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Users can insert comments" ON public.comments;
 CREATE POLICY "Users can insert comments" ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Notifications Policies
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Authenticated users can insert notifications" ON public.notifications;
 CREATE POLICY "Authenticated users can insert notifications" ON public.notifications FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Audit Log Policies
+DROP POLICY IF EXISTS "Authenticated users can view audit logs" ON public.audit_log;
 CREATE POLICY "Authenticated users can view audit logs" ON public.audit_log FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated users can insert audit logs" ON public.audit_log;
 CREATE POLICY "Authenticated users can insert audit logs" ON public.audit_log FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- 9. STORAGE POLICIES (Bucket 'rfi-images' must exist)
 -- These are applied to storage.objects, but bucket creation is usually via UI or API.
+DROP POLICY IF EXISTS "Authenticated users can upload images" ON storage.objects;
 CREATE POLICY "Authenticated users can upload images" ON storage.objects
   FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND bucket_id = 'rfi-images');
+
+DROP POLICY IF EXISTS "Authenticated users can view images" ON storage.objects;
 CREATE POLICY "Authenticated users can view images" ON storage.objects
   FOR SELECT USING (auth.role() = 'authenticated' AND bucket_id = 'rfi-images');
+
+DROP POLICY IF EXISTS "Users can delete their own images" ON storage.objects;
 CREATE POLICY "Users can delete their own images" ON storage.objects
   FOR DELETE USING (auth.uid() = owner AND bucket_id = 'rfi-images');
 
