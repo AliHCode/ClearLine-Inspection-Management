@@ -10,7 +10,7 @@ import InfoRequestModal from '../components/InfoRequestModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, MessageSquare, Filter, Download, Image as ImageIcon, X } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, RefreshCw, MessageSquare, Filter, Download, Image as ImageIcon, X, UserCheck } from 'lucide-react';
 
 export default function ReviewQueue() {
     const { user } = useAuth();
@@ -36,6 +36,7 @@ export default function ReviewQueue() {
     let filteredItems = queue.all;
     if (filter === 'approved') filteredItems = todayApproved;
     if (filter === 'rejected') filteredItems = todayRejected;
+    if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
 
     function handleApprove(rfiId) {
         approveRFI(rfiId, user.id);
@@ -122,6 +123,12 @@ export default function ReviewQueue() {
                     >
                         Rejected Today ({todayRejected.length})
                     </button>
+                    <button
+                        className={`filter-btn ${filter === 'my_assigned' ? 'active' : ''}`}
+                        onClick={() => setFilter('my_assigned')}
+                    >
+                        <UserCheck size={14} /> Assigned to Me ({queue.all.filter(r => r.assignedTo === user.id).length})
+                    </button>
                 </div>
 
                 {actionMessage && (
@@ -148,10 +155,11 @@ export default function ReviewQueue() {
                                         <th className="col-desc">Description</th>
                                         <th className="col-loc">Location</th>
                                         <th className="col-type">Type</th>
+                                        <th className="col-assign">Assigned To</th>
                                         <th className="col-status">Filed</th>
                                         <th className="col-remarks">Remarks/Notes</th>
                                         <th className="col-files">Attachments</th>
-                                        <th className="col-actions">{filter === 'to_review' ? 'Actions' : 'Status'}</th>
+                                        <th className="col-actions">{filter === 'to_review' || filter === 'my_assigned' ? 'Actions' : 'Status'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -178,6 +186,15 @@ export default function ReviewQueue() {
                                                 <td className="col-desc">{rfi.description}</td>
                                                 <td className="col-loc">{rfi.location}</td>
                                                 <td className="col-type">{rfi.inspectionType}</td>
+                                                <td className="col-assign">
+                                                    {rfi.assigneeName ? (
+                                                        <span className={`assign-badge ${rfi.assignedTo === user.id ? 'is-me' : ''}`}>
+                                                            {rfi.assignedTo === user.id ? '📌 You' : rfi.assigneeName}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted">— Auto —</span>
+                                                    )}
+                                                </td>
                                                 <td className="col-status">{formatDateDisplay(rfi.originalFiledDate)}</td>
                                                 <td className="col-remarks">
                                                     {isCarryover && rfi.remarks ? (
@@ -209,8 +226,8 @@ export default function ReviewQueue() {
                                                         <span className="text-muted">—</span>
                                                     )}
                                                 </td>
-                                                <td className="col-actions" style={{ width: filter === 'to_review' ? '280px' : '100px' }}>
-                                                    {filter === 'to_review' ? (
+                                                <td className="col-actions" style={{ width: (filter === 'to_review' || filter === 'my_assigned') ? '280px' : '100px' }}>
+                                                    {(filter === 'to_review' || filter === 'my_assigned') ? (
                                                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                             <button
                                                                 className="btn btn-sm btn-success"

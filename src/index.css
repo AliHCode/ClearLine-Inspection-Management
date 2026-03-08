@@ -1032,6 +1032,28 @@ h6 {
   min-width: 140px;
 }
 
+.col-assign {
+  min-width: 130px;
+}
+
+.assign-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: var(--clr-bg-hover);
+  color: var(--clr-text-secondary);
+}
+
+.assign-badge.is-me {
+  background-color: var(--clr-info-bg);
+  color: var(--clr-brand-secondary);
+  font-weight: 700;
+}
+
 .col-status {
   min-width: 120px;
 }

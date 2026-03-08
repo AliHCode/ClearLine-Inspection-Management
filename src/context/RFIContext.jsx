@@ -14,6 +14,9 @@ export function RFIProvider({ children }) {
     const [rfis, setRfis] = useState([]);
     const [loadingRfis, setLoadingRfis] = useState(true);
 
+    // Consultants list for Direct Assign
+    const [consultants, setConsultants] = useState([]);
+
     // Notifications State
     const [notifications, setNotifications] = useState([]);
     const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -39,6 +42,7 @@ export function RFIProvider({ children }) {
             data.forEach(r => {
                 if (r.filed_by) userIds.add(r.filed_by);
                 if (r.reviewed_by) userIds.add(r.reviewed_by);
+                if (r.assigned_to) userIds.add(r.assigned_to);
             });
 
             // Fetch names for these users
@@ -76,6 +80,8 @@ export function RFIProvider({ children }) {
                 carryoverCount: r.carryover_count,
                 carryoverTo: r.carryover_to,
                 images: r.images || [],
+                assignedTo: r.assigned_to,
+                assigneeName: userMap[r.assigned_to]?.name || '',
                 createdAt: r.created_at
             }));
             setRfis(formatted || []);
@@ -107,8 +113,25 @@ export function RFIProvider({ children }) {
         }
     }, [user]);
 
+    // Fetch consultants for Direct Assign dropdown
+    const fetchConsultants = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, name, company, role')
+                .eq('role', 'consultant')
+                .order('name');
+
+            if (error) throw error;
+            setConsultants(data || []);
+        } catch (error) {
+            console.error('Error fetching consultants:', error);
+        }
+    }, []);
+
     useEffect(() => {
         fetchAllRFIs();
+        fetchConsultants();
         if (user) {
             fetchNotifications();
         }
@@ -167,11 +190,12 @@ export function RFIProvider({ children }) {
         carryover_count: rfi.carryoverCount,
         carryover_to: rfi.carryoverTo,
         images: rfi.images || [],
+        assigned_to: rfi.assignedTo || null,
         project_id: activeProject?.id,
     });
 
     /** Create a new RFI */
-    async function createRFI({ description, location, inspectionType, filedBy, filedDate, images }) {
+    async function createRFI({ description, location, inspectionType, filedBy, filedDate, images, assignedTo }) {
         const dateRfis = rfis.filter((r) => r.filedDate === filedDate);
         const serialNo = dateRfis.length > 0 ? Math.max(...dateRfis.map((r) => r.serialNo)) + 1 : 1;
 
@@ -190,15 +214,48 @@ export function RFIProvider({ children }) {
             carryoverCount: 0,
             carryoverTo: null,
             images: images || [],
+            assignedTo: assignedTo || null,
         };
 
         try {
-            const { error } = await supabase.from('rfis').insert([formatForDB(newRfiData)]);
+            const { data: insertedData, error } = await supabase.from('rfis').insert([formatForDB(newRfiData)]).select();
             if (error) throw error;
-            // State will update via real-time subscription
-            // Note: In a real app we might want to notify all admins/consultants that a new RFI was filed
+
+            // Notify the assigned consultant
+            if (assignedTo && insertedData?.[0]) {
+                await createNotification(
+                    assignedTo,
+                    "RFI Assigned to You 📌",
+                    `A new RFI (#${serialNo}) at ${location} has been assigned to you.`,
+                    insertedData[0].id
+                );
+            }
         } catch (error) {
             console.error("Error creating RFI:", error);
+        }
+    }
+
+    /** Assign/Re-assign an RFI to a specific consultant */
+    async function assignRFI(rfiId, consultantId) {
+        const targetRfi = rfis.find(r => r.id === rfiId);
+        if (!targetRfi) return;
+
+        try {
+            const { error } = await supabase.from('rfis').update({
+                assigned_to: consultantId || null,
+            }).eq('id', rfiId);
+            if (error) throw error;
+
+            if (consultantId) {
+                await createNotification(
+                    consultantId,
+                    "RFI Assigned to You 📌",
+                    `RFI #${targetRfi.serialNo} at ${targetRfi.location} has been assigned to you for review.`,
+                    rfiId
+                );
+            }
+        } catch (error) {
+            console.error("Error assigning RFI:", error);
         }
     }
 
@@ -552,10 +609,12 @@ export function RFIProvider({ children }) {
             value={{
                 rfis,
                 loadingRfis,
+                consultants,
                 notifications,
                 unreadCount,
                 uploadImages,
                 createRFI,
+                assignRFI,
                 approveRFI,
                 rejectRFI,
                 requestInfo,

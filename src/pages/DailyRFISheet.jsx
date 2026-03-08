@@ -11,7 +11,7 @@ import { Plus, Trash2, Send, AlertTriangle, RefreshCw, Save, X, MessageSquare } 
 
 export default function DailyRFISheet() {
     const { user } = useAuth();
-    const { createRFI, uploadImages, getRFIsForDate, resubmitRFI, deleteRFI } = useRFI();
+    const { createRFI, uploadImages, getRFIsForDate, resubmitRFI, deleteRFI, consultants } = useRFI();
     const [currentDate, setCurrentDate] = useState(getToday());
     const [detailTarget, setDetailTarget] = useState(null);
     const [newRows, setNewRows] = useState([createEmptyRow()]);
@@ -31,6 +31,7 @@ export default function DailyRFISheet() {
             description: '',
             location: '',
             inspectionType: INSPECTION_TYPES[0],
+            assignedTo: '',
             images: [],
         };
     }
@@ -86,6 +87,7 @@ export default function DailyRFISheet() {
                     filedBy: user.id,
                     filedDate: currentDate,
                     images: uploadedUrls,
+                    assignedTo: row.assignedTo || null,
                 });
             }
 
@@ -244,6 +246,7 @@ export default function DailyRFISheet() {
                                     <th className="col-desc">Description *</th>
                                     <th className="col-loc">Location *</th>
                                     <th className="col-type">Inspection Type</th>
+                                    <th className="col-assign">Assign To</th>
                                     <th className="col-files">Attachments</th>
                                     <th className="col-actions"></th>
                                 </tr>
@@ -278,6 +281,18 @@ export default function DailyRFISheet() {
                                             >
                                                 {INSPECTION_TYPES.map((type) => (
                                                     <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="col-assign">
+                                            <select
+                                                className="cell-select"
+                                                value={row.assignedTo}
+                                                onChange={(e) => updateRow(row.tempId, 'assignedTo', e.target.value)}
+                                            >
+                                                <option value="">— Auto —</option>
+                                                {consultants.map((c) => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
                                                 ))}
                                             </select>
                                         </td>
