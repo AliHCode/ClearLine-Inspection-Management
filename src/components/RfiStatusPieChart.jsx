@@ -47,9 +47,15 @@ export default function RfiStatusPieChart({ data }) {
                     />
                     <Legend
                         verticalAlign="bottom"
-                        height={36}
                         iconType="circle"
-                        wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }}
+                        wrapperStyle={{
+                            fontSize: '12px',
+                            paddingTop: '10px',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                            gap: '5px'
+                        }}
                     />
                 </PieChart>
             </ResponsiveContainer>

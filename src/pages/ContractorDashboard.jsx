@@ -123,17 +123,17 @@ export default function ContractorDashboard() {
                 </div>
 
                 {/* --- ANALYTICS CHARTS SECTION --- */}
-                <div className="dashboard-section charts-section" style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                    <div className="chart-card" style={{ flex: 2, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                <div className="dashboard-section charts-section" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2rem', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    <div className="chart-card" style={{ flex: '1 1 300px', background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
                         <RfiTrendChart data={trendData} />
                     </div>
-                    <div className="chart-card" style={{ flex: 1, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                    <div className="chart-card" style={{ flex: '1 1 300px', background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
                         <RfiStatusPieChart data={pieData} />
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <div className="dashboard-section" style={{ flex: '2 1 600px', margin: 0 }}>
+                    <div className="dashboard-section" style={{ flex: '2 1 300px', minWidth: 0, margin: 0, maxWidth: '100%' }}>
                         <div className="section-header">
                             <h2><TrendingUp size={20} /> Recent RFIs</h2>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -200,7 +200,7 @@ export default function ContractorDashboard() {
                         )}
                     </div>
 
-                    <div className="dashboard-section" style={{ flex: '1 1 350px', margin: 0 }}>
+                    <div className="dashboard-section" style={{ flex: '1 1 300px', minWidth: 0, margin: 0, maxWidth: '100%' }}>
                         <div className="section-header">
                             <h2><Clock size={20} /> Your Activity</h2>
                         </div>
