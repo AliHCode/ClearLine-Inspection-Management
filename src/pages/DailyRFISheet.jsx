@@ -141,17 +141,17 @@ export default function DailyRFISheet() {
                                 <tbody>
                                     {myCarriedOver.map((rfi, idx) => (
                                         <tr key={rfi.id} className="carryover-row">
-                                            <td className="col-serial">{idx + 1}</td>
-                                            <td className="col-desc">{rfi.description}</td>
-                                            <td className="col-loc">{rfi.location}</td>
-                                            <td className="col-type">{rfi.inspectionType}</td>
-                                            <td className="col-status">
+                                            <td className="col-serial" data-label="#">{idx + 1}</td>
+                                            <td className="col-desc" data-label="Description">{rfi.description}</td>
+                                            <td className="col-loc" data-label="Location">{rfi.location}</td>
+                                            <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                            <td className="col-status" data-label="Status">
                                                 <StatusBadge status={rfi.status} />
                                                 {rfi.carryoverCount > 0 && (
                                                     <span className="carryover-count">×{rfi.carryoverCount}</span>
                                                 )}
                                             </td>
-                                            <td className="col-remarks remarks-text">{rfi.remarks || '—'}</td>
+                                            <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
                                             <td className="col-actions">
                                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                                     <button
@@ -199,12 +199,12 @@ export default function DailyRFISheet() {
                                 <tbody>
                                     {myNewRfis.map((rfi) => (
                                         <tr key={rfi.id}>
-                                            <td className="col-serial">{rfi.serialNo}</td>
-                                            <td className="col-desc">{rfi.description}</td>
-                                            <td className="col-loc">{rfi.location}</td>
-                                            <td className="col-type">{rfi.inspectionType}</td>
-                                            <td className="col-status"><StatusBadge status={rfi.status} /></td>
-                                            <td className="col-remarks remarks-text">{rfi.remarks || '—'}</td>
+                                            <td className="col-serial" data-label="#">{rfi.serialNo}</td>
+                                            <td className="col-desc" data-label="Description">{rfi.description}</td>
+                                            <td className="col-loc" data-label="Location">{rfi.location}</td>
+                                            <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                            <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>
+                                            <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
                                             <td className="col-actions">
                                                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                     <button

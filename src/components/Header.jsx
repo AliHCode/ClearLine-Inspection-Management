@@ -111,6 +111,19 @@ export default function Header() {
                             <Shield size={16} /> Admin Panel
                         </button>
                     )}
+                    {/* Mobile Project Selector */}
+                    <div className="mobile-project-selector">
+                        <Building size={16} />
+                        <select
+                            value={activeProject?.id || ''}
+                            onChange={(e) => changeActiveProject(e.target.value)}
+                        >
+                            {projects.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <hr />
                     <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">
                         <LogOut size={16} /> Sign Out

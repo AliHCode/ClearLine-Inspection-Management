@@ -186,12 +186,12 @@ export default function ContractorDashboard() {
                                     <tbody>
                                         {myRfis.map((rfi) => (
                                             <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
-                                                <td className="col-serial">{rfi.serialNo}</td>
-                                                <td className="col-desc">{rfi.description}</td>
-                                                <td className="col-loc">{rfi.location}</td>
-                                                <td className="col-type">{rfi.inspectionType}</td>
-                                                <td>{rfi.filedDate}</td>
-                                                <td className="col-status"><StatusBadge status={rfi.status} /></td>
+                                                <td className="col-serial" data-label="#">{rfi.serialNo}</td>
+                                                <td className="col-desc" data-label="Description">{rfi.description}</td>
+                                                <td className="col-loc" data-label="Location">{rfi.location}</td>
+                                                <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                                <td data-label="Date">{rfi.filedDate}</td>
+                                                <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>
                                             </tr>
                                         ))}
                                     </tbody>

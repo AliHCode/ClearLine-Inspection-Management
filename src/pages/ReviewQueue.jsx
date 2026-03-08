@@ -153,7 +153,7 @@ export default function ReviewQueue() {
                                         const isCarryover = rfi.status === 'rejected' && rfi.carryoverTo === currentDate;
                                         return (
                                             <tr key={rfi.id} className={isCarryover ? 'carryover-row' : ''}>
-                                                <td className="col-serial">
+                                                <td className="col-serial" data-label="#">
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                         <UserAvatar name={rfi.filerName} size={32} />
                                                         <div>
@@ -169,10 +169,10 @@ export default function ReviewQueue() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="col-desc">{rfi.description}</td>
-                                                <td className="col-loc">{rfi.location}</td>
-                                                <td className="col-type">{rfi.inspectionType}</td>
-                                                <td className="col-assign">
+                                                <td className="col-desc" data-label="Description">{rfi.description}</td>
+                                                <td className="col-loc" data-label="Location">{rfi.location}</td>
+                                                <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                                <td className="col-assign" data-label="Assigned To">
                                                     {rfi.assigneeName ? (
                                                         <span className={`assign-badge ${rfi.assignedTo === user.id ? 'is-me' : ''}`}>
                                                             {rfi.assignedTo === user.id ? '📌 You' : rfi.assigneeName}
@@ -181,13 +181,13 @@ export default function ReviewQueue() {
                                                         <span className="text-muted">— Auto —</span>
                                                     )}
                                                 </td>
-                                                <td className="col-status">{formatDateDisplay(rfi.originalFiledDate)}</td>
-                                                <td className="col-remarks">
+                                                <td className="col-status" data-label="Filed Date">{formatDateDisplay(rfi.originalFiledDate)}</td>
+                                                <td className="col-remarks" data-label="Remarks">
                                                     {isCarryover && rfi.remarks ? (
                                                         <span className="remarks-text">{rfi.remarks}</span>
                                                     ) : '—'}
                                                 </td>
-                                                <td className="col-files">
+                                                <td className="col-files" data-label="Attachments">
                                                     {rfi.images && rfi.images.length > 0 ? (
                                                         <div
                                                             className="image-preview-grid consultant-grid"

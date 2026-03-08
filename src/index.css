@@ -2390,3 +2390,204 @@ h6 {
     padding: 2rem 1.5rem;
   }
 }
+/* ============================================
+   MOBILE RESPONSIVENESS (PHASE 8)
+   ============================================ */
+
+/* Mobile Project Selector in Dropdown */
+.mobile-project-selector {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--clr-bg-hover);
+  border-radius: var(--radius-md);
+  margin: 0.5rem 0;
+}
+
+.mobile-project-selector select {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-weight: 600;
+  color: var(--clr-text-main);
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  /* Layout & Bases */
+  html {
+    font-size: 13px;
+  }
+
+  .page-wrapper {
+    padding: 0;
+  }
+
+  main {
+    padding: 1rem !important;
+  }
+
+  /* Header Optimization */
+  .app-header {
+    padding: 0 1rem;
+    height: 60px;
+  }
+
+  .app-title {
+    display: none; /* Hide 'Inspections' text on small mobile */
+  }
+
+  .header-left {
+    gap: 0.4rem;
+  }
+
+  .header-project-selector {
+    margin-right: 0.5rem !important;
+    max-width: 140px;
+  }
+
+  .header-project-selector select {
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-user-details,
+  .header-divider {
+    display: none; /* Hide name/role in main bar, keep in hamburger */
+  }
+
+  .header-user-info {
+    gap: 0.5rem;
+  }
+
+  .mobile-project-selector {
+    display: flex;
+  }
+
+  /* Dashboards */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .review-mini-stats {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .charts-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .chart-card {
+    width: 100%;
+  }
+
+  /* Tables to Card View Transformation */
+  .rfi-table-wrapper {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .rfi-table:not(.editable) thead {
+    display: none; /* Hide standard headers in viewing tables */
+  }
+
+  .rfi-table:not(.editable) tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .rfi-table:not(.editable) tr {
+    display: block;
+    background-color: var(--clr-bg-secondary);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .rfi-table:not(.editable) td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none !important;
+    padding: 0.6rem 0 !important;
+    text-align: right;
+    width: 100% !important;
+    min-height: 38px;
+  }
+
+  .rfi-table:not(.editable) td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--clr-text-secondary);
+    text-transform: uppercase;
+    text-align: left;
+    margin-right: 1rem;
+  }
+
+  .rfi-table:not(.editable) .col-serial,
+  .rfi-table:not(.editable) .col-actions {
+    justify-content: flex-end;
+  }
+
+  .rfi-table:not(.editable) td:last-child {
+    border-top: 1px solid var(--clr-border) !important;
+    margin-top: 0.5rem;
+    padding-top: 1rem !important;
+  }
+
+  .rfi-table:not(.editable) .col-actions::before {
+    content: none;
+  }
+
+  /* Special handling for columns like Remarks */
+  .remarks-text {
+    text-align: right;
+    max-width: 65%;
+    word-break: break-word;
+  }
+
+  /* Spreadsheet Table Optimization (Contractor Filing) */
+  .rfi-table.editable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modals */
+  .modal {
+    width: 95% !important;
+    padding: 1.25rem !important;
+    margin: 1rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  /* Floating Action Buttons */
+  .btn-mobile-full {
+    width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-project-selector {
+    display: none !important; /* Hide project selector in header on very small screens, menu only */
+  }
+
+  .app-title-logo {
+    font-size: 1.25rem;
+  }
+}
