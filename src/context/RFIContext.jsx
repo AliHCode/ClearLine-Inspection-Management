@@ -202,6 +202,10 @@ export function RFIProvider({ children }) {
 
     /** Create a new RFI */
     async function createRFI({ description, location, inspectionType, filedBy, filedDate, images, assignedTo }) {
+        if (!activeProject?.id) {
+            throw new Error('No active project selected.');
+        }
+
         const dateRfis = rfis.filter((r) => r.filedDate === filedDate);
         const serialNo = dateRfis.length > 0 ? Math.max(...dateRfis.map((r) => r.serialNo)) + 1 : 1;
 
