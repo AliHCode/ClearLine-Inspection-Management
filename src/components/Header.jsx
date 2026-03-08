@@ -22,8 +22,8 @@ export default function Header() {
 
     return (
         <header className="app-header">
-            <div className="header-left" onClick={() => navigate(dashPath)}>
-                <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '36px', objectFit: 'contain' }} />
+            <div className="header-left" onClick={() => navigate(dashPath)} style={{ padding: '0.25rem 0' }}>
+                <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '56px', objectFit: 'contain' }} />
             </div>
 
             {/* Project Selector */}
