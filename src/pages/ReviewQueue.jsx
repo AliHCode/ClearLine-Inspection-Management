@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import DateNavigator from '../components/DateNavigator';
 import StatusBadge from '../components/StatusBadge';
 import RejectModal from '../components/RejectModal';
+import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 import { CheckCircle, XCircle, AlertTriangle, RefreshCw, MessageSquare, Filter, Download, Image as ImageIcon, X } from 'lucide-react';
 
@@ -149,10 +150,18 @@ export default function ReviewQueue() {
                                         return (
                                             <tr key={rfi.id} className={isCarryover ? 'carryover-row' : ''}>
                                                 <td className="col-serial">
-                                                    {rfi.serialNo}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <UserAvatar name={rfi.filerName} size={32} />
+                                                        <div>
+                                                            <div style={{ fontWeight: 600 }}>#{rfi.serialNo}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>
+                                                                {rfi.filerName}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     {isCarryover && (
-                                                        <div className="carryover-count" style={{ marginTop: '0.25rem', display: 'inline-block' }}>
-                                                            ×{rfi.carryoverCount}
+                                                        <div className="carryover-count" style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                                                            ×{rfi.carryoverCount} Carryover
                                                         </div>
                                                     )}
                                                 </td>

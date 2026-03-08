@@ -1408,3 +1408,68 @@ h6 {
     font-size: 0.9rem;
     font-weight: 500;
 }
+
+/* ============================================
+   ACTIVITY TIMELINE
+   ============================================ */
+.activity-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+}
+
+.timeline-tail {
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: -24px;
+  width: 2px;
+  background-color: var(--clr-border);
+}
+
+.timeline-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.timeline-content {
+  flex: 1;
+  padding-bottom: 0.5rem;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-title {
+  font-weight: 600;
+  color: var(--clr-text);
+  font-size: 0.95rem;
+}
+
+.timeline-time {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+}
+
+.timeline-desc {
+  font-size: 0.9rem;
+  color: var(--clr-text-secondary);
+  margin: 0;
+}

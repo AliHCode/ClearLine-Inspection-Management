@@ -6,6 +6,9 @@ import { getToday } from '../utils/rfiLogic';
 import Header from '../components/Header';
 import StatsCard from '../components/StatsCard';
 import StatusBadge from '../components/StatusBadge';
+import RfiTrendChart from '../components/RfiTrendChart';
+import RfiStatusPieChart from '../components/RfiStatusPieChart';
+import ActivityTimeline from '../components/ActivityTimeline';
 import {
     FileText,
     CheckCircle,
@@ -37,6 +40,29 @@ export default function ContractorDashboard() {
     const carryoverCount = rfis.filter(
         (r) => r.status === 'rejected' && r.carryoverTo === today && r.filedBy === user.id
     ).length;
+
+    // --- Chart Data Preparation ---
+    const pieData = [
+        { name: 'Approved', value: stats.overallApproved, color: 'var(--clr-success)' },
+        { name: 'Pending', value: stats.overallPending, color: 'var(--clr-warning)' },
+        { name: 'Rejected', value: stats.overallRejected, color: 'var(--clr-danger)' },
+    ];
+
+    // Group RFIs by date for the area chart (last 7 days of activity)
+    const trendMap = {};
+    allMyRfis.forEach(r => {
+        const d = r.filedDate;
+        trendMap[d] = (trendMap[d] || 0) + 1;
+    });
+
+    // Convert to array, sort chronologically, and take last 7
+    const trendData = Object.keys(trendMap)
+        .sort() // simple string sort works for YYYY-MM-DD
+        .map(date => ({
+            date: date.substring(5), // Just MM-DD for cleaner X-axis
+            value: trendMap[date]
+        }))
+        .slice(-7);
 
     return (
         <div className="page-wrapper">
@@ -95,71 +121,92 @@ export default function ContractorDashboard() {
                     />
                 </div>
 
-                <div className="dashboard-section">
-                    <div className="section-header">
-                        <h2><TrendingUp size={20} /> Recent RFIs</h2>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            {allMyRfis.length > 0 && (
-                                <div className="export-actions" style={{ display: 'flex', gap: '0.25rem', marginRight: '1rem' }}>
-                                    <button
-                                        className="btn btn-ghost btn-sm"
-                                        onClick={() => exportToPDF(allMyRfis, `ClearLine_Contractor_Report`)}
-                                        title="Export to PDF"
-                                    >
-                                        <Download size={16} /> PDF
-                                    </button>
-                                    <button
-                                        className="btn btn-ghost btn-sm"
-                                        onClick={() => exportToExcel(allMyRfis, `ClearLine_Contractor_Report`)}
-                                        title="Export to Excel"
-                                    >
-                                        <Download size={16} /> Excel
-                                    </button>
-                                </div>
-                            )}
-                            <button className="btn btn-ghost" onClick={() => navigate('/contractor/rfi-sheet')}>
-                                View All →
-                            </button>
+                {/* --- ANALYTICS CHARTS SECTION --- */}
+                <div className="dashboard-section charts-section" style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    <div className="chart-card" style={{ flex: 2, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                        <RfiTrendChart data={trendData} />
+                    </div>
+                    <div className="chart-card" style={{ flex: 1, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                        <RfiStatusPieChart data={pieData} />
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div className="dashboard-section" style={{ flex: '2 1 600px', margin: 0 }}>
+                        <div className="section-header">
+                            <h2><TrendingUp size={20} /> Recent RFIs</h2>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                {allMyRfis.length > 0 && (
+                                    <div className="export-actions" style={{ display: 'flex', gap: '0.25rem', marginRight: '1rem' }}>
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => exportToPDF(allMyRfis, `ClearLine_Contractor_Report`)}
+                                            title="Export to PDF"
+                                        >
+                                            <Download size={16} /> PDF
+                                        </button>
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => exportToExcel(allMyRfis, `ClearLine_Contractor_Report`)}
+                                            title="Export to Excel"
+                                        >
+                                            <Download size={16} /> Excel
+                                        </button>
+                                    </div>
+                                )}
+                                <button className="btn btn-ghost" onClick={() => navigate('/contractor/rfi-sheet')}>
+                                    View All →
+                                </button>
+                            </div>
                         </div>
+
+                        {myRfis.length === 0 ? (
+                            <div className="empty-state">
+                                <FileText size={48} />
+                                <h3>No RFIs Filed Yet</h3>
+                                <p>Start by filing your first Request for Inspection</p>
+                                <button className="btn btn-primary" onClick={() => navigate('/contractor/rfi-sheet')}>
+                                    <Plus size={18} /> File RFIs
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="rfi-table-wrapper">
+                                <table className="rfi-table editable">
+                                    <thead>
+                                        <tr>
+                                            <th className="col-serial">#</th>
+                                            <th className="col-desc">Description</th>
+                                            <th className="col-loc">Location</th>
+                                            <th className="col-type">Type</th>
+                                            <th>Date</th>
+                                            <th className="col-status">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {myRfis.map((rfi) => (
+                                            <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
+                                                <td className="col-serial">{rfi.serialNo}</td>
+                                                <td className="col-desc">{rfi.description}</td>
+                                                <td className="col-loc">{rfi.location}</td>
+                                                <td className="col-type">{rfi.inspectionType}</td>
+                                                <td>{rfi.filedDate}</td>
+                                                <td className="col-status"><StatusBadge status={rfi.status} /></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
 
-                    {myRfis.length === 0 ? (
-                        <div className="empty-state">
-                            <FileText size={48} />
-                            <h3>No RFIs Filed Yet</h3>
-                            <p>Start by filing your first Request for Inspection</p>
-                            <button className="btn btn-primary" onClick={() => navigate('/contractor/rfi-sheet')}>
-                                <Plus size={18} /> File RFIs
-                            </button>
+                    <div className="dashboard-section" style={{ flex: '1 1 350px', margin: 0 }}>
+                        <div className="section-header">
+                            <h2><Clock size={20} /> Your Activity</h2>
                         </div>
-                    ) : (
-                        <div className="rfi-table-wrapper">
-                            <table className="rfi-table editable">
-                                <thead>
-                                    <tr>
-                                        <th className="col-serial">#</th>
-                                        <th className="col-desc">Description</th>
-                                        <th className="col-loc">Location</th>
-                                        <th className="col-type">Type</th>
-                                        <th>Date</th>
-                                        <th className="col-status">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {myRfis.map((rfi) => (
-                                        <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
-                                            <td className="col-serial">{rfi.serialNo}</td>
-                                            <td className="col-desc">{rfi.description}</td>
-                                            <td className="col-loc">{rfi.location}</td>
-                                            <td className="col-type">{rfi.inspectionType}</td>
-                                            <td>{rfi.filedDate}</td>
-                                            <td className="col-status"><StatusBadge status={rfi.status} /></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div style={{ padding: '1.5rem' }}>
+                            <ActivityTimeline rfis={allMyRfis} limit={5} />
                         </div>
-                    )}
+                    </div>
                 </div>
             </main>
         </div>

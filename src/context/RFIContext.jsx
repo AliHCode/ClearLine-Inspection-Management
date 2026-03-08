@@ -27,6 +27,29 @@ export function RFIProvider({ children }) {
                 .eq('project_id', activeProject.id);
 
             if (error) throw error;
+
+            // Collect all unique user IDs to fetch their profiles
+            const userIds = new Set();
+            data.forEach(r => {
+                if (r.filed_by) userIds.add(r.filed_by);
+                if (r.reviewed_by) userIds.add(r.reviewed_by);
+            });
+
+            // Fetch names for these users
+            let userMap = {};
+            if (userIds.size > 0) {
+                const { data: profilesData } = await supabase
+                    .from('profiles')
+                    .select('id, name, company')
+                    .in('id', Array.from(userIds));
+
+                if (profilesData) {
+                    profilesData.forEach(p => {
+                        userMap[p.id] = p;
+                    });
+                }
+            }
+
             // Convert snake_case from PG to camelCase for the frontend
             const formatted = data.map(r => ({
                 id: r.id,
@@ -35,10 +58,13 @@ export function RFIProvider({ children }) {
                 location: r.location,
                 inspectionType: r.inspection_type,
                 filedBy: r.filed_by,
+                filerName: userMap[r.filed_by]?.name || 'Unknown',
+                filerCompany: userMap[r.filed_by]?.company || '',
                 filedDate: r.filed_date,
                 originalFiledDate: r.original_filed_date,
                 status: r.status,
                 reviewedBy: r.reviewed_by,
+                reviewerName: userMap[r.reviewed_by]?.name || '',
                 reviewedAt: r.reviewed_at,
                 remarks: r.remarks,
                 carryoverCount: r.carryover_count,

@@ -3,6 +3,7 @@ import { useProject } from '../context/ProjectContext';
 import { LogOut, Menu, X, Building } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import UserAvatar from './UserAvatar';
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -39,23 +40,31 @@ export default function Header() {
                 </div>
             )}
 
-            <div className="header-user-info">
-                <span className="header-role-badge" data-role={user.role}>
-                    {isContractor ? 'Contractor' : 'Consultant'}
-                </span>
-                <span className="header-username">{user.name}</span>
+            <div className="header-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem' }}>
+                    <span className="header-username" style={{ fontWeight: '600', fontSize: '0.9rem' }}>{user.name}</span>
+                    <span className="header-role-badge" data-role={user.role} style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', marginTop: 0 }}>
+                        {isContractor ? 'Contractor' : 'Consultant'}
+                    </span>
+                </div>
+                <UserAvatar name={user.name} size={36} />
             </div>
+
             <button className="header-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
                 {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
+
             {menuOpen && (
                 <div className="header-dropdown">
-                    <div className="header-dropdown-info">
-                        <strong>{user.name}</strong>
-                        <span>{user.company}</span>
-                        <span className="header-role-badge" data-role={user.role}>
-                            {isContractor ? 'Contractor' : 'Consultant'}
-                        </span>
+                    <div className="header-dropdown-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <UserAvatar name={user.name} size={48} />
+                        <div>
+                            <strong>{user.name}</strong>
+                            <span>{user.company}</span>
+                            <span className="header-role-badge" data-role={user.role}>
+                                {isContractor ? 'Contractor' : 'Consultant'}
+                            </span>
+                        </div>
                     </div>
                     <hr />
                     <button

@@ -52,123 +52,132 @@ export default function LoginPage() {
 
     return (
         <div className="login-page">
-            <div className="login-background">
-                <div className="bg-shape shape-1"></div>
-                <div className="bg-shape shape-2"></div>
-                <div className="bg-shape shape-3"></div>
-            </div>
-
-            <div className="login-container">
-                <div className="login-brand">
-                    <div className="login-logo-text">
+            <div className="login-hero">
+                <div className="hero-overlay"></div>
+                <div className="hero-content">
+                    <div className="hero-logo">
                         <span className="brand-accent">Clear</span>Line
                     </div>
-                    <h1>Inspection Management</h1>
-                    <p>Enterprise-grade RFI & QA/QC platform</p>
+                    <div className="hero-text-container">
+                        <h1 className="hero-headline">Build with Confidence.</h1>
+                        <p className="hero-subheadline">
+                            The enterprise platform for streamlined RFIs, inspections, and QA/QC management.
+                        </p>
+                    </div>
                 </div>
+            </div>
 
-                <div className="login-card">
-                    <div className="login-tabs">
-                        <button
-                            className={`login-tab ${!isRegister ? 'active' : ''}`}
-                            onClick={() => { setIsRegister(false); setError(''); }}
-                        >
-                            Sign In
-                        </button>
-                        <button
-                            className={`login-tab ${isRegister ? 'active' : ''}`}
-                            onClick={() => { setIsRegister(true); setError(''); }}
-                        >
-                            Register
-                        </button>
+            <div className="login-form-side">
+                <div className="login-container">
+                    <div className="login-header-mobile">
+                        <div className="login-logo-text">
+                            <span className="brand-accent">Clear</span>Line
+                        </div>
                     </div>
 
-                    {isRegister && (
-                        <div className="role-selector">
+                    <div className="login-card">
+                        <div className="login-tabs">
                             <button
-                                className={`role-option ${role === USER_ROLES.CONTRACTOR ? 'active' : ''}`}
-                                onClick={() => setRole(USER_ROLES.CONTRACTOR)}
-                                type="button"
+                                className={`login-tab ${!isRegister ? 'active' : ''}`}
+                                onClick={() => { setIsRegister(false); setError(''); }}
                             >
-                                <HardHat size={24} />
-                                <span>Contractor</span>
-                                <small>File & track RFIs</small>
+                                Sign In
                             </button>
                             <button
-                                className={`role-option ${role === USER_ROLES.CONSULTANT ? 'active' : ''}`}
-                                onClick={() => setRole(USER_ROLES.CONSULTANT)}
-                                type="button"
+                                className={`login-tab ${isRegister ? 'active' : ''}`}
+                                onClick={() => { setIsRegister(true); setError(''); }}
                             >
-                                <UserCheck size={24} />
-                                <span>Consultant</span>
-                                <small>Review & approve RFIs</small>
+                                Register
                             </button>
                         </div>
-                    )}
 
-                    <form onSubmit={handleSubmit} className="login-form">
                         {isRegister && (
-                            <>
-                                <div className="form-group">
-                                    <label>Full Name</label>
-                                    <input
-                                        type="text"
-                                        value={form.name}
-                                        onChange={(e) => handleChange('name', e.target.value)}
-                                        placeholder="Enter your full name"
-                                        autoComplete="name"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Company Name</label>
-                                    <input
-                                        type="text"
-                                        value={form.company}
-                                        onChange={(e) => handleChange('company', e.target.value)}
-                                        placeholder="Enter company name"
-                                        autoComplete="organization"
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        <div className="form-group">
-                            <label>Email</label>
-                            <input
-                                type="email"
-                                value={form.email}
-                                onChange={(e) => handleChange('email', e.target.value)}
-                                placeholder="you@company.com"
-                                autoComplete="email"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Password</label>
-                            <div className="password-field">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={form.password}
-                                    onChange={(e) => handleChange('password', e.target.value)}
-                                    placeholder="Enter your password"
-                                    autoComplete={isRegister ? 'new-password' : 'current-password'}
-                                />
+                            <div className="role-selector">
                                 <button
+                                    className={`role-option ${role === USER_ROLES.CONTRACTOR ? 'active' : ''}`}
+                                    onClick={() => setRole(USER_ROLES.CONTRACTOR)}
                                     type="button"
-                                    className="password-toggle"
-                                    onClick={() => setShowPassword(!showPassword)}
                                 >
-                                    <Eye size={18} />
+                                    <HardHat size={24} />
+                                    <span>Contractor</span>
+                                    <small>File & track RFIs</small>
+                                </button>
+                                <button
+                                    className={`role-option ${role === USER_ROLES.CONSULTANT ? 'active' : ''}`}
+                                    onClick={() => setRole(USER_ROLES.CONSULTANT)}
+                                    type="button"
+                                >
+                                    <UserCheck size={24} />
+                                    <span>Consultant</span>
+                                    <small>Review & approve RFIs</small>
                                 </button>
                             </div>
-                        </div>
+                        )}
 
-                        {error && <div className="login-error">{error}</div>}
+                        <form onSubmit={handleSubmit} className="login-form">
+                            {isRegister && (
+                                <>
+                                    <div className="form-group">
+                                        <label>Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={form.name}
+                                            onChange={(e) => handleChange('name', e.target.value)}
+                                            placeholder="Enter your full name"
+                                            autoComplete="name"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Company Name</label>
+                                        <input
+                                            type="text"
+                                            value={form.company}
+                                            onChange={(e) => handleChange('company', e.target.value)}
+                                            placeholder="Enter company name"
+                                            autoComplete="organization"
+                                        />
+                                    </div>
+                                </>
+                            )}
 
-                        <button type="submit" className="btn btn-primary login-submit">
-                            {isRegister ? 'Create Account' : 'Sign In'}
-                        </button>
-                    </form>
+                            <div className="form-group">
+                                <label>Email</label>
+                                <input
+                                    type="email"
+                                    value={form.email}
+                                    onChange={(e) => handleChange('email', e.target.value)}
+                                    placeholder="you@company.com"
+                                    autoComplete="email"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Password</label>
+                                <div className="password-field">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={form.password}
+                                        onChange={(e) => handleChange('password', e.target.value)}
+                                        placeholder="Enter your password"
+                                        autoComplete={isRegister ? 'new-password' : 'current-password'}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        <Eye size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {error && <div className="login-error">{error}</div>}
+
+                            <button type="submit" className="btn btn-primary login-submit">
+                                {isRegister ? 'Create Account' : 'Sign In'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
