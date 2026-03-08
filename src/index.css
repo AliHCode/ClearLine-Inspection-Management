@@ -2391,202 +2391,145 @@ h6 {
   }
 }
 /* ============================================
-   MOBILE RESPONSIVENESS (PHASE 8)
+   MOBILE RESPONSIVENESS (PHASE 9 — ANDROID APP FEEL)
    ============================================ */
 
-/* Mobile Project Selector in Dropdown */
-.mobile-project-selector {
-  display: none;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background-color: var(--clr-bg-hover);
-  border-radius: var(--radius-md);
-  margin: 0.5rem 0;
-}
-
-.mobile-project-selector select {
-  border: none;
-  background: transparent;
+/* Disable accidental body horizontal swipe */
+html, body {
+  overflow-x: hidden !important;
+  position: relative;
   width: 100%;
-  font-weight: 600;
-  color: var(--clr-text-main);
-  outline: none;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
+/* Mobile App Bar Header */
 @media (max-width: 768px) {
-  /* Layout & Bases */
-  html {
-    font-size: 13px;
-  }
-
-  .page-wrapper {
-    padding: 0;
-  }
-
-  main {
-    padding: 1rem !important;
-  }
-
-  /* Header Optimization */
   .app-header {
-    padding: 0 1rem;
     height: 60px;
+    padding: 0 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
   }
 
   .app-title {
-    display: none; /* Hide 'Inspections' text on small mobile */
-  }
-
-  .header-left {
-    gap: 0.4rem;
+    display: none;
   }
 
   .header-project-selector {
-    margin-right: 0.5rem !important;
-    max-width: 140px;
-  }
-
-  .header-project-selector select {
-    max-width: 100px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .header-user-details,
-  .header-divider {
-    display: none; /* Hide name/role in main bar, keep in hamburger */
+    display: none !important;
   }
 
   .header-user-info {
     gap: 0.5rem;
   }
 
-  .mobile-project-selector {
-    display: flex;
+  .header-user-details, .header-divider {
+    display: none !important;
   }
 
-  /* Dashboards */
+  /* Big Chunky Touch Targets */
+  .btn {
+    min-height: 48px !important;
+    padding: 0.8rem 1.5rem !important;
+    font-size: 1rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-sm {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 0.5rem !important;
+  }
+
+  .btn svg, .lucide {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  /* Dashboard Adjustments */
+  main {
+    padding: 1rem !important;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
-  .review-mini-stats {
-    flex-direction: column;
-    gap: 0.75rem;
+  .mini-stat-card {
+    height: auto;
+    padding: 1.5rem;
   }
 
   .charts-section {
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
-  .chart-card {
-    width: 100%;
-  }
-
-  /* Tables to Card View Transformation */
+  /* Excel Style Scrollable Tables — NO CARD VIEW */
   .rfi-table-wrapper {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-  }
-
-  .rfi-table:not(.editable) thead {
-    display: none; /* Hide standard headers in viewing tables */
-  }
-
-  .rfi-table:not(.editable) tbody {
-    display: block;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    background: var(--clr-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--clr-border);
+    margin: 0.5rem 0;
     width: 100%;
   }
 
-  .rfi-table:not(.editable) tr {
-    display: block;
-    background-color: var(--clr-bg-secondary);
-    border: 1px solid var(--clr-border);
-    border-radius: var(--radius-lg);
-    margin-bottom: 1rem;
-    padding: 1rem;
-    box-shadow: var(--shadow-sm);
+  .rfi-table {
+    min-width: 900px !important; /* Force horizontal scroll for readability */
+    width: 100%;
+    display: table !important;
+    border-collapse: collapse;
   }
 
-  .rfi-table:not(.editable) td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: none !important;
-    padding: 0.6rem 0 !important;
-    text-align: right;
-    width: 100% !important;
-    min-height: 38px;
+  .rfi-table th, .rfi-table td {
+    display: table-cell !important;
+    padding: 1rem 0.75rem !important;
+    font-size: 0.95rem;
+    white-space: nowrap !important;
   }
 
-  .rfi-table:not(.editable) td::before {
-    content: attr(data-label);
-    font-weight: 700;
-    font-size: 0.8rem;
-    color: var(--clr-text-secondary);
-    text-transform: uppercase;
-    text-align: left;
-    margin-right: 1rem;
+  .rfi-table td::before {
+    display: none !important;
   }
 
-  .rfi-table:not(.editable) .col-serial,
-  .rfi-table:not(.editable) .col-actions {
-    justify-content: flex-end;
-  }
-
-  .rfi-table:not(.editable) td:last-child {
-    border-top: 1px solid var(--clr-border) !important;
-    margin-top: 0.5rem;
-    padding-top: 1rem !important;
-  }
-
-  .rfi-table:not(.editable) .col-actions::before {
-    content: none;
-  }
-
-  /* Special handling for columns like Remarks */
-  .remarks-text {
-    text-align: right;
-    max-width: 65%;
-    word-break: break-word;
-  }
-
-  /* Spreadsheet Table Optimization (Contractor Filing) */
-  .rfi-table.editable {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Modals */
+  /* Modals as Fullscreen or Bottom-Sheet feel */
   .modal {
     width: 95% !important;
-    padding: 1.25rem !important;
-    margin: 1rem;
+    max-width: none !important;
+    max-height: 90vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; /* Corner feel */
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    transform: none !important;
+    left: 2.5% !important;
+    animation: slideUp 0.3s ease-out;
   }
 
-  .modal-header h3 {
-    font-size: 1.1rem;
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 
-  /* Floating Action Buttons */
-  .btn-mobile-full {
-    width: 100%;
-    margin-top: 1rem;
+  /* Form Inputs (Chunky) */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent iOS zoom */
+    min-height: 48px;
+    padding: 0.75rem 1rem !important;
   }
 }
 
+/* Very small phones */
 @media (max-width: 480px) {
-  .header-project-selector {
-    display: none !important; /* Hide project selector in header on very small screens, menu only */
-  }
-
   .app-title-logo {
     font-size: 1.25rem;
   }
