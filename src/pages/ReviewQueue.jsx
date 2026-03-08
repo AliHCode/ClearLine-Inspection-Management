@@ -36,12 +36,10 @@ export default function ReviewQueue() {
         (r) => r.status === 'rejected' && r.reviewedAt && r.reviewedAt.startsWith(currentDate)
     );
 
-    // Show everything for the selected date: pending queue + already reviewed today
-    const filteredItems = [
-        ...queue.all,
-        ...todayApproved,
-        ...todayRejected
-    ].sort((a, b) => (b.serialNo || 0) - (a.serialNo || 0));
+    let filteredItems = queue.all;
+    if (filter === 'approved') filteredItems = todayApproved;
+    if (filter === 'rejected') filteredItems = todayRejected;
+    if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
 
     function handleApprove(rfiId) {
         approveRFI(rfiId, user.id);
@@ -99,7 +97,25 @@ export default function ReviewQueue() {
                     </div>
                 </div>
 
-
+                {/* Mini Stats (Acts as filters) */}
+                <div className="review-mini-stats">
+                    <div className="mini-stat pending" onClick={() => setFilter('to_review')} style={{ cursor: 'pointer', border: filter === 'to_review' ? '2px solid var(--clr-brand-secondary)' : '' }}>
+                        <span className="mini-stat-value">{queue.all.length}</span>
+                        <span className="mini-stat-label">To Review</span>
+                    </div>
+                    <div className="mini-stat approved" onClick={() => setFilter('approved')} style={{ cursor: 'pointer', border: filter === 'approved' ? '2px solid var(--clr-success)' : '' }}>
+                        <span className="mini-stat-value">{todayApproved.length}</span>
+                        <span className="mini-stat-label">Approved Today</span>
+                    </div>
+                    <div className="mini-stat rejected" onClick={() => setFilter('rejected')} style={{ cursor: 'pointer', border: filter === 'rejected' ? '2px solid var(--clr-danger)' : '' }}>
+                        <span className="mini-stat-value">{todayRejected.length}</span>
+                        <span className="mini-stat-label">Rejected Today</span>
+                    </div>
+                    <div className="mini-stat assigned" onClick={() => setFilter('my_assigned')} style={{ cursor: 'pointer', border: filter === 'my_assigned' ? '2px solid var(--clr-brand-primary)' : '' }}>
+                        <span className="mini-stat-value">{queue.all.filter(r => r.assignedTo === user.id).length}</span>
+                        <span className="mini-stat-label">Assigned to Me</span>
+                    </div>
+                </div>
 
                 {actionMessage && (
                     <div className={`submit-message ${actionMessage.includes('✅') ? 'success' : 'warning'}`}>
