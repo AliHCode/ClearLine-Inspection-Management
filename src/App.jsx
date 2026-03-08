@@ -66,7 +66,7 @@ function AppRoutes() {
             <Route
                 path="/contractor/rfi-sheet"
                 element={
-                    <ProtectedRoute allowedRoles={['contractor', 'consultant']}>
+                    <ProtectedRoute allowedRoles={['contractor']}>
                         <DailyRFISheet />
                     </ProtectedRoute>
                 }

@@ -16,7 +16,6 @@ import {
     AlertTriangle,
     Users,
     Download,
-    Plus,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
@@ -65,9 +64,6 @@ export default function ConsultantDashboard() {
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                         <button className="btn btn-primary" onClick={() => navigate('/consultant/review')}>
                             <FileSearch size={18} /> Review RFIs
-                        </button>
-                        <button className="btn btn-secondary" onClick={() => navigate('/contractor/rfi-sheet')}>
-                            <Plus size={18} /> File RFIs
                         </button>
                     </div>
                 </div>

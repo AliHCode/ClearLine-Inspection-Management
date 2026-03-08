@@ -117,12 +117,6 @@ export default function Header() {
                             >
                                 Review Queue
                             </button>
-                            <button
-                                onClick={() => { navigate('/contractor/rfi-sheet'); setMenuOpen(false); }}
-                                className={`header-dropdown-item ${location.pathname.includes('rfi-sheet') ? 'active' : ''}`}
-                            >
-                                File RFIs
-                            </button>
                         </>
                     )}
                     {isAdmin && (
