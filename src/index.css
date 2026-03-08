@@ -2637,3 +2637,83 @@ html, body {
     padding: 1rem;
   }
 }
+
+/* ============================================
+   PHASE 8C: MOBILE POLISH & BUG FIXES
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Header Polish - Make it more prominent */
+  .app-header {
+    height: 70px !important;
+    padding: 0 1.25rem !important;
+  }
+
+  .app-title-logo {
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+  }
+
+  .header-menu-btn .lucide,
+  .notification-bell-btn .lucide {
+    transform: scale(1.1) !important;
+  }
+
+  /* Dropdown Menu - Compact the Project Selector */
+  .header-dropdown {
+    padding: 1rem !important;
+    width: 280px !important;
+  }
+
+  .mobile-project-selector {
+    padding: 0.5rem !important; /* Reduced padding from 0.75rem */
+    margin: 0.25rem 0 !important; /* Reduced margin */
+    background-color: var(--clr-bg-secondary) !important;
+    border: 1px solid var(--clr-border) !important;
+  }
+
+  .mobile-project-selector select {
+    font-size: 1.1rem !important; /* Normal font size */
+    height: auto !important;
+    padding: 0.4rem !important;
+  }
+
+  /* Table Cells & Inputs - Prevent bulky cells */
+  .cell-input {
+    font-size: 1.1rem !important;
+    padding: 0.5rem 0.75rem !important;
+    height: 34px !important; /* Enforce smaller height */
+  }
+
+  .rfi-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Activity Timeline Fixes - Restore full view */
+  .activity-timeline {
+    padding-left: 1.5rem !important;
+  }
+
+  .activity-item {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .activity-content {
+    font-size: 1.1rem !important;
+  }
+
+  .activity-time {
+    font-size: 0.9rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    height: 65px !important;
+  }
+
+  .app-title-logo {
+    font-size: 1.4rem !important;
+  }
+}
