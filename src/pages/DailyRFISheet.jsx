@@ -255,193 +255,237 @@ export default function DailyRFISheet() {
                                                                 +{rfi.images.length - 3}
                                                             </div>
                                                         )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted">—</span>
+                                                )}
+                                            </td>
+                                            <td className="col-actions">
+                                                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                                                    <button
+                                                        className="btn btn-sm btn-ghost"
+                                                        onClick={() => setDetailTarget(rfi)}
+                                                        title="Open Discussion"
+                                                    >
+                                                        <MessageSquare size={14} />
+                                                    </button>
+                                                    {rfi.status === RFI_STATUS.PENDING && (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-sm btn-ghost"
+                                                                onClick={() => setEditTarget(rfi)}
+                                                                title="Edit RFI"
+                                                            >
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-action btn-delete"
+                                                                onClick={() => {
+                                                                    if (window.confirm('Are you sure you want to delete this RFI?')) {
+                                                                        deleteRFI(rfi.id);
+                                                                    }
+                                                                }}
+                                                                title="Delete RFI"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 )}
 
-                                                        {/* New RFI Entry (Spreadsheet-like) */}
-                                                        <div className="sheet-section new-entry-section">
-                                                            <h2 className="section-title">
-                                                                <Plus size={18} /> Add New RFIs
-                                                            </h2>
-                                                            <div className="rfi-table-wrapper">
-                                                                <table className="rfi-table editable">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th className="col-serial">#</th>
-                                                                            <th className="col-desc">Description *</th>
-                                                                            <th className="col-loc">Location *</th>
-                                                                            <th className="col-type">Inspection Type</th>
-                                                                            <th className="col-assign">Assign To</th>
-                                                                            <th className="col-files">Attachments</th>
-                                                                            <th className="col-actions"></th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {newRows.map((row, idx) => (
-                                                                            <tr key={row.tempId}>
-                                                                                <td className="col-serial">{myNewRfis.length + idx + 1}</td>
-                                                                                <td className="col-desc">
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        className="cell-input"
-                                                                                        value={row.description}
-                                                                                        onChange={(e) => updateRow(row.tempId, 'description', e.target.value)}
-                                                                                        placeholder="e.g. Concrete pouring Zone B"
-                                                                                    />
-                                                                                </td>
-                                                                                <td className="col-loc">
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        className="cell-input"
-                                                                                        value={row.location}
-                                                                                        onChange={(e) => updateRow(row.tempId, 'location', e.target.value)}
-                                                                                        placeholder="e.g. Floor 3, Zone A"
-                                                                                    />
-                                                                                </td>
-                                                                                <td className="col-type">
-                                                                                    <select
-                                                                                        className="cell-select"
-                                                                                        value={row.inspectionType}
-                                                                                        onChange={(e) => updateRow(row.tempId, 'inspectionType', e.target.value)}
-                                                                                    >
-                                                                                        {INSPECTION_TYPES.map((type) => (
-                                                                                            <option key={type} value={type}>{type}</option>
-                                                                                        ))}
-                                                                                    </select>
-                                                                                </td>
-                                                                                <td className="col-assign">
-                                                                                    <select
-                                                                                        className="cell-select"
-                                                                                        value={row.assignedTo}
-                                                                                        onChange={(e) => updateRow(row.tempId, 'assignedTo', e.target.value)}
-                                                                                    >
-                                                                                        <option value="">— Auto —</option>
-                                                                                        {consultants.map((c) => (
-                                                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                                                        ))}
-                                                                                    </select>
-                                                                                </td>
-                                                                                <td className="col-files">
-                                                                                    <div className="file-upload-cell">
-                                                                                        <label className="file-upload-label">
-                                                                                            <input
-                                                                                                type="file"
-                                                                                                multiple
-                                                                                                accept="image/*"
-                                                                                                onChange={(e) => {
-                                                                                                    const files = Array.from(e.target.files);
-                                                                                                    // Append to existing images rather than replace
-                                                                                                    updateRow(row.tempId, 'images', [...row.images, ...files]);
-                                                                                                }}
-                                                                                                className="file-input-hidden"
-                                                                                                style={{ display: 'none' }}
-                                                                                            />
-                                                                                            <span className="file-upload-btn btn btn-sm btn-ghost">
-                                                                                                Attach Photos
-                                                                                            </span>
-                                                                                        </label>
+                {/* New RFI Entry (Spreadsheet-like) */}
+                <div className="sheet-section new-entry-section">
+                    <h2 className="section-title">
+                        <Plus size={18} /> Add New RFIs
+                    </h2>
+                    <div className="rfi-table-wrapper">
+                        <table className="rfi-table editable">
+                            <thead>
+                                <tr>
+                                    <th className="col-serial">#</th>
+                                    <th className="col-desc">Description *</th>
+                                    <th className="col-loc">Location *</th>
+                                    <th className="col-type">Inspection Type</th>
+                                    <th className="col-assign">Assign To</th>
+                                    <th className="col-files">Attachments</th>
+                                    <th className="col-actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {newRows.map((row, idx) => (
+                                    <tr key={row.tempId}>
+                                        <td className="col-serial">{myNewRfis.length + idx + 1}</td>
+                                        <td className="col-desc">
+                                            <input
+                                                type="text"
+                                                className="cell-input"
+                                                value={row.description}
+                                                onChange={(e) => updateRow(row.tempId, 'description', e.target.value)}
+                                                placeholder="e.g. Concrete pouring Zone B"
+                                            />
+                                        </td>
+                                        <td className="col-loc">
+                                            <input
+                                                type="text"
+                                                className="cell-input"
+                                                value={row.location}
+                                                onChange={(e) => updateRow(row.tempId, 'location', e.target.value)}
+                                                placeholder="e.g. Floor 3, Zone A"
+                                            />
+                                        </td>
+                                        <td className="col-type">
+                                            <select
+                                                className="cell-select"
+                                                value={row.inspectionType}
+                                                onChange={(e) => updateRow(row.tempId, 'inspectionType', e.target.value)}
+                                            >
+                                                {INSPECTION_TYPES.map((type) => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="col-assign">
+                                            <select
+                                                className="cell-select"
+                                                value={row.assignedTo}
+                                                onChange={(e) => updateRow(row.tempId, 'assignedTo', e.target.value)}
+                                            >
+                                                <option value="">— Auto —</option>
+                                                {consultants.map((c) => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="col-files">
+                                            <div className="file-upload-cell">
+                                                <label className="file-upload-label">
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const files = Array.from(e.target.files);
+                                                            // Append to existing images rather than replace
+                                                            updateRow(row.tempId, 'images', [...row.images, ...files]);
+                                                        }}
+                                                        className="file-input-hidden"
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                    <span className="file-upload-btn btn btn-sm btn-ghost">
+                                                        Attach Photos
+                                                    </span>
+                                                </label>
 
-                                                                                        {row.images.length > 0 && (
-                                                                                            <div className="image-preview-grid">
-                                                                                                {row.images.map((img, i) => (
-                                                                                                    <div key={i} className="thumbnail-wrapper">
-                                                                                                        <img
-                                                                                                            src={URL.createObjectURL(img)}
-                                                                                                            alt="preview"
-                                                                                                            className="thumbnail"
-                                                                                                            style={{ cursor: 'pointer' }}
-                                                                                                            onClick={() => setSelectedImages(row.images)}
-                                                                                                        />
-                                                                                                        <button
-                                                                                                            className="btn-remove-thumb"
-                                                                                                            onClick={(e) => {
-                                                                                                                e.stopPropagation();
-                                                                                                                removeImage(row.tempId, i);
-                                                                                                            }}
-                                                                                                        >
-                                                                                                            <X size={12} />
-                                                                                                        </button>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </td>
-                                                                                <td className="col-actions">
-                                                                                    {newRows.length > 1 && (
-                                                                                        <button
-                                                                                            className="btn btn-sm btn-action btn-delete"
-                                                                                            onClick={() => removeRow(row.tempId)}
-                                                                                        >
-                                                                                            <Trash2 size={14} />
-                                                                                        </button>
-                                                                                    )}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-
-                                                            <div className="sheet-actions">
-                                                                <button className="btn btn-ghost" onClick={addRow} disabled={isSubmitting}>
-                                                                    <Plus size={16} /> Add Row
-                                                                </button>
-                                                                <button className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
-                                                                    {isSubmitting ? <RefreshCw size={16} className="spin" /> : <Send size={16} />}
-                                                                    {isSubmitting ? 'Submitting...' : 'Submit RFIs'}
+                                                {row.images.length > 0 && (
+                                                    <div className="image-preview-grid">
+                                                        {row.images.map((img, i) => (
+                                                            <div key={i} className="thumbnail-wrapper">
+                                                                <img
+                                                                    src={URL.createObjectURL(img)}
+                                                                    alt="preview"
+                                                                    className="thumbnail"
+                                                                    style={{ cursor: 'pointer' }}
+                                                                    onClick={() => setSelectedImages(row.images)}
+                                                                />
+                                                                <button
+                                                                    className="btn-remove-thumb"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        removeImage(row.tempId, i);
+                                                                    }}
+                                                                >
+                                                                    <X size={12} />
                                                                 </button>
                                                             </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="col-actions">
+                                            {newRows.length > 1 && (
+                                                <button
+                                                    className="btn btn-sm btn-action btn-delete"
+                                                    onClick={() => removeRow(row.tempId)}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                                                            {submitMessage && (
-                                                                <div className={`submit - message ${submitMessage.includes('✅') ? 'success' : 'error'} `}>
-                                                                    {submitMessage}
-                                                                </div>
-                                                            )}
-                                                        </div>
+                    <div className="sheet-actions">
+                        <button className="btn btn-ghost" onClick={addRow} disabled={isSubmitting}>
+                            <Plus size={16} /> Add Row
+                        </button>
+                        <button className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? <RefreshCw size={16} className="spin" /> : <Send size={16} />}
+                            {isSubmitting ? 'Submitting...' : 'Submit RFIs'}
+                        </button>
+                    </div>
 
-                                                        {/* Lightbox for Contractor Uploads */}
-                                                        {selectedImages && (
-                                                            <div className="modal-overlay" onClick={() => setSelectedImages(null)}>
-                                                                <div className="modal lightbox" onClick={e => e.stopPropagation()}>
-                                                                    <div className="modal-header">
-                                                                        <h3>Previews ({selectedImages.length})</h3>
-                                                                        <button className="btn-close modal-close" onClick={() => setSelectedImages(null)}>
-                                                                            <X size={20} />
-                                                                        </button>
-                                                                    </div>
-                                                                    <div className="lightbox-content">
-                                                                        {selectedImages.map((img, idx) => {
-                                                                            const objectUrl = typeof img === 'string' ? img : URL.createObjectURL(img);
-                                                                            return (
-                                                                                <div key={idx} className="lightbox-image-wrapper">
-                                                                                    <img src={objectUrl} alt={`Attachment ${idx + 1} `} className="lightbox-image" />
-                                                                                    <a href={objectUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost lightbox-download">
-                                                                                        Open Full Size
-                                                                                    </a>
-                                                                                </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                    {submitMessage && (
+                        <div className={`submit-message ${submitMessage.includes('✅') ? 'success' : 'error'}`}>
+                            {submitMessage}
+                        </div>
+                    )}
+                </div>
 
-                                                        {/* Detail & Comments Modal */}
-                                                        {detailTarget && (
-                                                            <RFIDetailModal
-                                                                rfi={detailTarget}
-                                                                onClose={() => setDetailTarget(null)}
-                                                            />
-                                                        )}
+                {/* Lightbox for Contractor Uploads */}
+                {selectedImages && (
+                    <div className="modal-overlay" onClick={() => setSelectedImages(null)}>
+                        <div className="modal lightbox" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Previews ({selectedImages.length})</h3>
+                                <button className="btn-close modal-close" onClick={() => setSelectedImages(null)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="lightbox-content">
+                                {selectedImages.map((img, idx) => {
+                                    const objectUrl = typeof img === 'string' ? img : URL.createObjectURL(img);
+                                    return (
+                                        <div key={idx} className="lightbox-image-wrapper">
+                                            <img src={objectUrl} alt={`Attachment ${idx + 1}`} className="lightbox-image" />
+                                            <a href={objectUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost lightbox-download">
+                                                Open Full Size
+                                            </a>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
-                                                        {editTarget && (
-                                                            <EditRFIModal
-                                                                rfi={editTarget}
-                                                                onSave={handleSaveEdit}
-                                                                onClose={() => setEditTarget(null)}
-                                                            />
-                                                        )}
-                                                    </main>
+                {/* Detail & Comments Modal */}
+                {detailTarget && (
+                    <RFIDetailModal
+                        rfi={detailTarget}
+                        onClose={() => setDetailTarget(null)}
+                    />
+                )}
+
+                {editTarget && (
+                    <EditRFIModal
+                        rfi={editTarget}
+                        onSave={handleSaveEdit}
+                        onClose={() => setEditTarget(null)}
+                    />
+                )}
+            </main>
         </div>
-                                            );
+    );
 }
