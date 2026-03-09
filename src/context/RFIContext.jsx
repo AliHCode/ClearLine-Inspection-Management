@@ -377,8 +377,6 @@ export function RFIProvider({ children }) {
                 reviewed_by: reviewedBy,
                 reviewed_at: new Date().toISOString(),
                 remarks: remarks,
-                carryover_count: targetRfi.carryoverCount + 1,
-                carryover_to: nextDay,
                 images: mergedImages,
             }).eq('id', rfiId);
             if (error) throw error;
