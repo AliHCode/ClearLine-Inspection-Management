@@ -671,6 +671,9 @@ h6 {
 }
 
 @media (max-width: 768px) {
+  .header-logo-img {
+    height: 32px !important;
+  }
 
   .dashboard-page,
   .rfi-sheet-page,
