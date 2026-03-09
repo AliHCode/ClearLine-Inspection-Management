@@ -46,6 +46,11 @@ export default function ContractorDashboard() {
         (r) => r.status === 'rejected' && r.carryoverTo === today && r.filedBy === user.id
     ).length;
 
+    const reportRfis = allMyRfis.filter(r =>
+        (r.status === 'approved' || r.status === 'rejected') &&
+        ((r.reviewedAt && r.reviewedAt.startsWith(today)) || r.filedDate === today)
+    );
+
     // --- Chart Data Preparation ---
     const pieData = [
         { name: 'Approved', value: stats.overallApproved, color: 'var(--clr-success)' },
@@ -143,16 +148,18 @@ export default function ContractorDashboard() {
                             <h2><TrendingUp size={20} /> Recent RFIs</h2>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 {allMyRfis.length > 0 && (
-                                    <div className="export-actions" style={{ display: 'flex', gap: '0.25rem', marginRight: '1rem' }}>
+                                    <div className="export-actions" style={{ display: 'flex', gap: '0.75rem', marginRight: '1rem', alignItems: 'center' }}>
                                         <button
-                                            className="btn btn-ghost btn-sm"
+                                            className="btn btn-sm"
+                                            style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                             onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`)}
                                             title="Export to PDF"
                                         >
                                             <FileDown size={16} /> PDF
                                         </button>
                                         <button
-                                            className="btn btn-ghost btn-sm"
+                                            className="btn btn-sm"
+                                            style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                             onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`)}
                                             title="Export to Excel"
                                         >
@@ -160,8 +167,8 @@ export default function ContractorDashboard() {
                                         </button>
                                         <button
                                             className="btn btn-sm"
-                                            style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', gap: '0.35rem' }}
-                                            onClick={() => generateDailyReport(allMyRfis, today, activeProjectName)}
+                                            style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName)}
                                             title="Generate branded daily report"
                                         >
                                             <ClipboardList size={16} /> Daily Report

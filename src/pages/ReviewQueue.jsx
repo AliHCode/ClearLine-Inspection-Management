@@ -70,9 +70,10 @@ export default function ReviewQueue() {
                         <p className="subtitle" style={{ marginTop: '0.25rem' }}>Manage & export daily inspections</p>
                     </div>
                     <div className="review-header-controls">
-                        <div className="export-actions review-export-actions">
+                        <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                             <button
-                                className="btn btn-ghost btn-sm export-icon-btn pdf-icon-btn"
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                 onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`)}
                                 title="Export to PDF"
                                 aria-label="Export to PDF"
@@ -80,7 +81,8 @@ export default function ReviewQueue() {
                                 <FileDown size={16} /> PDF
                             </button>
                             <button
-                                className="btn btn-ghost btn-sm export-icon-btn excel-icon-btn"
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                 onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`)}
                                 title="Export to Excel"
                                 aria-label="Export to Excel"
@@ -89,8 +91,8 @@ export default function ReviewQueue() {
                             </button>
                             <button
                                 className="btn btn-sm"
-                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', gap: '0.35rem' }}
-                                onClick={() => generateDailyReport(filteredItems, currentDate, activeProjectName)}
+                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName)}
                                 title="Generate branded daily report"
                             >
                                 <ClipboardList size={16} /> Daily Report

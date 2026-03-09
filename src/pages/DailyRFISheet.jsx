@@ -16,7 +16,7 @@ export default function DailyRFISheet() {
     const { user } = useAuth();
     const { activeProject } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
-    const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants } = useRFI();
+    const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants, rfis } = useRFI();
     const [currentDate, setCurrentDate] = useState(getToday());
     const [detailTarget, setDetailTarget] = useState(null);
     const [editTarget, setEditTarget] = useState(null);
@@ -30,6 +30,12 @@ export default function DailyRFISheet() {
     // Filter to only show this contractor's RFIs
     const myCarriedOver = carriedOver.filter((r) => r.filedBy === user.id);
     const myNewRfis = newRfis.filter((r) => r.filedBy === user.id);
+
+    const reportRfis = rfis ? rfis.filter(r =>
+        r.filedBy === user.id &&
+        (r.status === 'approved' || r.status === 'rejected') &&
+        ((r.reviewedAt && r.reviewedAt.startsWith(currentDate)) || r.filedDate === currentDate)
+    ) : [];
 
     function createEmptyRow() {
         return {
@@ -133,16 +139,18 @@ export default function DailyRFISheet() {
                     </div>
                     <div className="review-header-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         {myNewRfis.length > 0 && (
-                            <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.25rem' }}>
+                            <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button
-                                    className="btn btn-ghost btn-sm export-icon-btn pdf-icon-btn"
+                                    className="btn btn-sm"
+                                    style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                     onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`)}
                                     title="Export to PDF"
                                 >
                                     <FileDown size={16} /> PDF
                                 </button>
                                 <button
-                                    className="btn btn-ghost btn-sm export-icon-btn excel-icon-btn"
+                                    className="btn btn-sm"
+                                    style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                                     onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`)}
                                     title="Export to Excel"
                                 >
@@ -150,8 +158,8 @@ export default function DailyRFISheet() {
                                 </button>
                                 <button
                                     className="btn btn-sm"
-                                    style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', gap: '0.35rem' }}
-                                    onClick={() => generateDailyReport(myNewRfis, currentDate, activeProjectName)}
+                                    style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName)}
                                     title="Generate branded daily report"
                                 >
                                     <ClipboardList size={16} /> Daily Report

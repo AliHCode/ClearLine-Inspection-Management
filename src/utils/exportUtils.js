@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { formatDateDisplay } from './rfiLogic';
 
@@ -66,7 +66,7 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report') {
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
 
-    doc.autoTable({
+    autoTable(doc, {
         head: [headers],
         body: body,
         startY: 35,
@@ -183,7 +183,7 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project') 
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
 
-    doc.autoTable({
+    autoTable(doc, {
         head: [headers],
         body: body,
         startY: statsY + boxH + 10,
