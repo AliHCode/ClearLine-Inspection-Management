@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import { getToday } from '../utils/rfiLogic';
@@ -129,8 +129,30 @@ export default function DailyRFISheet() {
         });
     }
 
+    useEffect(() => {
+        // If the timeline date changes, close any previously opened discussion modal.
+        setDetailTarget(null);
+    }, [currentDate]);
+
     function scrollToPageBottom() {
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        const scrollNow = () => {
+            const scroller = document.scrollingElement || document.documentElement || document.body;
+            const pageHeight = Math.max(
+                document.body?.scrollHeight || 0,
+                document.documentElement?.scrollHeight || 0,
+                document.body?.offsetHeight || 0,
+                document.documentElement?.offsetHeight || 0
+            );
+
+            scroller.scrollTo({ top: pageHeight, behavior: 'smooth' });
+            window.scrollTo({ top: pageHeight, behavior: 'smooth' });
+        };
+
+        // Run immediately, then once after render settles so we always hit true bottom.
+        scrollNow();
+        requestAnimationFrame(() => {
+            setTimeout(scrollNow, 120);
+        });
     }
 
     return (

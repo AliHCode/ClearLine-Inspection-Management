@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
-import { LogOut, Menu, X, Building, Shield } from 'lucide-react';
+import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
@@ -19,6 +19,14 @@ export default function Header() {
     const isAdmin = user.role === 'admin';
     const dashPath = isAdmin ? '/admin' : isContractor ? '/contractor' : '/consultant';
     const roleLabel = isAdmin ? 'Admin' : isContractor ? 'Contractor' : 'Consultant';
+    const nameInitials = user.name
+        ? user.name
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(part => part[0].toUpperCase())
+            .join('')
+        : 'U';
 
     return (
         <header className="app-header">
@@ -87,13 +95,25 @@ export default function Header() {
             {menuOpen && (
                 <div className="header-dropdown">
                     <div className="header-dropdown-info">
-                        <strong>{user.name}</strong>
-                        <span>{user.company}</span>
-                        <span className="header-role-text" data-role={user.role}>
-                            {roleLabel}
-                        </span>
+                        <div className="header-identity-card">
+                            <div className="header-identity-avatar" aria-hidden="true">
+                                {nameInitials}
+                            </div>
+                            <div className="header-identity-meta">
+                                <div className="header-identity-name">{user.name}</div>
+                                <div className="header-identity-details">
+                                    <div className="header-identity-detail">
+                                        <Briefcase size={12} />
+                                        <span>{user.company || 'ClearLine Inc.'}</span>
+                                    </div>
+                                    <div className="header-identity-detail">
+                                        <User size={12} />
+                                        <span className="header-identity-designation">{roleLabel}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <hr />
                     <button
                         onClick={() => { navigate(dashPath); setMenuOpen(false); }}
                         className={`header-dropdown-item ${location.pathname === dashPath ? 'active' : ''}`}
