@@ -540,7 +540,8 @@ export function RFIProvider({ children }) {
         const carriedOver = rfis.filter(
             (rfi) =>
                 rfi.status === RFI_STATUS.REJECTED &&
-                rfi.carryoverTo === targetDate
+                rfi.carryoverTo &&
+                rfi.carryoverTo <= targetDate
         );
 
         // Sorting strategy: Priority Rejected/Carryover, then serial number
@@ -579,7 +580,8 @@ export function RFIProvider({ children }) {
         const carriedOver = rfis.filter(
             (rfi) =>
                 rfi.status === RFI_STATUS.REJECTED &&
-                rfi.carryoverTo === targetDate
+                rfi.carryoverTo &&
+                rfi.carryoverTo <= targetDate
         );
 
         // Sorting strategy:
