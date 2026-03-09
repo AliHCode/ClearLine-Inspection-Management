@@ -148,6 +148,7 @@ export default function DailyRFISheet() {
                                         <th className="col-type">Type</th>
                                         <th className="col-status">Status</th>
                                         <th className="col-remarks">Remarks</th>
+                                        <th className="col-files">Attachments</th>
                                         <th className="col-actions">Action</th>
                                     </tr>
                                 </thead>
@@ -165,7 +166,27 @@ export default function DailyRFISheet() {
                                                 )}
                                             </td>
                                             <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
-                                            <td className="col-actions">
+                                            <td className="col-files" data-label="Attachments">
+                                                {rfi.images && rfi.images.length > 0 ? (
+                                                    <div
+                                                        className="image-preview-grid consultant-grid"
+                                                        onClick={() => setSelectedImages(rfi.images)}
+                                                        title="Click to view full size"
+                                                    >
+                                                        {rfi.images.slice(0, 3).map((url, idx) => (
+                                                            <img key={idx} src={url} alt={`Attachment ${idx + 1}`} className="thumbnail" />
+                                                        ))}
+                                                        {rfi.images.length > 3 && (
+                                                            <div className="thumbnail-more">
+                                                                +{rfi.images.length - 3}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted">—</span>
+                                                )}
+                                            </td>
+                                        <td className="col-actions">
                                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                                     <button
                                                         className="btn btn-sm btn-action btn-resubmit"
@@ -206,6 +227,7 @@ export default function DailyRFISheet() {
                                         <th className="col-type">Type</th>
                                         <th className="col-status">Status</th>
                                         <th className="col-remarks">Remarks</th>
+                                        <th className="col-files">Attachments</th>
                                         <th className="col-actions">Action</th>
                                     </tr>
                                 </thead>
@@ -218,6 +240,26 @@ export default function DailyRFISheet() {
                                             <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
                                             <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>
                                             <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
+                                            <td className="col-files" data-label="Attachments">
+                                                {rfi.images && rfi.images.length > 0 ? (
+                                                    <div
+                                                        className="image-preview-grid consultant-grid"
+                                                        onClick={() => setSelectedImages(rfi.images)}
+                                                        title="Click to view full size"
+                                                    >
+                                                        {rfi.images.slice(0, 3).map((url, idx) => (
+                                                            <img key={idx} src={url} alt={`Attachment ${idx + 1}`} className="thumbnail" />
+                                                        ))}
+                                                        {rfi.images.length > 3 && (
+                                                            <div className="thumbnail-more">
+                                                                +{rfi.images.length - 3}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted">—</span>
+                                                )}
+                                            </td>
                                             <td className="col-actions">
                                                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                     <button
@@ -360,7 +402,7 @@ export default function DailyRFISheet() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="col-actions">
+                                            <td className="col-actions">
                                             {newRows.length > 1 && (
                                                 <button
                                                     className="btn btn-sm btn-action btn-delete"
@@ -405,7 +447,7 @@ export default function DailyRFISheet() {
                             </div>
                             <div className="lightbox-content">
                                 {selectedImages.map((img, idx) => {
-                                    const objectUrl = URL.createObjectURL(img);
+                                    const objectUrl = typeof img === 'string' ? img : URL.createObjectURL(img);
                                     return (
                                         <div key={idx} className="lightbox-image-wrapper">
                                             <img src={objectUrl} alt={`Attachment ${idx + 1} `} className="lightbox-image" />
