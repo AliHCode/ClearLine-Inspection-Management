@@ -54,20 +54,20 @@ export default function UsersPage() {
 
     async function toggleUserActive(userId, currentStatus) {
         const { error } = await supabase.from('profiles').update({ is_active: !currentStatus }).eq('id', userId);
-        if (!error) { showMsg(!currentStatus ? '✅ User reactivated' : '⛔ User deactivated'); fetchUsers(); }
-        else showMsg('❌ Error updating user');
+        if (!error) { showMsg(!currentStatus ? 'User reactivated' : 'User deactivated'); fetchUsers(); }
+        else showMsg('Error updating user');
     }
 
     async function changeUserRole(userId, newRole) {
         const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
-        if (!error) { showMsg(`✅ Role updated to ${newRole}`); fetchUsers(); }
-        else showMsg('❌ Error updating role');
+        if (!error) { showMsg(`Role updated to ${newRole}`); fetchUsers(); }
+        else showMsg('Error updating role');
     }
 
     async function archiveUser(userId, userName) {
         const { error } = await supabase.from('profiles').update({ is_archived: true }).eq('id', userId);
-        if (!error) { showMsg(`🗑️ ${userName} removed`); fetchUsers(); }
-        else showMsg('❌ ' + error.message);
+        if (!error) { showMsg(`${userName} removed`); fetchUsers(); }
+        else showMsg('Error: ' + error.message);
     }
 
     // Computed
@@ -123,19 +123,19 @@ export default function UsersPage() {
                 </div>
 
                 {actionMessage && (
-                    <div className={`submit-message ${actionMessage.includes('✅') ? 'success' : 'warning'}`}>
+                    <div className={`submit-message ${actionMessage.startsWith('Error') ? 'warning' : 'success'}`}>
                         {actionMessage}
                     </div>
                 )}
 
                 {/* Stats */}
                 <div className="users-stat-pills" style={{ marginBottom: '1rem' }}>
-                    <span className="ustat-pill">👥 {stats.total} Total</span>
-                    <span className="ustat-pill">🏗️ {stats.contractors} Contractors</span>
-                    <span className="ustat-pill">🔍 {stats.consultants} Consultants</span>
-                    {stats.admins > 0 && <span className="ustat-pill">🛡️ {stats.admins} Admins</span>}
-                    {stats.unassigned > 0 && <span className="ustat-pill ustat-info">🔔 {stats.unassigned} Unassigned</span>}
-                    {stats.inactive > 0 && <span className="ustat-pill ustat-danger">⛔ {stats.inactive} Deactivated</span>}
+                    <span className="ustat-pill">{stats.total} Total</span>
+                    <span className="ustat-pill">{stats.contractors} Contractors</span>
+                    <span className="ustat-pill">{stats.consultants} Consultants</span>
+                    {stats.admins > 0 && <span className="ustat-pill">{stats.admins} Admins</span>}
+                    {stats.unassigned > 0 && <span className="ustat-pill">{stats.unassigned} Unassigned</span>}
+                    {stats.inactive > 0 && <span className="ustat-pill">{stats.inactive} Deactivated</span>}
                 </div>
 
                 {/* Filters */}
@@ -219,8 +219,8 @@ export default function UsersPage() {
                                         {!isSelf && (
                                             <div className="user-card-actions">
                                                 <button
-                                                    className={`btn btn-sm ${isInactive ? 'btn-success' : 'btn-ghost'}`}
-                                                    style={isInactive ? {} : { color: '#d97706' }}
+                                                    className={`btn btn-sm btn-ghost`}
+                                                    style={{}}
                                                     onClick={() => toggleUserActive(u.id, u.is_active !== false)}
                                                     title={isInactive ? 'Reactivate user' : 'Deactivate user'}
                                                 >

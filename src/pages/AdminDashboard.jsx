@@ -88,25 +88,25 @@ export default function AdminDashboard() {
     // ─── User actions ───
     async function toggleUserActive(userId, currentStatus) {
         const { error } = await supabase.from('profiles').update({ is_active: !currentStatus }).eq('id', userId);
-        if (!error) { showMsg(!currentStatus ? '✅ User reactivated' : '⛔ User deactivated'); fetchUsers(); }
-        else showMsg('❌ Error updating user');
+        if (!error) { showMsg(!currentStatus ? 'User reactivated' : 'User deactivated'); fetchUsers(); }
+        else showMsg('Error updating user');
     }
 
     async function changeUserRole(userId, newRole) {
         const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
-        if (!error) { showMsg(`✅ Role updated to ${newRole}`); fetchUsers(); }
-        else showMsg('❌ Error updating role');
+        if (!error) { showMsg(`Role updated to ${newRole}`); fetchUsers(); }
+        else showMsg('Error updating role');
     }
 
     // Approve pending or re-approve rejected: sets role ONLY (no project yet)
     async function approveUser(userId, userName) {
         const pa = pendingApprove[userId] || {};
         const role = pa.role;
-        if (!role) { showMsg('⚠️ Select a role first'); return; }
+        if (!role) { showMsg('Select a role first'); return; }
         const { data, error } = await supabase.from('profiles').update({ role }).eq('id', userId).select();
-        if (error) { showMsg('❌ ' + error.message); return; }
-        if (!data || data.length === 0) { showMsg('❌ Update blocked — check RLS policies on profiles table'); return; }
-        showMsg(`✅ ${userName} approved as ${role}`);
+        if (error) { showMsg('Error: ' + error.message); return; }
+        if (!data || data.length === 0) { showMsg('Error: Update blocked — check RLS policies on profiles table'); return; }
+        showMsg(`${userName} approved as ${role}`);
         setPendingApprove(prev => { const n = { ...prev }; delete n[userId]; return n; });
         await fetchUsers();
     }
@@ -115,29 +115,29 @@ export default function AdminDashboard() {
     async function declineUser(userId) {
         const { error } = await supabase.from('profiles').update({ role: 'rejected' }).eq('id', userId);
         if (!error) { showMsg('Request declined'); fetchUsers(); }
-        else showMsg('❌ ' + error.message);
+        else showMsg('Error: ' + error.message);
     }
 
     // Archive = soft-delete: hides card from dashboard, user record stays in DB
     async function archiveUser(userId, userName) {
         const { error } = await supabase.from('profiles').update({ is_archived: true }).eq('id', userId);
-        if (!error) { showMsg(`🗑️ ${userName} removed from dashboard`); fetchUsers(); }
-        else showMsg('❌ ' + error.message);
+        if (!error) { showMsg(`${userName} removed`); fetchUsers(); }
+        else showMsg('Error: ' + error.message);
     }
 
     // Assign unassigned user to a project
     async function assignUnassignedUser(userId, userName) {
         const projectId = assignProject[userId];
-        if (!projectId) { showMsg('⚠️ Select a project first'); return; }
+        if (!projectId) { showMsg('Select a project first'); return; }
         const u = users.find(x => x.id === userId);
         const role = u?.role || 'contractor';
         const result = await assignUserToProject(projectId, userId, role);
         if (result?.success) {
-            showMsg(`✅ ${userName} assigned to project`);
+            showMsg(`${userName} assigned to project`);
             setAssignProject(prev => { const n = { ...prev }; delete n[userId]; return n; });
             fetchAllMemberships();
         } else {
-            showMsg('❌ ' + (result?.error || 'Assignment failed'));
+            showMsg('Error: ' + (result?.error || 'Assignment failed'));
         }
     }
 
@@ -146,12 +146,12 @@ export default function AdminDashboard() {
         if (!addMemberUserId || !effectiveTeamProjectId) return;
         const result = await assignUserToProject(effectiveTeamProjectId, addMemberUserId, addMemberRole);
         if (result?.success) {
-            showMsg('✅ Member added to project');
+            showMsg('Member added to project');
             setAddMemberUserId('');
             fetchAllMemberships();
             fetchUsers();
         } else {
-            showMsg('❌ ' + (result?.error || 'Failed'));
+            showMsg('Error: ' + (result?.error || 'Failed'));
         }
     }
 
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
         if (!effectiveTeamProjectId || !window.confirm('Remove this member from the project?')) return;
         const result = await removeUserFromProject(effectiveTeamProjectId, userId);
         if (result?.success) {
-            showMsg('✅ Member removed from project');
+            showMsg('Member removed from project');
             fetchAllMemberships();
         }
     }
@@ -171,25 +171,25 @@ export default function AdminDashboard() {
         if (!newProjectName.trim()) return;
         const result = await createProject(newProjectName.trim(), newProjectDesc.trim());
         if (result?.success) {
-            showMsg('✅ Project created');
+            showMsg('Project created');
             setNewProjectName('');
             setNewProjectDesc('');
             setShowNewProject(false);
             fetchProjects();
         } else {
-            showMsg('❌ ' + (result?.error || 'Failed to create project'));
+            showMsg('Error: ' + (result?.error || 'Failed to create project'));
         }
     }
 
     async function handleDeleteProject(projectId) {
         if (projectId === '00000000-0000-0000-0000-000000000000') {
-            showMsg('⚠️ Cannot delete the default project');
+            showMsg('Cannot delete the default project');
             return;
         }
         if (!window.confirm('Delete this project and all its RFI fields? This cannot be undone.')) return;
         const result = await deleteProject(projectId);
-        if (result?.success) { showMsg('✅ Project deleted'); fetchProjects(); }
-        else showMsg('❌ ' + (result?.error || 'Delete failed'));
+        if (result?.success) { showMsg('Project deleted'); fetchProjects(); }
+        else showMsg('Error: ' + (result?.error || 'Delete failed'));
     }
 
     // ─── Field actions ───
@@ -211,19 +211,19 @@ export default function AdminDashboard() {
             options: opts,
         });
         if (result?.success) {
-            showMsg('✅ Field added');
+            showMsg('Field added');
             setNewField({ field_name: '', field_key: '', field_type: 'text', is_required: false, options: '' });
             setShowNewField(false);
         } else {
-            showMsg('❌ ' + (result?.error || 'Failed'));
+            showMsg('Error: ' + (result?.error || 'Failed'));
         }
     }
 
     async function handleDeleteField(fieldId) {
         if (!window.confirm('Delete this RFI field?')) return;
         const result = await deleteProjectField(fieldId);
-        if (result?.success) showMsg('✅ Field removed');
-        else showMsg('❌ ' + (result?.error || 'Failed'));
+        if (result?.success) showMsg('Field removed');
+        else showMsg('Error: ' + (result?.error || 'Failed'));
     }
 
     async function handleToggleRequired(field) {
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {actionMessage && (
-                    <div className={`submit-message ${actionMessage.includes('✅') ? 'success' : 'warning'}`}>
+                    <div className={`submit-message ${actionMessage.startsWith('Error') ? 'warning' : 'success'}`}>
                         {actionMessage}
                     </div>
                 )}
@@ -440,40 +440,42 @@ export default function AdminDashboard() {
                 {activeTab === 'users' && (
                     <div className="admin-section">
 
-                        {/* ══ STEP 1: PENDING APPROVALS ══ */}
+                        {/* ── PENDING APPROVALS ── */}
                         {pendingUsers.length > 0 && (
-                            <div className="users-pending-block">
-                                <div className="users-pending-title">⏳ {pendingUsers.length} Pending Approval{pendingUsers.length !== 1 ? 's' : ''}</div>
-                                <p className="users-hint">Approve new sign-ups by assigning them a role. They'll appear in "Unassigned" so you can add them to a project.</p>
-                                <div className="users-pending-list">
+                            <div className="ua-block">
+                                <div className="ua-block-header">
+                                    <div className="ua-block-label">
+                                        <span className="ua-count">{pendingUsers.length}</span>
+                                        Pending Approval{pendingUsers.length !== 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                                <p className="ua-hint">Approve new sign-ups by assigning a role. They'll move to Unassigned for project placement.</p>
+                                <div className="ua-list">
                                     {pendingUsers.map(pu => {
                                         const pa = pendingApprove[pu.id] || {};
                                         return (
-                                            <div key={pu.id} className="users-pending-item">
-                                                <div className="users-pending-who">
-                                                    <UserAvatar name={pu.name} size={40} />
+                                            <div key={pu.id} className="ua-row">
+                                                <div className="ua-row-user">
+                                                    <UserAvatar name={pu.name} size={36} />
                                                     <div>
-                                                        <div className="users-pending-name">{pu.name}</div>
-                                                        <div className="users-pending-sub">{pu.company || 'No company'}</div>
+                                                        <div className="ua-row-name">{pu.name}</div>
+                                                        <div className="ua-row-meta">{pu.company || 'No company'}</div>
                                                     </div>
                                                 </div>
-                                                <div className="users-pending-actions">
-                                                    <select className="users-role-select"
+                                                <div className="ua-row-actions">
+                                                    <select className="ua-select"
                                                         value={pa.role || ''}
                                                         onChange={e => setPendingApprove(prev => ({ ...prev, [pu.id]: { ...pa, role: e.target.value } }))}>
-                                                        <option value="" disabled>Pick role…</option>
+                                                        <option value="" disabled>Role…</option>
                                                         <option value="contractor">Contractor</option>
                                                         <option value="consultant">Consultant</option>
                                                         <option value="admin">Admin</option>
                                                     </select>
-                                                    <button className="btn btn-sm"
-                                                        style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
-                                                        onClick={() => approveUser(pu.id, pu.name)}>
-                                                        <UserCheck size={13} /> Approve
+                                                    <button className="ua-btn ua-btn-primary" onClick={() => approveUser(pu.id, pu.name)}>
+                                                        <UserCheck size={14} /> Approve
                                                     </button>
-                                                    <button className="btn btn-sm btn-ghost users-decline-btn"
-                                                        onClick={() => declineUser(pu.id, pu.name)}>
-                                                        <UserX size={13} /> Decline
+                                                    <button className="ua-btn ua-btn-danger-ghost" onClick={() => declineUser(pu.id, pu.name)}>
+                                                        <UserX size={14} /> Decline
                                                     </button>
                                                 </div>
                                             </div>
@@ -483,29 +485,31 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/* ══ REJECTED (collapsible) ══ */}
+                        {/* ── REJECTED ── */}
                         {rejectedUsers.length > 0 && (
-                            <div className="users-rejected-block">
-                                <button className="users-rejected-title" onClick={() => setRejectedCollapsed(c => !c)}>
-                                    <UserX size={15} />
-                                    {rejectedUsers.length} Rejected Account{rejectedUsers.length !== 1 ? 's' : ''}
-                                    <span className="users-rejected-toggle">{rejectedCollapsed ? '▼ Show' : '▲ Hide'}</span>
+                            <div className="ua-block ua-block-muted">
+                                <button className="ua-block-header ua-collapse-btn" onClick={() => setRejectedCollapsed(c => !c)}>
+                                    <div className="ua-block-label">
+                                        <span className="ua-count ua-count-muted">{rejectedUsers.length}</span>
+                                        Rejected
+                                    </div>
+                                    <span className="ua-chevron">{rejectedCollapsed ? '›' : '‹'}</span>
                                 </button>
                                 {!rejectedCollapsed && (
-                                    <div className="users-rejected-list">
+                                    <div className="ua-list">
                                         {rejectedUsers.map(ru => {
                                             const pa = pendingApprove[ru.id] || {};
                                             return (
-                                                <div key={ru.id} className="users-rejected-item">
-                                                    <div className="users-pending-who">
+                                                <div key={ru.id} className="ua-row">
+                                                    <div className="ua-row-user">
                                                         <UserAvatar name={ru.name} size={36} />
                                                         <div>
-                                                            <div className="users-pending-name">{ru.name}</div>
-                                                            <div className="users-pending-sub">{ru.company || 'No company'}</div>
+                                                            <div className="ua-row-name">{ru.name}</div>
+                                                            <div className="ua-row-meta">{ru.company || 'No company'}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="users-pending-actions">
-                                                        <select className="users-role-select"
+                                                    <div className="ua-row-actions">
+                                                        <select className="ua-select"
                                                             value={pa.role || ''}
                                                             onChange={e => setPendingApprove(prev => ({ ...prev, [ru.id]: { ...pa, role: e.target.value } }))}>
                                                             <option value="" disabled>Re-approve as…</option>
@@ -513,16 +517,11 @@ export default function AdminDashboard() {
                                                             <option value="consultant">Consultant</option>
                                                             <option value="admin">Admin</option>
                                                         </select>
-                                                        <button className="btn btn-sm"
-                                                            style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}
-                                                            onClick={() => approveUser(ru.id, ru.name)}>
-                                                            <UserCheck size={13} /> Re-approve
+                                                        <button className="ua-btn ua-btn-primary" onClick={() => approveUser(ru.id, ru.name)}>
+                                                            <UserCheck size={14} /> Approve
                                                         </button>
-                                                        <button className="btn btn-sm btn-ghost"
-                                                            style={{ color: 'var(--clr-danger)' }}
-                                                            onClick={() => archiveUser(ru.id, ru.name)}
-                                                            title="Remove from dashboard">
-                                                            <Trash2 size={13} />
+                                                        <button className="ua-btn ua-btn-danger-ghost" onClick={() => archiveUser(ru.id, ru.name)} title="Remove">
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -533,37 +532,37 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/* ══ STEP 2: UNASSIGNED USERS ══ */}
+                        {/* ── UNASSIGNED USERS ── */}
                         {unassignedUsers.length > 0 && (
-                            <div className="users-unassigned-block">
-                                <div className="users-unassigned-title">
-                                    <AlertCircle size={16} />
-                                    {unassignedUsers.length} User{unassignedUsers.length !== 1 ? 's' : ''} Not in Any Project
+                            <div className="ua-block">
+                                <div className="ua-block-header">
+                                    <div className="ua-block-label">
+                                        <span className="ua-count">{unassignedUsers.length}</span>
+                                        Unassigned — Not in Any Project
+                                    </div>
                                 </div>
-                                <p className="users-hint">These users are approved but haven't been added to a project yet. Assign them to get started.</p>
-                                <div className="users-unassigned-list">
+                                <p className="ua-hint">Approved users waiting to be added to a project.</p>
+                                <div className="ua-list">
                                     {unassignedUsers.map(u => (
-                                        <div key={u.id} className="users-unassigned-item">
-                                            <div className="users-pending-who">
-                                                <UserAvatar name={u.name} size={38} />
+                                        <div key={u.id} className="ua-row">
+                                            <div className="ua-row-user">
+                                                <UserAvatar name={u.name} size={36} />
                                                 <div>
-                                                    <div className="users-pending-name">{u.name}</div>
-                                                    <div className="users-pending-sub">
-                                                        {u.company || 'No company'} · <span className={`role-label role-${u.role}`}>{u.role}</span>
+                                                    <div className="ua-row-name">{u.name}</div>
+                                                    <div className="ua-row-meta">
+                                                        {u.company || 'No company'} · <span className="ua-role-badge">{u.role}</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="users-pending-actions">
-                                                <select className="users-role-select"
+                                            <div className="ua-row-actions">
+                                                <select className="ua-select"
                                                     value={assignProject[u.id] || ''}
                                                     onChange={e => setAssignProject(prev => ({ ...prev, [u.id]: e.target.value }))}>
-                                                    <option value="" disabled>Select project…</option>
+                                                    <option value="" disabled>Project…</option>
                                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                                 </select>
-                                                <button className="btn btn-sm"
-                                                    style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
-                                                    onClick={() => assignUnassignedUser(u.id, u.name)}>
-                                                    <FolderPlus size={13} /> Assign
+                                                <button className="ua-btn ua-btn-primary" onClick={() => assignUnassignedUser(u.id, u.name)}>
+                                                    <FolderPlus size={14} /> Assign
                                                 </button>
                                             </div>
                                         </div>
@@ -572,11 +571,11 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/* ══ STEP 3: PROJECT TEAMS ══ */}
-                        <div className="users-teams-block">
-                            <div className="users-teams-header">
-                                <h3 className="users-teams-title"><Building size={18} /> Project Teams</h3>
-                                <select className="users-role-select users-teams-picker"
+                        {/* ── PROJECT TEAMS ── */}
+                        <div className="ua-block">
+                            <div className="ua-block-header">
+                                <div className="ua-block-label">Project Team</div>
+                                <select className="ua-select ua-select-wide"
                                     value={effectiveTeamProjectId}
                                     onChange={e => setTeamProjectId(e.target.value)}>
                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -584,22 +583,17 @@ export default function AdminDashboard() {
                             </div>
 
                             {teamUsers.length === 0 ? (
-                                <p className="users-hint" style={{ padding: '1rem 0' }}>No members in this project yet. Use the form below to add people.</p>
+                                <p className="ua-hint" style={{ padding: '0.75rem 0 0.25rem' }}>No members in this project. Add someone below.</p>
                             ) : (
-                                <div className="users-team-members">
+                                <div className="ua-team-list">
                                     {teamUsers.map(m => (
-                                        <div key={m.id} className="users-team-member">
-                                            <UserAvatar name={m.name} size={32} />
-                                            <div className="users-team-member-info">
-                                                <span className="users-team-member-name">{m.name}</span>
-                                                <span className={`role-label role-${m.memberRole}`}>{m.memberRole}</span>
-                                            </div>
-                                            <span className="users-team-member-company">{m.company || ''}</span>
+                                        <div key={m.id} className="ua-team-row">
+                                            <UserAvatar name={m.name} size={30} />
+                                            <span className="ua-team-name">{m.name}</span>
+                                            <span className="ua-role-badge">{m.memberRole}</span>
+                                            <span className="ua-team-company">{m.company || ''}</span>
                                             {m.id !== user.id && (
-                                                <button className="btn btn-sm btn-ghost"
-                                                    style={{ color: 'var(--clr-danger)', marginLeft: 'auto', padding: '0.2rem' }}
-                                                    onClick={() => handleRemoveTeamMember(m.id)}
-                                                    title="Remove from project">
+                                                <button className="ua-btn ua-btn-icon" onClick={() => handleRemoveTeamMember(m.id)} title="Remove from project">
                                                     <X size={14} />
                                                 </button>
                                             )}
@@ -608,37 +602,33 @@ export default function AdminDashboard() {
                                 </div>
                             )}
 
-                            {/* Add member to this project */}
                             {addableUsers.length > 0 && (
-                                <div className="users-team-add-row">
-                                    <select className="users-role-select" style={{ flex: 2, minWidth: 0 }}
+                                <div className="ua-team-add">
+                                    <select className="ua-select" style={{ flex: 2, minWidth: 0 }}
                                         value={addMemberUserId}
                                         onChange={e => setAddMemberUserId(e.target.value)}>
-                                        <option value="">+ Add member…</option>
+                                        <option value="">Add member…</option>
                                         {addableUsers.map(u => (
-                                            <option key={u.id} value={u.id}>{u.name} — {u.role} — {u.company || 'No company'}</option>
+                                            <option key={u.id} value={u.id}>{u.name} — {u.role}</option>
                                         ))}
                                     </select>
-                                    <select className="users-role-select" value={addMemberRole}
+                                    <select className="ua-select" value={addMemberRole}
                                         onChange={e => setAddMemberRole(e.target.value)}>
                                         <option value="contractor">Contractor</option>
                                         <option value="consultant">Consultant</option>
                                         <option value="admin">Admin</option>
                                     </select>
-                                    <button className="btn btn-sm"
-                                        style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
-                                        onClick={handleAddTeamMember}>
-                                        <UserPlus size={13} /> Add
+                                    <button className="ua-btn ua-btn-primary" onClick={handleAddTeamMember}>
+                                        <UserPlus size={14} /> Add
                                     </button>
                                 </div>
                             )}
                         </div>
 
-                        {/* Link to full Users page */}
-                        <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                            <button className="btn btn-sm" style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}
-                                onClick={() => navigate('/admin/users')}>
-                                <Users size={14} /> View All Members →
+                        {/* Link to full Users directory */}
+                        <div className="ua-link-row">
+                            <button className="ua-btn ua-btn-outline" onClick={() => navigate('/admin/users')}>
+                                <Users size={14} /> View All Members
                             </button>
                         </div>
                     </div>

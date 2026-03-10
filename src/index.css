@@ -3096,8 +3096,285 @@ h6 {
 }
 
 /* ============================================
-   USERS & ASSIGNMENTS — redesigned
+   USERS & ASSIGNMENTS — Professional Clean UI
    ============================================ */
+
+/* ── Shared block container ── */
+.ua-block {
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.ua-block-muted {
+  opacity: 0.85;
+}
+
+/* Block header — flex row with label + optional control */
+.ua-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.ua-block-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--clr-text-main);
+}
+
+/* Numeric count badge — subtle neutral */
+.ua-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 0.45rem;
+  border-radius: var(--radius-full);
+  background: var(--clr-bg-hover);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--clr-text-main);
+}
+
+.ua-count-muted {
+  background: var(--clr-bg-hover);
+  color: var(--clr-text-muted);
+}
+
+/* Collapse toggle */
+.ua-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-main);
+  margin-bottom: 0;
+}
+
+.ua-chevron {
+  font-size: 1rem;
+  color: var(--clr-text-muted);
+  transition: transform 0.2s;
+}
+
+/* Hint / description text */
+.ua-hint {
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+  line-height: 1.4;
+  margin: 0 0 0.75rem;
+}
+
+/* ── List of user rows ── */
+.ua-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ua-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--clr-bg-main);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.9rem;
+  flex-wrap: wrap;
+  transition: background 0.15s;
+}
+
+.ua-row:hover {
+  background: var(--clr-bg-hover);
+}
+
+.ua-row-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ua-row-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--clr-text-main);
+}
+
+.ua-row-meta {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+}
+
+.ua-row-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Shared select ── */
+.ua-select {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-bg-card);
+  font-family: var(--font-main);
+  font-size: 0.82rem;
+  color: var(--clr-text-main);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.ua-select:focus {
+  outline: none;
+  border-color: var(--clr-text-muted);
+}
+
+.ua-select-wide {
+  min-width: 180px;
+}
+
+/* ── Buttons ── */
+.ua-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: var(--radius-md);
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ua-btn-primary {
+  background: var(--clr-text-main);
+  color: var(--clr-bg-card);
+  border-color: var(--clr-text-main);
+}
+
+.ua-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.ua-btn-danger-ghost {
+  background: transparent;
+  color: var(--clr-danger);
+  border-color: transparent;
+}
+
+.ua-btn-danger-ghost:hover {
+  background: var(--clr-danger-bg);
+}
+
+.ua-btn-outline {
+  background: transparent;
+  color: var(--clr-text-main);
+  border-color: var(--clr-border);
+}
+
+.ua-btn-outline:hover {
+  background: var(--clr-bg-hover);
+  border-color: var(--clr-text-muted);
+}
+
+.ua-btn-icon {
+  background: transparent;
+  color: var(--clr-text-muted);
+  border: none;
+  padding: 0.25rem;
+  border-radius: var(--radius-md);
+}
+
+.ua-btn-icon:hover {
+  color: var(--clr-danger);
+  background: var(--clr-danger-bg);
+}
+
+/* ── Role badge — neutral monochrome ── */
+.ua-role-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: var(--clr-bg-hover);
+  color: var(--clr-text-muted);
+}
+
+/* ── Team list (within Project Teams block) ── */
+.ua-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.ua-team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--clr-bg-main);
+  border: 1px solid var(--clr-border);
+  transition: background 0.15s;
+}
+
+.ua-team-row:hover {
+  background: var(--clr-bg-hover);
+}
+
+.ua-team-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.ua-team-company {
+  font-size: 0.76rem;
+  color: var(--clr-text-muted);
+  margin-left: auto;
+  margin-right: 0.25rem;
+}
+
+/* Team add row */
+.ua-team-add {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--clr-border);
+}
+
+/* Link row at bottom */
+.ua-link-row {
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+/* ──────────────────────────────────────
+   UsersPage.jsx — Filters, stat pills, cards
+   ────────────────────────────────────── */
 
 /* Toolbar: stat pills + search row */
 .users-toolbar {
@@ -3126,16 +3403,14 @@ h6 {
   color: var(--clr-text-muted);
 }
 
-.ustat-pill.ustat-warn {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
-}
-
+/* Neutral pill variants */
+.ustat-pill.ustat-warn,
+.ustat-pill.ustat-warning,
+.ustat-pill.ustat-info,
 .ustat-pill.ustat-danger {
-  background: var(--clr-danger-bg);
-  border-color: #fecaca;
-  color: var(--clr-danger);
+  background: var(--clr-bg-card);
+  border-color: var(--clr-border);
+  color: var(--clr-text-muted);
 }
 
 .users-search-row {
@@ -3167,122 +3442,10 @@ h6 {
 
 .users-role-select:focus {
   outline: none;
-  border-color: var(--clr-brand-secondary);
+  border-color: var(--clr-text-muted);
 }
 
-/* Pending approvals block */
-.users-pending-block {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.users-pending-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #92400e;
-  margin-bottom: 0.85rem;
-}
-
-.users-pending-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.users-pending-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: #fff;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius-md);
-  padding: 0.65rem 1rem;
-  flex-wrap: wrap;
-}
-
-.users-pending-who {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.users-pending-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.users-pending-sub {
-  font-size: 0.75rem;
-  color: var(--clr-text-muted);
-}
-
-.users-pending-actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.users-decline-btn {
-  color: var(--clr-danger) !important;
-  font-size: 0.8rem;
-}
-
-/* Rejected accounts block */
-.users-rejected-block {
-  background: #fff1f2;
-  border: 1px solid #fecdd3;
-  border-radius: var(--radius-lg);
-  padding: 0.85rem 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.users-rejected-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #9f1239;
-  font-family: var(--font-main);
-}
-
-.users-rejected-toggle {
-  margin-left: auto;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #be123c;
-}
-
-.users-rejected-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.85rem;
-}
-
-.users-rejected-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: #fff;
-  border: 1px solid #fecdd3;
-  border-radius: var(--radius-md);
-  padding: 0.6rem 1rem;
-  flex-wrap: wrap;
-}
-
-/* Section label above All Members */
+/* Section label */
 .users-section-label {
   font-size: 0.85rem;
   font-weight: 700;
@@ -3293,7 +3456,7 @@ h6 {
   padding-left: 0.1rem;
 }
 
-/* Hint text under section headers */
+/* Hint text */
 .users-hint {
   font-size: 0.8rem;
   color: var(--clr-text-muted);
@@ -3301,44 +3464,7 @@ h6 {
   line-height: 1.4;
 }
 
-/* ── Unassigned Users block ── */
-.users-unassigned-block {
-  background: #eff6ff;
-  border: 1px solid #93c5fd;
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.users-unassigned-title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1e40af;
-  margin-bottom: 0.5rem;
-}
-
-.users-unassigned-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.users-unassigned-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: #fff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-md);
-  padding: 0.65rem 1rem;
-  flex-wrap: wrap;
-}
-
-/* Role label badges */
+/* Role label badges — neutral monochrome */
 .role-label {
   display: inline-block;
   font-size: 0.7rem;
@@ -3347,92 +3473,17 @@ h6 {
   letter-spacing: 0.03em;
   padding: 0.1rem 0.45rem;
   border-radius: var(--radius-full);
-}
-.role-label.role-contractor { background: #ecfdf5; color: #065f46; }
-.role-label.role-consultant { background: var(--clr-info-bg); color: var(--clr-brand-secondary); }
-.role-label.role-admin { background: #f5f3ff; color: #5b21b6; }
-
-/* ── Project Teams block ── */
-.users-teams-block {
-  background: var(--clr-bg-card);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.users-teams-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
-  flex-wrap: wrap;
-}
-
-.users-teams-title {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--clr-text-main);
-  margin: 0;
-}
-
-.users-teams-picker {
-  min-width: 180px;
-}
-
-.users-team-members {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.85rem;
-}
-
-.users-team-member {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-md);
-  background: var(--clr-bg-main);
-  border: 1px solid var(--clr-border);
-}
-
-.users-team-member-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.users-team-member-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.users-team-member-company {
-  font-size: 0.78rem;
+  background: var(--clr-bg-hover);
   color: var(--clr-text-muted);
-  margin-left: auto;
-  margin-right: 0.5rem;
+}
+.role-label.role-contractor,
+.role-label.role-consultant,
+.role-label.role-admin {
+  background: var(--clr-bg-hover);
+  color: var(--clr-text-muted);
 }
 
-.users-team-add-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--clr-border);
-}
-
-/* ── Stat pill variants ── */
-.ustat-pill.ustat-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
-.ustat-pill.ustat-info { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
-
-/* ── User card project tags ── */
+/* ── User card project tags — neutral ── */
 .user-card-projects {
   display: flex;
   flex-wrap: wrap;
@@ -3446,15 +3497,15 @@ h6 {
   font-weight: 600;
   padding: 0.15rem 0.5rem;
   border-radius: var(--radius-full);
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: var(--clr-bg-hover);
+  color: var(--clr-text-muted);
+  border: 1px solid var(--clr-border);
 }
 
 .user-project-tag-none {
-  background: #fff7ed;
-  color: #9a3412;
-  border-color: #fed7aa;
+  background: var(--clr-bg-main);
+  color: var(--clr-text-muted);
+  border-color: var(--clr-border);
 }
 
 /* User cards grid */
@@ -3481,8 +3532,8 @@ h6 {
 
 .user-card-dim {
   opacity: 0.55;
-  background: var(--clr-danger-bg);
-  border-color: #fecaca;
+  background: var(--clr-bg-main);
+  border-color: var(--clr-border);
 }
 
 .user-card-top {
