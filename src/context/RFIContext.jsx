@@ -127,6 +127,7 @@ export function RFIProvider({ children }) {
                 images: r.images || [],
                 assignedTo: r.assigned_to,
                 assigneeName: userMap[r.assigned_to]?.name || '',
+                parentId: r.parent_id,
                 createdAt: r.created_at
             }));
             setRfis(formatted || []);
@@ -210,7 +211,16 @@ export function RFIProvider({ children }) {
                 if (payload.eventType === 'INSERT') {
                     toast.success('New RFI submitted on this project!');
                 } else if (payload.eventType === 'UPDATE') {
-                    toast('An RFI was updated', { icon: '🔄' });
+                    const status = payload.new.status;
+                    if (status === 'approved') {
+                        toast.success('Inspection Approved ✅');
+                    } else if (status === 'rejected') {
+                        toast.error('Inspection Rejected ❌');
+                    } else if (status === 'info_requested') {
+                        toast('Info Requested ⚠️', { icon: '📝' });
+                    } else {
+                        toast('RFI updated', { icon: '🔄' });
+                    }
                 }
                 fetchAllRFIs(); // Simplest way to ensure data consistency
             })
@@ -279,10 +289,11 @@ export function RFIProvider({ children }) {
         images: rfi.images || [],
         assigned_to: rfi.assignedTo || null,
         project_id: activeProject?.id,
+        parent_id: rfi.parentId || null,
     });
 
     /** Create a new RFI */
-    async function createRFI({ description, location, inspectionType, filedBy, filedDate, images, assignedTo }) {
+    async function createRFI({ description, location, inspectionType, filedBy, filedDate, images, assignedTo, parentId = null }) {
         if (!activeProject?.id) {
             throw new Error('No active project selected.');
         }
@@ -303,6 +314,7 @@ export function RFIProvider({ children }) {
                     filedDate,
                     assignedTo: assignedTo || null,
                     images: queuedImages,
+                    parentId,
                 },
             });
 
@@ -332,6 +344,7 @@ export function RFIProvider({ children }) {
                     images: normalizedImagesInput.filter((img) => typeof img === 'string'),
                     assignedTo: assignedTo || null,
                     assigneeName: assignee?.name || '',
+                    parentId,
                     createdAt: new Date().toISOString(),
                     pendingSync: true,
                 },
@@ -363,6 +376,7 @@ export function RFIProvider({ children }) {
                 carryoverTo: null,
                 images: imageUrls,
                 assignedTo: assignedTo || null,
+                parentId,
             };
 
             const { data: insertedData, error } = await supabase.from('rfis').insert([formatForDB(newRfiData)]).select();
@@ -607,6 +621,83 @@ export function RFIProvider({ children }) {
             await fetchAllRFIs();
         } catch (error) {
             console.error("Error rejecting RFI:", error);
+        }
+    }
+
+    /** Bulk Approve RFIs */
+    async function bulkApproveRFI(rfiIds, reviewedBy) {
+        if (!rfiIds || rfiIds.length === 0) return;
+
+        try {
+            const { error } = await supabase
+                .from('rfis')
+                .update({
+                    status: RFI_STATUS.APPROVED,
+                    reviewed_by: reviewedBy,
+                    reviewed_at: new Date().toISOString(),
+                    remarks: null,
+                    carryover_to: null,
+                })
+                .in('id', rfiIds);
+
+            if (error) throw error;
+
+            // Notify all contractors involved
+            const targetRfis = rfis.filter(r => rfiIds.includes(r.id));
+            for (const rfi of targetRfis) {
+                await createNotification(
+                    rfi.filedBy,
+                    "RFI Approved ✅ (Bulk)",
+                    `Your RFI #${rfi.serialNo} for ${rfi.location} was approved in a bulk operation.`,
+                    rfi.id
+                );
+                await logAuditEvent(rfi.id, 'approved', { bulk: true });
+            }
+
+            await fetchAllRFIs();
+            toast.success(`Successfully approved ${rfiIds.length} RFIs`);
+        } catch (error) {
+            console.error("Error bulk approving RFIs:", error);
+            toast.error("Failed to approve some RFIs");
+        }
+    }
+
+    /** Bulk Assign RFIs */
+    async function bulkAssignRFI(rfiIds, consultantId) {
+        if (!rfiIds || rfiIds.length === 0) return;
+
+        try {
+            const { error } = await supabase
+                .from('rfis')
+                .update({
+                    assigned_to: consultantId || null,
+                })
+                .in('id', rfiIds);
+
+            if (error) throw error;
+
+            const consultant = consultants.find(c => c.id === consultantId);
+
+            // Notify Consultant
+            if (consultantId) {
+                await createNotification(
+                    consultantId,
+                    "RFIs Assigned (Bulk) 📌",
+                    `${rfiIds.length} RFIs have been assigned to you for review.`,
+                    null
+                );
+            }
+
+            const targetRfis = rfis.filter(r => rfiIds.includes(r.id));
+            for (const rfi of targetRfis) {
+                await logAuditEvent(rfi.id, 'assigned', { assignee: consultantId, bulk: true });
+            }
+
+            await fetchAllRFIs();
+            toast.success(`Assigned ${rfiIds.length} RFIs to ${consultant?.name || 'Unassigned'}`);
+        } catch (error) {
+            console.error("Error bulk assigning RFIs:", error);
+            toast.error("Failed to assign some RFIs");
         }
     }
 
@@ -925,6 +1016,8 @@ export function RFIProvider({ children }) {
                 createRFI,
                 assignRFI,
                 approveRFI,
+                bulkApproveRFI,
+                bulkAssignRFI,
                 rejectRFI,
                 requestInfo,
                 resubmitRFI,

@@ -51,6 +51,7 @@ export default function DailyRFISheet() {
             inspectionType: INSPECTION_TYPES[0],
             assignedTo: '',
             images: [],
+            parentId: null,
         };
     }
 
@@ -66,6 +67,27 @@ export default function DailyRFISheet() {
         setNewRows((prev) =>
             prev.map((r) => (r.tempId === tempId ? { ...r, [field]: value } : r))
         );
+    }
+
+    function handleCreateRevision(rfi) {
+        const newRev = {
+            tempId: Date.now() + Math.random(),
+            description: rfi.description,
+            location: rfi.location,
+            inspectionType: rfi.inspectionType,
+            assignedTo: rfi.assignedTo || '',
+            images: [],
+            parentId: rfi.id,
+        };
+        
+        // Remove the empty default row if it's untouched
+        setNewRows((prev) => {
+            const list = prev.filter(r => r.description || r.location || r.images.length > 0);
+            return [...list, newRev];
+        });
+        
+        toast.success(`Started revision for RFI #${rfi.serialNo}`);
+        scrollToPageBottom();
     }
 
     function removeImage(tempId, imgIndex) {
@@ -121,6 +143,7 @@ export default function DailyRFISheet() {
                     filedDate: currentDate,
                     images: row.images,
                     assignedTo: row.assignedTo || null,
+                    parentId: row.parentId || null,
                 });
             }
 
@@ -158,6 +181,17 @@ export default function DailyRFISheet() {
         // If the timeline date changes, close any previously opened discussion modal.
         setDetailTarget(null);
     }, [currentDate]);
+
+    // Background Scroll Locking
+    useEffect(() => {
+        const isModalOpen = !!(detailTarget || editTarget || markupTarget || selectedImages);
+        if (isModalOpen) {
+            document.body.classList.add('no-scroll');
+        } else {
+            document.body.classList.remove('no-scroll');
+        }
+        return () => document.body.classList.remove('no-scroll');
+    }, [detailTarget, editTarget, markupTarget, selectedImages]);
 
     function scrollToPageBottom() {
         const scrollNow = () => {
@@ -294,10 +328,22 @@ export default function DailyRFISheet() {
                                                     >
                                                         <RefreshCw size={14} /> {rfi.status === RFI_STATUS.INFO_REQUESTED ? 'Submit Info' : 'Re-submit'}
                                                     </button>
+                                                    {rfi.status === RFI_STATUS.REJECTED && (
+                                                        <button
+                                                            className="btn btn-sm btn-action"
+                                                            onClick={() => handleCreateRevision(rfi)}
+                                                            title="Create new revision from this rejected RFI"
+                                                            style={{ flex: 1, backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}
+                                                        >
+                                                            <Plus size={14} /> Revision
+                                                        </button>
+                                                    )}
                                                     <button
                                                         className="btn btn-sm btn-ghost"
                                                         onClick={() => {
                                                             setDetailTarget(rfi);
+                                                            setEditTarget(null); // Close edit if open
+                                                            setMarkupTarget(null); // Close markup if open
                                                             scrollToPageBottom();
                                                         }}
                                                         title="Open Discussion"
@@ -367,17 +413,32 @@ export default function DailyRFISheet() {
                                                         className="btn btn-sm btn-ghost"
                                                         onClick={() => {
                                                             setDetailTarget(rfi);
+                                                            setEditTarget(null); // Close edit if open
+                                                            setMarkupTarget(null); // Close markup if open
                                                             scrollToPageBottom();
                                                         }}
                                                         title="Open Discussion"
                                                     >
                                                         <MessageSquare size={14} />
                                                     </button>
+                                                    {rfi.status === RFI_STATUS.REJECTED && (
+                                                        <button
+                                                            className="btn btn-sm btn-action"
+                                                            onClick={() => handleCreateRevision(rfi)}
+                                                            title="Create new revision from this rejected RFI"
+                                                            style={{ flex: 1, backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}
+                                                        >
+                                                            <Plus size={14} /> Revision
+                                                        </button>
+                                                    )}
                                                     {rfi.status === RFI_STATUS.PENDING && (
                                                         <>
                                                             <button
                                                                 className="btn btn-sm btn-ghost"
-                                                                onClick={() => setEditTarget(rfi)}
+                                                                onClick={() => {
+                                                                    setEditTarget(rfi);
+                                                                    setDetailTarget(null); // Close discussion if open
+                                                                }}
                                                                 title="Edit RFI"
                                                             >
                                                                 <Pencil size={14} />
@@ -491,34 +552,60 @@ export default function DailyRFISheet() {
                                                 {row.images.length > 0 && (
                                                     <div className="image-preview-grid">
                                                         {row.images.map((img, i) => (
-                                                            <div key={i} className="thumbnail-wrapper">
-                                                                <img
-                                                                    src={getImagePreviewSrc(img)}
-                                                                    alt="preview"
-                                                                    className="thumbnail"
-                                                                    style={{ cursor: 'pointer' }}
-                                                                    onClick={() => setSelectedImages(row.images)}
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn-thumb-markup"
-                                                                    title="Markup photo"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setMarkupTarget({ tempId: row.tempId, imageIndex: i });
-                                                                    }}
-                                                                >
-                                                                    <Brush size={12} />
-                                                                </button>
-                                                                <button
-                                                                    className="btn-remove-thumb"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        removeImage(row.tempId, i);
-                                                                    }}
-                                                                >
-                                                                    <X size={12} />
-                                                                </button>
+                                                            <div key={i} className="thumbnail-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                                                                    <img
+                                                                        src={getImagePreviewSrc(img)}
+                                                                        alt="preview"
+                                                                        className="thumbnail"
+                                                                        style={{ cursor: 'pointer', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
+                                                                        onClick={() => setSelectedImages(row.images)}
+                                                                    />
+                                                                    {/* Hidden on mobile, shown on hover for desktop */}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-thumb-markup desktop-hover-only"
+                                                                        title="Markup photo"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMarkupTarget({ tempId: row.tempId, imageIndex: i });
+                                                                        }}
+                                                                    >
+                                                                        <Brush size={10} />
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn-remove-thumb desktop-hover-only"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            removeImage(row.tempId, i);
+                                                                        }}
+                                                                    >
+                                                                        <X size={10} />
+                                                                    </button>
+                                                                </div>
+                                                                {/* Persistent icons for mobile */}
+                                                                <div className="mobile-only-flex" style={{ display: 'none', justifyContent: 'center', gap: '8px' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMarkupTarget({ tempId: row.tempId, imageIndex: i });
+                                                                        }}
+                                                                        style={{ background: 'transparent', border: 'none', padding: '2px', color: 'var(--clr-info)' }}
+                                                                    >
+                                                                        <Brush size={14} />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            removeImage(row.tempId, i);
+                                                                        }}
+                                                                        style={{ background: 'transparent', border: 'none', padding: '2px', color: 'var(--clr-danger)' }}
+                                                                    >
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -599,6 +686,7 @@ export default function DailyRFISheet() {
                 {/* Detail & Comments Modal */}
                 {detailTarget && (
                     <RFIDetailModal
+                        key={detailTarget.id}
                         rfi={detailTarget}
                         onClose={() => setDetailTarget(null)}
                     />
@@ -606,6 +694,7 @@ export default function DailyRFISheet() {
 
                 {editTarget && (
                     <EditRFIModal
+                        key={editTarget.id}
                         rfi={editTarget}
                         onSave={handleSaveEdit}
                         onClose={() => setEditTarget(null)}

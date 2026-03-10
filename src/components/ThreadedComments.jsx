@@ -24,11 +24,12 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     useEffect(() => {
         // SCROLL ON TRIGGER (Button Click)
         if (scrollTrigger && messagesEndRef.current) {
-            // Gentle delay for layout stability
-            const timer = setTimeout(() => {
-                scrollToBottom();
-            }, 100);
-            return () => clearTimeout(timer);
+            // Multiple attempts to ensure scroll reaches true bottom after layout settles
+            const delays = [50, 200, 500];
+            const timers = delays.map(ms =>
+                setTimeout(() => scrollToBottom(), ms)
+            );
+            return () => timers.forEach(t => clearTimeout(t));
         }
     }, [scrollTrigger, loading]); // Fire on trigger OR when loading finishes if we had a trigger
 

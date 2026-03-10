@@ -26,6 +26,8 @@ export default function ReviewQueue() {
     const [actionMessage, setActionMessage] = useState('');
     const [selectedImages, setSelectedImages] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
+    const [selectedRfiIds, setSelectedRfiIds] = useState([]);
+    const [bulkAssignee, setBulkAssignee] = useState('');
 
     const queue = getReviewQueue(currentDate);
 
@@ -44,14 +46,14 @@ export default function ReviewQueue() {
 
     function handleApprove(rfiId) {
         approveRFI(rfiId, user.id);
-        setActionMessage('✅ RFI Approved');
+        setActionMessage('✅ Inspection Approved Successfully');
         setTimeout(() => setActionMessage(''), 2000);
     }
 
     async function handleReject(rfiId, remarks, files = []) {
         const uploaded = files.length > 0 ? await uploadImages(files) : [];
         rejectRFI(rfiId, user.id, remarks, uploaded);
-        setActionMessage('RFI Rejected and sent back to contractor.');
+        setActionMessage('❌ Inspection Rejected & Returned');
         setTimeout(() => setActionMessage(''), 3000);
     }
 
@@ -61,30 +63,68 @@ export default function ReviewQueue() {
         setTimeout(() => setActionMessage(''), 3000);
     }
 
+    const { bulkApproveRFI, bulkAssignRFI, consultants } = useRFI();
+
+    function toggleSelect(id) {
+        setSelectedRfiIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    }
+
+    function handleSelectAll() {
+        if (selectedRfiIds.length === filteredItems.length) {
+            setSelectedRfiIds([]);
+        } else {
+            setSelectedRfiIds(filteredItems.map(r => r.id));
+        }
+    }
+
+    async function handleBulkApprove() {
+        if (window.confirm(`Approve ${selectedRfiIds.length} selected RFIs?`)) {
+            await bulkApproveRFI(selectedRfiIds, user.id);
+            setSelectedRfiIds([]);
+        }
+    }
+
+    async function handleBulkAssign() {
+        if (!bulkAssignee) return;
+        await bulkAssignRFI(selectedRfiIds, bulkAssignee);
+        setSelectedRfiIds([]);
+        setBulkAssignee('');
+    }
+
     useEffect(() => {
         // If the timeline date changes, close any previously opened discussion modal.
         setDetailTarget(null);
     }, [currentDate]);
 
+    // Background Scroll Locking
+    useEffect(() => {
+        const isModalOpen = !!(detailTarget || rejectTarget || infoRequestTarget || selectedImages);
+        if (isModalOpen) {
+            document.body.classList.add('no-scroll');
+        } else {
+            document.body.classList.remove('no-scroll');
+        }
+        return () => document.body.classList.remove('no-scroll');
+    }, [detailTarget, rejectTarget, infoRequestTarget, selectedImages]);
+
     function scrollToPageBottom() {
         const scrollNow = () => {
-            const scroller = document.scrollingElement || document.documentElement || document.body;
             const pageHeight = Math.max(
                 document.body?.scrollHeight || 0,
                 document.documentElement?.scrollHeight || 0,
                 document.body?.offsetHeight || 0,
                 document.documentElement?.offsetHeight || 0
             );
-
-            scroller.scrollTo({ top: pageHeight, behavior: 'smooth' });
             window.scrollTo({ top: pageHeight, behavior: 'smooth' });
         };
 
-        // Run immediately, then once after render settles so we always hit true bottom.
+        // Multiple attempts to ensure scroll reaches true bottom after modal renders
         scrollNow();
-        requestAnimationFrame(() => {
-            setTimeout(scrollNow, 120);
-        });
+        requestAnimationFrame(() => setTimeout(scrollNow, 100));
+        setTimeout(scrollNow, 300);
+        setTimeout(scrollNow, 600);
     }
 
     return (
@@ -169,6 +209,15 @@ export default function ReviewQueue() {
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
+                                        <th className="col-serial" style={{ width: '40px' }}>
+                                            {(filter === 'to_review' || filter === 'my_assigned') && (
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedRfiIds.length > 0 && selectedRfiIds.length === filteredItems.length}
+                                                    onChange={handleSelectAll}
+                                                />
+                                            )}
+                                        </th>
                                         <th className="col-serial">#</th>
                                         <th className="col-desc">Description</th>
                                         <th className="col-loc">Location</th>
@@ -185,6 +234,15 @@ export default function ReviewQueue() {
                                         const isCarryover = rfi.status === 'rejected' && rfi.carryoverTo === currentDate;
                                         return (
                                             <tr key={rfi.id} className={isCarryover ? 'carryover-row' : ''}>
+                                                <td className="col-serial">
+                                                    {(filter === 'to_review' || filter === 'my_assigned') && (
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedRfiIds.includes(rfi.id)}
+                                                            onChange={() => toggleSelect(rfi.id)}
+                                                        />
+                                                    )}
+                                                </td>
                                                 <td className="col-serial" data-label="#">
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                         <UserAvatar name={rfi.filerName} size={32} />
@@ -248,46 +306,83 @@ export default function ReviewQueue() {
                                                     {(filter === 'to_review' || filter === 'my_assigned') ? (
                                                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                             <button
-                                                                className="btn btn-sm btn-success"
                                                                 onClick={() => handleApprove(rfi.id)}
                                                                 title="Approve"
+                                                                style={{
+                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
                                                             >
-                                                                <CheckCircle size={14} />
+                                                                <CheckCircle size={15} />
                                                             </button>
                                                             <button
-                                                                className="btn btn-sm btn-danger"
-                                                                onClick={() => setRejectTarget(rfi)}
+                                                                onClick={() => {
+                                                                    setRejectTarget(rfi);
+                                                                    setDetailTarget(null); // Close chat if open
+                                                                }}
                                                                 title="Reject"
+                                                                style={{
+                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
                                                             >
-                                                                <XCircle size={14} />
+                                                                <XCircle size={15} />
                                                             </button>
                                                             <button
-                                                                className="btn btn-sm"
-                                                                style={{ backgroundColor: '#000000', color: 'white', borderRadius: '4px', padding: '0.35rem 0.5rem' }}
                                                                 onClick={() => {
                                                                     setDetailTarget(rfi);
+                                                                    setRejectTarget(null); // Ensure rejection is closed
+                                                                    setInfoRequestTarget(null); // Ensure info request is closed
                                                                     setScrollTrigger(prev => prev + 1);
-                                                                    scrollToPageBottom();
+                                                                    setTimeout(() => scrollToPageBottom(), 80);
                                                                 }}
                                                                 title="Chat"
+                                                                style={{
+                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
                                                             >
-                                                                <MessageSquare size={14} />
+                                                                <MessageSquare size={15} />
                                                             </button>
                                                         </div>
                                                     ) : (
                                                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
                                                             <StatusBadge status={rfi.status} />
                                                             <button
-                                                                className="btn btn-sm"
-                                                                style={{ backgroundColor: '#000000', color: 'white', borderRadius: '4px', padding: '0.35rem 0.5rem' }}
                                                                 onClick={() => {
                                                                     setDetailTarget(rfi);
+                                                                    setRejectTarget(null); 
+                                                                    setInfoRequestTarget(null);
                                                                     setScrollTrigger(prev => prev + 1);
-                                                                    scrollToPageBottom();
+                                                                    setTimeout(() => scrollToPageBottom(), 80);
                                                                 }}
                                                                 title="Open Discussion"
+                                                                style={{
+                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
                                                             >
-                                                                <MessageSquare size={14} />
+                                                                <MessageSquare size={15} />
                                                             </button>
                                                         </div>
                                                     )}
@@ -311,9 +406,10 @@ export default function ReviewQueue() {
                     />
                 )}
 
-                {/* Reject Modal */}
+                {/* Inline Rejection Widget */}
                 {rejectTarget && (
                     <RejectModal
+                        key={rejectTarget.id}
                         rfi={rejectTarget}
                         onReject={handleReject}
                         contractors={contractors}
@@ -353,7 +449,67 @@ export default function ReviewQueue() {
                         </div>
                     </div>
                 )}
+
+                {/* Batch Action Bar */}
+                {selectedRfiIds.length > 0 && (
+                    <div className="batch-action-bar" style={{
+                        position: 'fixed',
+                        bottom: '2rem',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: '#0f172a',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2rem',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                        zIndex: 1000,
+                        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: '2rem' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{selectedRfiIds.length} Selected</span>
+                            <button className="btn btn-sm btn-ghost" onClick={() => setSelectedRfiIds([])} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem' }}>Clear</button>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <button className="btn btn-primary" onClick={handleBulkApprove} style={{ backgroundColor: 'var(--clr-success)', borderColor: 'var(--clr-success)', color: 'white' }}>
+                                <CheckCircle size={18} /> Bulk Approve
+                            </button>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <select 
+                                    className="cell-select" 
+                                    style={{ width: '160px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
+                                    value={bulkAssignee}
+                                    onChange={(e) => setBulkAssignee(e.target.value)}
+                                >
+                                    <option value="" style={{ color: 'black' }}>Assign To...</option>
+                                    {consultants.map(c => (
+                                        <option key={c.id} value={c.id} style={{ color: 'black' }}>{c.name}</option>
+                                    ))}
+                                </select>
+                                <button className="btn btn-primary" onClick={handleBulkAssign} disabled={!bulkAssignee}>
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
+            <style>
+                {`
+                @keyframes slideUp {
+                    from { transform: translate(-50%, 20px); opacity: 0; }
+                    to { transform: translate(-50%, 0); opacity: 1; }
+                }
+                .batch-action-bar .btn {
+                    padding: 0.5rem 1rem;
+                    font-size: 0.85rem;
+                }
+                `}
+            </style>
         </div>
     );
 }
