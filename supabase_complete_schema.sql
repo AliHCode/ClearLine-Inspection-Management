@@ -23,7 +23,7 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid REFERENCES auth.users NOT NULL PRIMARY KEY,
   name text,
-  role text CHECK (role IN ('contractor', 'consultant', 'admin')),
+  role text CHECK (role IN ('contractor', 'consultant', 'admin', 'pending')),
   company text,
   is_active boolean DEFAULT true,
   current_project_id uuid REFERENCES public.projects(id) DEFAULT '00000000-0000-0000-0000-000000000000',
