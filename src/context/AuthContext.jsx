@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
             metadata.full_name ||
             (authUser?.email ? authUser.email.split('@')[0] : 'New User');
 
+        // ignoreDuplicates: true — only inserts if no row exists, never overwrites an existing role
         const { error } = await supabase
             .from('profiles')
             .upsert(
@@ -48,7 +49,7 @@ export function AuthProvider({ children }) {
                     role: USER_ROLES.PENDING,
                     company: metadata.company || '',
                 },
-                { onConflict: 'id' }
+                { onConflict: 'id', ignoreDuplicates: true }
             );
 
         if (error) throw error;
@@ -84,6 +85,12 @@ export function AuthProvider({ children }) {
                 if (data.is_active === false) {
                     await supabase.auth.signOut();
                     setUser(null);
+                    setLoading(false);
+                    return;
+                }
+                // Rejected users — keep them signed in so LoginPage shows rejection screen
+                if (data.role === USER_ROLES.REJECTED) {
+                    setUser({ ...data, email: authUser?.email || '' });
                     setLoading(false);
                     return;
                 }

@@ -23,6 +23,7 @@ export const USER_ROLES = {
   CONSULTANT: 'consultant',
   ADMIN: 'admin',
   PENDING: 'pending',
+  REJECTED: 'rejected',
 };
 
 export const STATUS_COLORS = {

@@ -76,5 +76,20 @@ UPDATE public.project_fields
 SET options = '["Structural","MEP","Electrical","Plumbing","Finishing","Landscaping","Civil","HVAC","Fire Safety","Other"]'::jsonb
 WHERE field_key = 'inspection_type' AND project_id = '00000000-0000-0000-0000-000000000000';
 
--- 7. Refresh schema cache
+-- 7. Fix: Admin can delete/update projects (missing DELETE policy was preventing deletion)
+DROP POLICY IF EXISTS "Admins can manage projects" ON public.projects;
+CREATE POLICY "Admins can manage projects" ON public.projects
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- 8. Allow 'rejected' as a valid profile role
+ALTER TABLE public.profiles
+DROP CONSTRAINT IF EXISTS profiles_role_check;
+
+ALTER TABLE public.profiles
+ADD CONSTRAINT profiles_role_check
+CHECK (role IN ('contractor', 'consultant', 'admin', 'pending', 'rejected'));
+
+-- 9. Refresh schema cache
 NOTIFY pgrst, 'reload schema';

@@ -85,6 +85,32 @@ export default function LoginPage() {
         );
     }
 
+    if (user && user.role === USER_ROLES.REJECTED) {
+        return (
+            <div className="auth-page">
+                <div className="auth-bg-pattern"></div>
+                <div className="auth-wrapper">
+                    <div className="auth-hero" style={{ textAlign: 'center' }}>
+                        <div className="auth-logo-img">
+                            <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '90px', marginBottom: '0.5rem' }} />
+                        </div>
+                        <h2 className="hero-title">Request <span className="text-accent" style={{ color: 'var(--clr-danger)' }}>Declined.</span></h2>
+                        <p className="hero-subtitle">
+                            Your account request was not approved by the administrator.
+                            <br /><br />
+                            Please contact your project manager if you believe this is an error.
+                        </p>
+                        <div style={{ marginTop: '2rem' }}>
+                            <button className="auth-submit" onClick={logout} style={{ maxWidth: '200px', margin: '0 auto', background: 'var(--clr-danger)' }}>
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="auth-page">
             {/* Background decoration */}

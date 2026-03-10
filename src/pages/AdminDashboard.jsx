@@ -85,6 +85,20 @@ export default function AdminDashboard() {
         else showMsg('❌ Error updating role');
     }
 
+    async function rejectUser(userId, userName) {
+        if (!window.confirm(`Reject "${userName}"? They will see a declined message and cannot access the system.`)) return;
+        const { error } = await supabase.from('profiles').update({ role: 'rejected' }).eq('id', userId);
+        if (!error) { showMsg(`⛔ ${userName}'s request rejected`); fetchUsers(); }
+        else showMsg('❌ Error rejecting user');
+    }
+
+    async function deleteUserProfile(userId, userName) {
+        if (!window.confirm(`Permanently delete "${userName}"? This removes their profile from the system. This cannot be undone.`)) return;
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
+        if (!error) { showMsg(`🗑️ ${userName}'s profile deleted`); fetchUsers(); }
+        else showMsg('❌ ' + error.message);
+    }
+
     // ─── Project actions ───
     async function handleCreateProject(e) {
         e.preventDefault();
@@ -405,6 +419,14 @@ export default function AdminDashboard() {
                                                 >
                                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                                 </select>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => rejectUser(pu.id, pu.name)}
+                                                    title="Decline this signup request"
+                                                >
+                                                    <UserX size={14} /> Reject
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -487,6 +509,7 @@ export default function AdminDashboard() {
                                     <option value="consultant">Consultants</option>
                                     <option value="admin">Admins</option>
                                     <option value="pending">Pending Approval</option>
+                                    <option value="rejected">Rejected</option>
                                 </select>
                             </div>
                         </div>
@@ -532,30 +555,48 @@ export default function AdminDashboard() {
                                                                 onChange={e => changeUserRole(u.id, e.target.value)}
                                                                 disabled={isSelf} title={isSelf ? 'Cannot change your own role' : 'Change role'}
                                                                 style={{
-                                                                    backgroundColor: u.role === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                                                                    color: u.role === 'pending' ? '#d97706' : 'inherit',
-                                                                    fontWeight: u.role === 'pending' ? '600' : 'normal'
+                                                                    backgroundColor: u.role === 'pending' ? 'rgba(245, 158, 11, 0.1)' : u.role === 'rejected' ? 'rgba(239,68,68,0.08)' : 'transparent',
+                                                                    color: u.role === 'pending' ? '#d97706' : u.role === 'rejected' ? 'var(--clr-danger)' : 'inherit',
+                                                                    fontWeight: (u.role === 'pending' || u.role === 'rejected') ? '600' : 'normal'
                                                                 }}>
                                                                 <option value="pending">Pending</option>
+                                                                <option value="rejected">Rejected</option>
                                                                 <option value="contractor">Contractor</option>
                                                                 <option value="consultant">Consultant</option>
                                                                 <option value="admin">Admin</option>
                                                             </select>
                                                         </td>
                                                         <td>
-                                                            <span className={`status-badge-admin ${isInactive ? 'inactive' : u.role === 'pending' ? 'warning' : 'active'}`}>
-                                                                {isInactive ? 'Deactivated' : u.role === 'pending' ? 'Wait Approval' : 'Active'}
+                                                            <span className={`status-badge-admin ${isInactive ? 'inactive' : u.role === 'pending' ? 'warning' : u.role === 'rejected' ? 'inactive' : 'active'}`}>
+                                                                {isInactive ? 'Deactivated' : u.role === 'pending' ? 'Wait Approval' : u.role === 'rejected' ? 'Rejected' : 'Active'}
                                                             </span>
                                                         </td>
                                                         <td style={{ textAlign: 'center' }}>
-                                                            {!isSelf && (
-                                                                <button className={`btn btn-sm ${isInactive ? 'btn-success' : 'btn-danger'}`}
-                                                                    onClick={() => toggleUserActive(u.id, u.is_active !== false)}
-                                                                    title={isInactive ? 'Reactivate user' : 'Deactivate user'}>
-                                                                    {isInactive ? <UserCheck size={14} /> : <UserX size={14} />}
-                                                                    {isInactive ? ' Activate' : ' Deactivate'}
-                                                                </button>
-                                                            )}
+                                                            <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                                {!isSelf && (
+                                                                    <button className={`btn btn-sm ${isInactive ? 'btn-success' : 'btn-danger'}`}
+                                                                        onClick={() => toggleUserActive(u.id, u.is_active !== false)}
+                                                                        title={isInactive ? 'Reactivate user' : 'Deactivate user'}>
+                                                                        {isInactive ? <UserCheck size={14} /> : <UserX size={14} />}
+                                                                        {isInactive ? ' Activate' : ' Deactivate'}
+                                                                    </button>
+                                                                )}
+                                                                {!isSelf && u.role === 'pending' && (
+                                                                    <button className="btn btn-sm btn-danger"
+                                                                        onClick={() => rejectUser(u.id, u.name)}
+                                                                        title="Reject this signup request">
+                                                                        <UserX size={14} /> Reject
+                                                                    </button>
+                                                                )}
+                                                                {!isSelf && (
+                                                                    <button className="btn btn-sm btn-ghost"
+                                                                        style={{ color: 'var(--clr-danger)' }}
+                                                                        onClick={() => deleteUserProfile(u.id, u.name)}
+                                                                        title="Delete profile permanently">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
