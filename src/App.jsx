@@ -11,6 +11,7 @@ import DailyRFISheet from './pages/DailyRFISheet';
 import ConsultantDashboard from './pages/ConsultantDashboard';
 import ReviewQueue from './pages/ReviewQueue';
 import AdminDashboard from './pages/AdminDashboard';
+import UsersPage from './pages/UsersPage';
 import { useProject } from './context/ProjectContext';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -82,6 +83,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['admin']}>
                         <AdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/users"
+                element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <UsersPage />
                     </ProtectedRoute>
                 }
             />

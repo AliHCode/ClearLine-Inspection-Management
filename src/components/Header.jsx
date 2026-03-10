@@ -140,10 +140,10 @@ export default function Header() {
                     )}
                     {isAdmin && (
                         <button
-                            onClick={() => { navigate('/admin'); setMenuOpen(false); }}
-                            className={`header-dropdown-item ${location.pathname === '/admin' ? 'active' : ''}`}
+                            onClick={() => { navigate('/admin/users'); setMenuOpen(false); }}
+                            className={`header-dropdown-item ${location.pathname === '/admin/users' ? 'active' : ''}`}
                         >
-                            <Shield size={16} /> Admin Panel
+                            <UserCircle size={16} /> Users
                         </button>
                     )}
                     <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">

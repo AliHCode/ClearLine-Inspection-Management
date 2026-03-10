@@ -3144,6 +3144,15 @@ h6 {
   flex-wrap: wrap;
 }
 
+/* Filters bar on Users page */
+.users-filters-bar {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
 .users-role-select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--clr-border);

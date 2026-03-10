@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
@@ -6,9 +7,9 @@ import { USER_ROLES } from '../utils/constants';
 import Header from '../components/Header';
 import UserAvatar from '../components/UserAvatar';
 import {
-    Users, Shield, UserX, UserCheck, Search, RefreshCw,
-    FolderPlus, Trash2, Plus, GripVertical, Settings2,
-    Building, Columns3, ChevronRight, UserPlus, X, AlertCircle
+    Users, Shield, UserX, UserCheck, RefreshCw,
+    FolderPlus, Trash2, Plus, GripVertical,
+    Building, Columns3, UserPlus, X, AlertCircle
 } from 'lucide-react';
 
 const FIELD_TYPES = [
@@ -21,6 +22,7 @@ const FIELD_TYPES = [
 
 export default function AdminDashboard() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const {
         projects, activeProject, fetchProjects, createProject, deleteProject, changeActiveProject,
         projectFields, addProjectField, updateProjectField, deleteProjectField,
@@ -30,8 +32,6 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('projects');
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all');
     const [actionMessage, setActionMessage] = useState('');
     const [pendingApprove, setPendingApprove] = useState({});
     const [rejectedCollapsed, setRejectedCollapsed] = useState(false);
@@ -103,14 +103,12 @@ export default function AdminDashboard() {
         const pa = pendingApprove[userId] || {};
         const role = pa.role;
         if (!role) { showMsg('⚠️ Select a role first'); return; }
-        const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
-        if (!error) {
-            showMsg(`✅ ${userName} approved as ${role}`);
-            setPendingApprove(prev => { const n = { ...prev }; delete n[userId]; return n; });
-            fetchUsers();
-        } else {
-            showMsg('❌ ' + error.message);
-        }
+        const { data, error } = await supabase.from('profiles').update({ role }).eq('id', userId).select();
+        if (error) { showMsg('❌ ' + error.message); return; }
+        if (!data || data.length === 0) { showMsg('❌ Update blocked — check RLS policies on profiles table'); return; }
+        showMsg(`✅ ${userName} approved as ${role}`);
+        setPendingApprove(prev => { const n = { ...prev }; delete n[userId]; return n; });
+        await fetchUsers();
     }
 
     // Decline a pending user — moves them to Rejected section
@@ -252,29 +250,9 @@ export default function AdminDashboard() {
     const teamMemberIds = new Set(teamMemberships.map(m => m.user_id));
     const addableUsers = activeUsers.filter(u => !teamMemberIds.has(u.id) && u.id !== user.id);
 
-    // Get project names for a user
-    function getUserProjects(userId) {
-        return allMemberships
-            .filter(m => m.user_id === userId)
-            .map(m => projects.find(p => p.id === m.project_id)?.name)
-            .filter(Boolean);
-    }
-
-    const filteredUsers = activeUsers.filter(u => {
-        const matchesSearch = u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.company?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-        return matchesSearch && matchesRole;
-    });
-
     const stats = {
-        total: activeUsers.length,
-        contractors: activeUsers.filter(u => u.role === 'contractor').length,
-        consultants: activeUsers.filter(u => u.role === 'consultant').length,
-        admins: activeUsers.filter(u => u.role === 'admin').length,
         pending: pendingUsers.length,
         unassigned: unassignedUsers.length,
-        inactive: activeUsers.filter(u => u.is_active === false).length,
     };
 
     return (
@@ -656,103 +634,13 @@ export default function AdminDashboard() {
                             )}
                         </div>
 
-                        {/* ══ ALL MEMBERS DIRECTORY ══ */}
-                        <div className="users-section-label">👥 All Members</div>
-                        <div className="users-toolbar">
-                            <div className="users-stat-pills">
-                                <span className="ustat-pill">👥 {stats.total} Total</span>
-                                <span className="ustat-pill">🏗️ {stats.contractors} Contractors</span>
-                                <span className="ustat-pill">🔍 {stats.consultants} Consultants</span>
-                                {stats.inactive > 0 && <span className="ustat-pill ustat-danger">⛔ {stats.inactive} Deactivated</span>}
-                            </div>
-                            <div className="users-search-row">
-                                <div className="admin-search" style={{ minWidth: 0, flex: 1 }}>
-                                    <Search size={15} />
-                                    <input type="text" placeholder="Search name or company…" value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                <select className="users-role-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-                                    <option value="all">All roles</option>
-                                    <option value="contractor">Contractors</option>
-                                    <option value="consultant">Consultants</option>
-                                    <option value="admin">Admins</option>
-                                </select>
-                            </div>
+                        {/* Link to full Users page */}
+                        <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                            <button className="btn btn-sm" style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}
+                                onClick={() => navigate('/admin/users')}>
+                                <Users size={14} /> View All Members →
+                            </button>
                         </div>
-
-                        {loading ? (
-                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--clr-text-muted)' }}>Loading users…</div>
-                        ) : filteredUsers.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--clr-text-muted)' }}>No active members yet.</div>
-                        ) : (
-                            <div className="users-grid">
-                                {filteredUsers.map(u => {
-                                    const isSelf = u.id === user.id;
-                                    const isInactive = u.is_active === false;
-                                    const userProjects = getUserProjects(u.id);
-                                    return (
-                                        <div key={u.id} className={`user-card ${isInactive ? 'user-card-dim' : ''}`}>
-                                            <div className="user-card-top">
-                                                <UserAvatar name={u.name} size={42} />
-                                                <div className="user-card-info">
-                                                    <div className="user-card-name">
-                                                        {u.name}
-                                                        {isSelf && <span className="you-badge">You</span>}
-                                                    </div>
-                                                    <div className="user-card-company">{u.company || <em>No company</em>}</div>
-                                                </div>
-                                                <span className={`status-badge-admin ${isInactive ? 'inactive' : 'active'}`}>
-                                                    {isInactive ? 'Deactivated' : 'Active'}
-                                                </span>
-                                            </div>
-                                            {/* Project tags */}
-                                            <div className="user-card-projects">
-                                                {userProjects.length > 0 ? (
-                                                    userProjects.map((pName, i) => (
-                                                        <span key={i} className="user-project-tag">{pName}</span>
-                                                    ))
-                                                ) : (
-                                                    <span className="user-project-tag user-project-tag-none">No project</span>
-                                                )}
-                                            </div>
-                                            <div className="user-card-bottom">
-                                                <select
-                                                    className="users-role-select user-card-role-select"
-                                                    value={u.role}
-                                                    onChange={e => changeUserRole(u.id, e.target.value)}
-                                                    disabled={isSelf}
-                                                    title={isSelf ? 'Cannot change your own role' : 'Change role'}
-                                                >
-                                                    <option value="contractor">Contractor</option>
-                                                    <option value="consultant">Consultant</option>
-                                                    <option value="admin">Admin</option>
-                                                </select>
-                                                {!isSelf && (
-                                                    <div className="user-card-actions">
-                                                        <button
-                                                            className={`btn btn-sm ${isInactive ? 'btn-success' : 'btn-ghost'}`}
-                                                            style={isInactive ? {} : { color: '#d97706' }}
-                                                            onClick={() => toggleUserActive(u.id, u.is_active !== false)}
-                                                            title={isInactive ? 'Reactivate user' : 'Deactivate user'}
-                                                        >
-                                                            {isInactive ? <UserCheck size={14} /> : <UserX size={14} />}
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-sm btn-ghost"
-                                                            style={{ color: 'var(--clr-danger)' }}
-                                                            onClick={() => archiveUser(u.id, u.name)}
-                                                            title="Remove card from dashboard"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
                     </div>
                 )}
             </main>
