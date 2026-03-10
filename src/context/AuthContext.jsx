@@ -4,6 +4,9 @@ import { USER_ROLES } from '../utils/constants';
 
 const AuthContext = createContext(null);
 
+// Cache key for offline-resilient profile storage
+const PROFILE_CACHE_KEY = 'saa_user_profile_cache';
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -14,9 +17,13 @@ export function AuthProvider({ children }) {
         initialized.current = true;
 
         // Check active sessions and sets the user
+        // getSession() reads from localStorage — works offline.
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) fetchProfile(session.user.id);
-            else setLoading(false);
+            if (session?.user) {
+                fetchProfile(session.user.id);
+            } else {
+                setLoading(false);
+            }
         });
 
         // Listen for changes on auth state (logged in, signed out, etc.)
@@ -56,6 +63,26 @@ export function AuthProvider({ children }) {
     }
 
     async function fetchProfile(userId) {
+        // ── Offline guard ────────────────────────────────────────────────────
+        // getUser() and DB queries need the network. When offline, serve the
+        // last-known profile from localStorage so the user stays logged in.
+        if (!navigator.onLine) {
+            try {
+                const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+                if (cached) {
+                    const profile = JSON.parse(cached);
+                    if (profile.id === userId) {
+                        setUser(profile);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch { /* ignore parse errors */ }
+            // No valid cache; leave loading=false without logging the user out
+            setLoading(false);
+            return;
+        }
+
         try {
             const { data: authData } = await supabase.auth.getUser();
             const authUser = authData?.user;
@@ -84,23 +111,41 @@ export function AuthProvider({ children }) {
                 // Block deactivated accounts
                 if (data.is_active === false) {
                     await supabase.auth.signOut();
+                    localStorage.removeItem(PROFILE_CACHE_KEY);
                     setUser(null);
                     setLoading(false);
                     return;
                 }
                 // Rejected users — keep them signed in so LoginPage shows rejection screen
+                const fullUser = { ...data, email: authUser?.email || '' };
+                // Cache the profile for offline resilience
+                try {
+                    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(fullUser));
+                } catch { /* quota exceeded or private browsing */ }
                 if (data.role === USER_ROLES.REJECTED) {
-                    setUser({ ...data, email: authUser?.email || '' });
+                    setUser(fullUser);
                     setLoading(false);
                     return;
                 }
                 // Ensure auth.user structure is combined with profile for easy usage
-                setUser({ ...data, email: authUser?.email || '' });
+                setUser(fullUser);
             } else {
                 setUser(null);
             }
         } catch (error) {
             console.error('Error fetching profile:', error.message);
+            // Network error while online? Fallback to cache so we don't log user out
+            try {
+                const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+                if (cached) {
+                    const profile = JSON.parse(cached);
+                    if (profile.id === userId) {
+                        setUser(profile);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
         } finally {
             setLoading(false);
         }
@@ -183,6 +228,8 @@ export function AuthProvider({ children }) {
 
     async function logout() {
         setLoading(true);
+        // Clear cached profile so offline mode doesn't keep a stale session
+        localStorage.removeItem(PROFILE_CACHE_KEY);
         await supabase.auth.signOut();
         // Listener sets loading false and user null automatically
     }

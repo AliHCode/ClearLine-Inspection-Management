@@ -54,6 +54,9 @@ export function ProjectProvider({ children }) {
     // ─── Fetch project fields when active project changes ───
     const fetchProjectFields = useCallback(async (projectId) => {
         if (!projectId) { setProjectFields([]); return; }
+        // These keys are already rendered as hardcoded table columns everywhere —
+        // keep them out of projectFields so they don't appear twice.
+        const BUILTIN_KEYS = new Set(['description', 'location', 'inspection_type']);
         setLoadingFields(true);
         try {
             const { data, error } = await supabase
@@ -62,7 +65,7 @@ export function ProjectProvider({ children }) {
                 .eq('project_id', projectId)
                 .order('sort_order');
             if (error) throw error;
-            setProjectFields(data || []);
+            setProjectFields((data || []).filter(f => !BUILTIN_KEYS.has(f.field_key)));
         } catch (err) {
             console.error("Error loading project fields:", err);
             setProjectFields([]);
@@ -114,14 +117,6 @@ export function ProjectProvider({ children }) {
             const { data, error } = await supabase.from('projects').insert([{ name, description }]).select();
             if (error) throw error;
             if (data && data[0]) {
-                // Seed 3 default fields for the new project
-                const defaultFields = [
-                    { project_id: data[0].id, field_name: 'Description', field_key: 'description', field_type: 'text', is_required: true, sort_order: 1 },
-                    { project_id: data[0].id, field_name: 'Location', field_key: 'location', field_type: 'text', is_required: true, sort_order: 2 },
-                    { project_id: data[0].id, field_name: 'Inspection Type', field_key: 'inspection_type', field_type: 'select', is_required: true, sort_order: 3, options: ["Structural","MEP","Electrical","Plumbing","Finishing","Landscaping","Civil","HVAC","Fire Safety","Other"] },
-                ];
-                await supabase.from('project_fields').insert(defaultFields);
-
                 setProjects(prev => [...prev, data[0]]);
                 changeActiveProject(data[0].id);
                 return { success: true, project: data[0] };

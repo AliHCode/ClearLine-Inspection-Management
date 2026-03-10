@@ -8,41 +8,13 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            workbox: {
+            // Use injectManifest so we can add push + notificationclick handlers
+            strategies: 'injectManifest',
+            srcDir: 'src',
+            filename: 'sw.js',
+            injectManifest: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-                maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB limit
-                navigateFallback: '/index.html',
-                runtimeCaching: [
-                    {
-                        urlPattern: /^https:\/\/.*supabase\.co\/storage\/v1\/.*/i,
-                        handler: 'CacheFirst',
-                        options: {
-                            cacheName: 'supabase-images',
-                            expiration: {
-                                maxEntries: 300,
-                                maxAgeSeconds: 60 * 60 * 24 * 14,
-                            },
-                        },
-                    },
-                    {
-                        urlPattern: ({ request }) => request.destination === 'image',
-                        handler: 'StaleWhileRevalidate',
-                        options: {
-                            cacheName: 'app-images',
-                            expiration: {
-                                maxEntries: 200,
-                                maxAgeSeconds: 60 * 60 * 24 * 7,
-                            },
-                        },
-                    },
-                    {
-                        urlPattern: ({ request }) => request.destination === 'style' || request.destination === 'script',
-                        handler: 'StaleWhileRevalidate',
-                        options: {
-                            cacheName: 'app-assets',
-                        },
-                    },
-                ],
+                maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
             },
             manifest: {
                 name: 'ProWay Inspections',

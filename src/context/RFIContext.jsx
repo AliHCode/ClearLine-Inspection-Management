@@ -191,6 +191,65 @@ export function RFIProvider({ children }) {
         }
     }, []);
 
+    // ── Native Push Notification helper ──────────────────────────────────────
+    // Shows a browser/OS notification via the service worker when the user
+    // has granted permission. Works for background tabs and mobile home screen.
+    function showNativeNotification(title, body, rfiId = null) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            navigator.serviceWorker?.ready.then((reg) => {
+                reg.showNotification(title, {
+                    body,
+                    icon: '/favicon.png',
+                    badge: '/favicon.png',
+                    tag: 'proway-notification',
+                    renotify: true,
+                    data: { rfiId, url: '/' },
+                });
+            });
+        } catch {
+            // Fallback for browsers without SW support
+            try { new Notification(title, { body, icon: '/favicon.png' }); } catch { /* ignore */ }
+        }
+    }
+
+    // ── Request notification permission once when the user is logged in ───────
+    useEffect(() => {
+        if (!user) return;
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') return; // already granted
+        if (Notification.permission === 'denied') return;  // user already refused
+
+        // Show a friendly in-app toast to prompt the user before the browser dialog
+        toast(
+            (t) => (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>Enable notifications for real-time updates?</span>
+                    <button
+                        style={{ padding: '2px 10px', borderRadius: 4, cursor: 'pointer', border: '1px solid #ccc' }}
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            Notification.requestPermission().then((permission) => {
+                                if (permission === 'granted') {
+                                    toast.success('Notifications enabled! 🔔');
+                                }
+                            });
+                        }}
+                    >
+                        Enable
+                    </button>
+                    <button
+                        style={{ padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: '1px solid #ccc' }}
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Not now
+                    </button>
+                </span>
+            ),
+            { duration: 10000, icon: '🔔' }
+        );
+    }, [user]);
+
     useEffect(() => {
         fetchAllRFIs();
         fetchConsultants();
@@ -241,6 +300,15 @@ export function RFIProvider({ children }) {
                     console.log('New notification:', payload);
                     toast(payload.new.title, { icon: '🔔' });
                     fetchNotifications();
+                    // Show native browser notification when the page is not visible
+                    // (covers background tabs, minimised browser, mobile home screen)
+                    if (document.visibilityState === 'hidden' || !document.hasFocus()) {
+                        showNativeNotification(
+                            payload.new.title,
+                            payload.new.message,
+                            payload.new.rfi_id
+                        );
+                    }
                 })
                 .subscribe();
         }
