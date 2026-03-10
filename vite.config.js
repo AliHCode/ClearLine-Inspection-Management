@@ -7,11 +7,13 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            registerType: 'autoUpdate',
+            registerType: 'prompt',
             // Use injectManifest so we can add push + notificationclick handlers
             strategies: 'injectManifest',
             srcDir: 'src',
             filename: 'sw.js',
+            // Disable SW in development so stale cache never blocks hot-reloads
+            devOptions: { enabled: false },
             injectManifest: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
                 maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB

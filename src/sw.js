@@ -1,7 +1,14 @@
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { precacheAndRoute, createHandlerBoundToURL, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
-import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { CacheFirst, StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
+
+// Remove outdated precaches from previous SW versions immediately on install
+cleanupOutdatedCaches();
+
+// Take control of all clients immediately — no waiting for tabs to close
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 // Inject the precache manifest (populated by vite-plugin-pwa at build time)
 precacheAndRoute(self.__WB_MANIFEST);
@@ -38,11 +45,16 @@ registerRoute(
     })
 );
 
-// Styles and scripts
+// Styles and scripts — NetworkFirst so updated code is always served fresh
 registerRoute(
     ({ request }) =>
         request.destination === 'style' || request.destination === 'script',
-    new StaleWhileRevalidate({ cacheName: 'app-assets' })
+    new NetworkFirst({
+        cacheName: 'app-assets',
+        plugins: [
+            new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 }),
+        ],
+    })
 );
 
 // ─── Push Notification Handler ─────────────────────────────────────────────

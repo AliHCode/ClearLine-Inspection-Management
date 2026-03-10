@@ -7,8 +7,8 @@ import Header from '../components/Header';
 import UserAvatar from '../components/UserAvatar';
 import {
     Users, Shield, UserX, UserCheck, Search, RefreshCw,
-    FolderPlus, Trash2, Plus, GripVertical, X, Settings2,
-    Building, Columns3, UserPlus, ChevronRight
+    FolderPlus, Trash2, Plus, GripVertical, Settings2,
+    Building, Columns3, ChevronRight, UserPlus, X, AlertCircle
 } from 'lucide-react';
 
 const FIELD_TYPES = [
@@ -24,7 +24,7 @@ export default function AdminDashboard() {
     const {
         projects, activeProject, fetchProjects, createProject, deleteProject, changeActiveProject,
         projectFields, addProjectField, updateProjectField, deleteProjectField,
-        projectMembers, assignUserToProject, removeUserFromProject, fetchProjectMembers,
+        assignUserToProject, removeUserFromProject, fetchProjectMembers,
     } = useProject();
 
     const [activeTab, setActiveTab] = useState('projects');
@@ -36,6 +36,13 @@ export default function AdminDashboard() {
     const [pendingApprove, setPendingApprove] = useState({});
     const [rejectedCollapsed, setRejectedCollapsed] = useState(false);
 
+    // Memberships & team management
+    const [allMemberships, setAllMemberships] = useState([]);
+    const [teamProjectId, setTeamProjectId] = useState('');
+    const [assignProject, setAssignProject] = useState({});
+    const [addMemberUserId, setAddMemberUserId] = useState('');
+    const [addMemberRole, setAddMemberRole] = useState('contractor');
+
     // Project creation form
     const [showNewProject, setShowNewProject] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
@@ -44,11 +51,6 @@ export default function AdminDashboard() {
     // Field creation form
     const [showNewField, setShowNewField] = useState(false);
     const [newField, setNewField] = useState({ field_name: '', field_key: '', field_type: 'text', is_required: false, options: '' });
-
-    // User assignment
-    const [assignUserId, setAssignUserId] = useState('');
-    const [assignRole, setAssignRole] = useState('contractor');
-    const [selectedProjectForAssign, setSelectedProjectForAssign] = useState('');
 
     // ─── Fetch all users ───
     const fetchUsers = useCallback(async () => {
@@ -68,7 +70,15 @@ export default function AdminDashboard() {
         }
     }, []);
 
-    useEffect(() => { fetchUsers(); }, [fetchUsers]);
+    // Fetch all project memberships across all projects
+    const fetchAllMemberships = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('project_members')
+            .select('user_id, project_id, role');
+        if (!error) setAllMemberships(data || []);
+    }, []);
+
+    useEffect(() => { fetchUsers(); fetchAllMemberships(); }, [fetchUsers, fetchAllMemberships]);
 
     function showMsg(msg) {
         setActionMessage(msg);
@@ -88,21 +98,18 @@ export default function AdminDashboard() {
         else showMsg('❌ Error updating role');
     }
 
-    // Approve pending or re-approve rejected: sets role + assigns to project
+    // Approve pending or re-approve rejected: sets role ONLY (no project yet)
     async function approveUser(userId, userName) {
         const pa = pendingApprove[userId] || {};
         const role = pa.role;
-        const projectId = pa.projectId || activeProject?.id;
         if (!role) { showMsg('⚠️ Select a role first'); return; }
-        if (!projectId) { showMsg('⚠️ Select a project first'); return; }
-        // assignUserToProject handles both role update and project assignment atomically
-        const result = await assignUserToProject(projectId, userId, role);
-        if (result?.success) {
+        const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+        if (!error) {
             showMsg(`✅ ${userName} approved as ${role}`);
             setPendingApprove(prev => { const n = { ...prev }; delete n[userId]; return n; });
             fetchUsers();
         } else {
-            showMsg('❌ ' + (result?.error || 'Assignment failed'));
+            showMsg('❌ ' + error.message);
         }
     }
 
@@ -118,6 +125,46 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('profiles').update({ is_archived: true }).eq('id', userId);
         if (!error) { showMsg(`🗑️ ${userName} removed from dashboard`); fetchUsers(); }
         else showMsg('❌ ' + error.message);
+    }
+
+    // Assign unassigned user to a project
+    async function assignUnassignedUser(userId, userName) {
+        const projectId = assignProject[userId];
+        if (!projectId) { showMsg('⚠️ Select a project first'); return; }
+        const u = users.find(x => x.id === userId);
+        const role = u?.role || 'contractor';
+        const result = await assignUserToProject(projectId, userId, role);
+        if (result?.success) {
+            showMsg(`✅ ${userName} assigned to project`);
+            setAssignProject(prev => { const n = { ...prev }; delete n[userId]; return n; });
+            fetchAllMemberships();
+        } else {
+            showMsg('❌ ' + (result?.error || 'Assignment failed'));
+        }
+    }
+
+    // Add a member to the currently viewed project team
+    async function handleAddTeamMember() {
+        if (!addMemberUserId || !effectiveTeamProjectId) return;
+        const result = await assignUserToProject(effectiveTeamProjectId, addMemberUserId, addMemberRole);
+        if (result?.success) {
+            showMsg('✅ Member added to project');
+            setAddMemberUserId('');
+            fetchAllMemberships();
+            fetchUsers();
+        } else {
+            showMsg('❌ ' + (result?.error || 'Failed'));
+        }
+    }
+
+    // Remove a member from the currently viewed project team
+    async function handleRemoveTeamMember(userId) {
+        if (!effectiveTeamProjectId || !window.confirm('Remove this member from the project?')) return;
+        const result = await removeUserFromProject(effectiveTeamProjectId, userId);
+        if (result?.success) {
+            showMsg('✅ Member removed from project');
+            fetchAllMemberships();
+        }
     }
 
     // ─── Project actions ───
@@ -185,31 +232,33 @@ export default function AdminDashboard() {
         await updateProjectField(field.id, { is_required: !field.is_required });
     }
 
-    // ─── User assignment ───
-    async function handleAssignUser(e) {
-        e.preventDefault();
-        const pid = selectedProjectForAssign || activeProject?.id;
-        if (!assignUserId || !pid) return;
-        const result = await assignUserToProject(pid, assignUserId, assignRole);
-        if (result?.success) {
-            showMsg('✅ User assigned to project');
-            setAssignUserId('');
-            fetchUsers();
-        } else {
-            showMsg('❌ ' + (result?.error || 'Assignment failed'));
-        }
-    }
-
-    async function handleRemoveMember(userId) {
-        if (!activeProject || !window.confirm('Remove this member from the project?')) return;
-        const result = await removeUserFromProject(activeProject.id, userId);
-        if (result?.success) showMsg('✅ Member removed');
-    }
-
     // ─── Computed ───
     const pendingUsers = users.filter(u => u.role === 'pending');
     const rejectedUsers = users.filter(u => u.role === 'rejected');
     const activeUsers = users.filter(u => !['pending', 'rejected'].includes(u.role));
+
+    // Users who have a role but aren't in ANY project
+    const assignedUserIds = new Set(allMemberships.map(m => m.user_id));
+    const unassignedUsers = activeUsers.filter(u => !assignedUserIds.has(u.id));
+
+    // Project Teams computed
+    const effectiveTeamProjectId = teamProjectId || activeProject?.id || '';
+    const teamMemberships = allMemberships.filter(m => m.project_id === effectiveTeamProjectId);
+    const teamUsers = teamMemberships.map(m => {
+        const u = users.find(x => x.id === m.user_id);
+        return u ? { ...u, memberRole: m.role } : null;
+    }).filter(Boolean);
+    // Users eligible to add to this project (active, not already in this project)
+    const teamMemberIds = new Set(teamMemberships.map(m => m.user_id));
+    const addableUsers = activeUsers.filter(u => !teamMemberIds.has(u.id) && u.id !== user.id);
+
+    // Get project names for a user
+    function getUserProjects(userId) {
+        return allMemberships
+            .filter(m => m.user_id === userId)
+            .map(m => projects.find(p => p.id === m.project_id)?.name)
+            .filter(Boolean);
+    }
 
     const filteredUsers = activeUsers.filter(u => {
         const matchesSearch = u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -224,6 +273,7 @@ export default function AdminDashboard() {
         consultants: activeUsers.filter(u => u.role === 'consultant').length,
         admins: activeUsers.filter(u => u.role === 'admin').length,
         pending: pendingUsers.length,
+        unassigned: unassignedUsers.length,
         inactive: activeUsers.filter(u => u.is_active === false).length,
     };
 
@@ -239,6 +289,13 @@ export default function AdminDashboard() {
                     <button className="btn btn-ghost btn-sm" onClick={() => { fetchUsers(); fetchProjects(); }} disabled={loading}>
                         <RefreshCw size={16} className={loading ? 'spinner' : ''} /> Refresh
                     </button>
+                    {/* Quick stats bar */}
+                    {activeTab === 'users' && (
+                        <div className="users-stat-pills" style={{ marginLeft: 'auto', marginRight: '0.5rem' }}>
+                            {stats.pending > 0 && <span className="ustat-pill ustat-warning">⏳ {stats.pending} Pending</span>}
+                            {stats.unassigned > 0 && <span className="ustat-pill ustat-info">🔔 {stats.unassigned} Unassigned</span>}
+                        </div>
+                    )}
                 </div>
 
                 {/* Tabs */}
@@ -405,10 +462,11 @@ export default function AdminDashboard() {
                 {activeTab === 'users' && (
                     <div className="admin-section">
 
-                        {/* ══ 1. PENDING APPROVALS ══ */}
+                        {/* ══ STEP 1: PENDING APPROVALS ══ */}
                         {pendingUsers.length > 0 && (
                             <div className="users-pending-block">
                                 <div className="users-pending-title">⏳ {pendingUsers.length} Pending Approval{pendingUsers.length !== 1 ? 's' : ''}</div>
+                                <p className="users-hint">Approve new sign-ups by assigning them a role. They'll appear in "Unassigned" so you can add them to a project.</p>
                                 <div className="users-pending-list">
                                     {pendingUsers.map(pu => {
                                         const pa = pendingApprove[pu.id] || {};
@@ -423,14 +481,9 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="users-pending-actions">
                                                     <select className="users-role-select"
-                                                        value={pa.projectId || activeProject?.id || ''}
-                                                        onChange={e => setPendingApprove(prev => ({ ...prev, [pu.id]: { ...pa, projectId: e.target.value } }))}>
-                                                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
-                                                    <select className="users-role-select"
                                                         value={pa.role || ''}
                                                         onChange={e => setPendingApprove(prev => ({ ...prev, [pu.id]: { ...pa, role: e.target.value } }))}>
-                                                        <option value="" disabled>Assign role…</option>
+                                                        <option value="" disabled>Pick role…</option>
                                                         <option value="contractor">Contractor</option>
                                                         <option value="consultant">Consultant</option>
                                                         <option value="admin">Admin</option>
@@ -441,7 +494,7 @@ export default function AdminDashboard() {
                                                         <UserCheck size={13} /> Approve
                                                     </button>
                                                     <button className="btn btn-sm btn-ghost users-decline-btn"
-                                                        onClick={() => declineUser(pu.id)}>
+                                                        onClick={() => declineUser(pu.id, pu.name)}>
                                                         <UserX size={13} /> Decline
                                                     </button>
                                                 </div>
@@ -452,7 +505,7 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/* ══ 2. REJECTED ACCOUNTS ══ */}
+                        {/* ══ REJECTED (collapsible) ══ */}
                         {rejectedUsers.length > 0 && (
                             <div className="users-rejected-block">
                                 <button className="users-rejected-title" onClick={() => setRejectedCollapsed(c => !c)}>
@@ -475,11 +528,6 @@ export default function AdminDashboard() {
                                                     </div>
                                                     <div className="users-pending-actions">
                                                         <select className="users-role-select"
-                                                            value={pa.projectId || activeProject?.id || ''}
-                                                            onChange={e => setPendingApprove(prev => ({ ...prev, [ru.id]: { ...pa, projectId: e.target.value } }))}>
-                                                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                        </select>
-                                                        <select className="users-role-select"
                                                             value={pa.role || ''}
                                                             onChange={e => setPendingApprove(prev => ({ ...prev, [ru.id]: { ...pa, role: e.target.value } }))}>
                                                             <option value="" disabled>Re-approve as…</option>
@@ -490,7 +538,7 @@ export default function AdminDashboard() {
                                                         <button className="btn btn-sm"
                                                             style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}
                                                             onClick={() => approveUser(ru.id, ru.name)}>
-                                                            <UserCheck size={13} /> Approve
+                                                            <UserCheck size={13} /> Re-approve
                                                         </button>
                                                         <button className="btn btn-sm btn-ghost"
                                                             style={{ color: 'var(--clr-danger)' }}
@@ -507,51 +555,108 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/* ══ 3. PROJECT TEAM ══ */}
-                        <div className="users-team-block">
-                            <div className="users-team-header">
-                                <span className="users-team-title">Team — <strong>{activeProject?.name || 'Select a project'}</strong></span>
-                                <select className="users-role-select"
-                                    value={selectedProjectForAssign || activeProject?.id || ''}
-                                    onChange={e => setSelectedProjectForAssign(e.target.value)}>
+                        {/* ══ STEP 2: UNASSIGNED USERS ══ */}
+                        {unassignedUsers.length > 0 && (
+                            <div className="users-unassigned-block">
+                                <div className="users-unassigned-title">
+                                    <AlertCircle size={16} />
+                                    {unassignedUsers.length} User{unassignedUsers.length !== 1 ? 's' : ''} Not in Any Project
+                                </div>
+                                <p className="users-hint">These users are approved but haven't been added to a project yet. Assign them to get started.</p>
+                                <div className="users-unassigned-list">
+                                    {unassignedUsers.map(u => (
+                                        <div key={u.id} className="users-unassigned-item">
+                                            <div className="users-pending-who">
+                                                <UserAvatar name={u.name} size={38} />
+                                                <div>
+                                                    <div className="users-pending-name">{u.name}</div>
+                                                    <div className="users-pending-sub">
+                                                        {u.company || 'No company'} · <span className={`role-label role-${u.role}`}>{u.role}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="users-pending-actions">
+                                                <select className="users-role-select"
+                                                    value={assignProject[u.id] || ''}
+                                                    onChange={e => setAssignProject(prev => ({ ...prev, [u.id]: e.target.value }))}>
+                                                    <option value="" disabled>Select project…</option>
+                                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                </select>
+                                                <button className="btn btn-sm"
+                                                    style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                                                    onClick={() => assignUnassignedUser(u.id, u.name)}>
+                                                    <FolderPlus size={13} /> Assign
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ══ STEP 3: PROJECT TEAMS ══ */}
+                        <div className="users-teams-block">
+                            <div className="users-teams-header">
+                                <h3 className="users-teams-title"><Building size={18} /> Project Teams</h3>
+                                <select className="users-role-select users-teams-picker"
+                                    value={effectiveTeamProjectId}
+                                    onChange={e => setTeamProjectId(e.target.value)}>
                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
-                            {projectMembers.length === 0 ? (
-                                <p className="text-muted" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>No members assigned to this project yet.</p>
+
+                            {teamUsers.length === 0 ? (
+                                <p className="users-hint" style={{ padding: '1rem 0' }}>No members in this project yet. Use the form below to add people.</p>
                             ) : (
-                                <div className="users-team-chips">
-                                    {projectMembers.map(m => (
-                                        <div key={m.id} className="users-team-chip">
-                                            <UserAvatar name={m.profiles?.name || 'User'} size={28} />
-                                            <span className="users-team-chip-name">{m.profiles?.name || 'Unknown'}</span>
-                                            <span className={`users-team-chip-role role-${m.role}`}>{m.role}</span>
-                                            <button className="users-team-chip-remove" onClick={() => handleRemoveMember(m.user_id)} title="Remove from project">
-                                                <X size={12} />
-                                            </button>
+                                <div className="users-team-members">
+                                    {teamUsers.map(m => (
+                                        <div key={m.id} className="users-team-member">
+                                            <UserAvatar name={m.name} size={32} />
+                                            <div className="users-team-member-info">
+                                                <span className="users-team-member-name">{m.name}</span>
+                                                <span className={`role-label role-${m.memberRole}`}>{m.memberRole}</span>
+                                            </div>
+                                            <span className="users-team-member-company">{m.company || ''}</span>
+                                            {m.id !== user.id && (
+                                                <button className="btn btn-sm btn-ghost"
+                                                    style={{ color: 'var(--clr-danger)', marginLeft: 'auto', padding: '0.2rem' }}
+                                                    onClick={() => handleRemoveTeamMember(m.id)}
+                                                    title="Remove from project">
+                                                    <X size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             )}
-                            <form className="users-add-member-row" onSubmit={handleAssignUser}>
-                                <select value={assignUserId} onChange={e => setAssignUserId(e.target.value)} required className="users-role-select" style={{ flex: 2, minWidth: 0 }}>
-                                    <option value="">+ Add member…</option>
-                                    {activeUsers.filter(u => u.id !== user.id).map(u => (
-                                        <option key={u.id} value={u.id}>{u.name} — {u.company || 'No company'}</option>
-                                    ))}
-                                </select>
-                                <select value={assignRole} onChange={e => setAssignRole(e.target.value)} className="users-role-select">
-                                    <option value="contractor">Contractor</option>
-                                    <option value="consultant">Consultant</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                                <button type="submit" className="btn btn-sm" style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>
-                                    <UserPlus size={13} /> Add
-                                </button>
-                            </form>
+
+                            {/* Add member to this project */}
+                            {addableUsers.length > 0 && (
+                                <div className="users-team-add-row">
+                                    <select className="users-role-select" style={{ flex: 2, minWidth: 0 }}
+                                        value={addMemberUserId}
+                                        onChange={e => setAddMemberUserId(e.target.value)}>
+                                        <option value="">+ Add member…</option>
+                                        {addableUsers.map(u => (
+                                            <option key={u.id} value={u.id}>{u.name} — {u.role} — {u.company || 'No company'}</option>
+                                        ))}
+                                    </select>
+                                    <select className="users-role-select" value={addMemberRole}
+                                        onChange={e => setAddMemberRole(e.target.value)}>
+                                        <option value="contractor">Contractor</option>
+                                        <option value="consultant">Consultant</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <button className="btn btn-sm"
+                                        style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                                        onClick={handleAddTeamMember}>
+                                        <UserPlus size={13} /> Add
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
-                        {/* ══ 4. ALL MEMBERS GRID ══ */}
+                        {/* ══ ALL MEMBERS DIRECTORY ══ */}
                         <div className="users-section-label">👥 All Members</div>
                         <div className="users-toolbar">
                             <div className="users-stat-pills">
@@ -584,6 +689,7 @@ export default function AdminDashboard() {
                                 {filteredUsers.map(u => {
                                     const isSelf = u.id === user.id;
                                     const isInactive = u.is_active === false;
+                                    const userProjects = getUserProjects(u.id);
                                     return (
                                         <div key={u.id} className={`user-card ${isInactive ? 'user-card-dim' : ''}`}>
                                             <div className="user-card-top">
@@ -598,6 +704,16 @@ export default function AdminDashboard() {
                                                 <span className={`status-badge-admin ${isInactive ? 'inactive' : 'active'}`}>
                                                     {isInactive ? 'Deactivated' : 'Active'}
                                                 </span>
+                                            </div>
+                                            {/* Project tags */}
+                                            <div className="user-card-projects">
+                                                {userProjects.length > 0 ? (
+                                                    userProjects.map((pName, i) => (
+                                                        <span key={i} className="user-project-tag">{pName}</span>
+                                                    ))
+                                                ) : (
+                                                    <span className="user-project-tag user-project-tag-none">No project</span>
+                                                )}
                                             </div>
                                             <div className="user-card-bottom">
                                                 <select

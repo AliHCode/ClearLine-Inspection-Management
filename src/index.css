@@ -3284,8 +3284,67 @@ h6 {
   padding-left: 0.1rem;
 }
 
-/* Project team block */
-.users-team-block {
+/* Hint text under section headers */
+.users-hint {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  margin: -0.4rem 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+/* ── Unassigned Users block ── */
+.users-unassigned-block {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.users-unassigned-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 0.5rem;
+}
+
+.users-unassigned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.users-unassigned-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  flex-wrap: wrap;
+}
+
+/* Role label badges */
+.role-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+.role-label.role-contractor { background: #ecfdf5; color: #065f46; }
+.role-label.role-consultant { background: var(--clr-info-bg); color: var(--clr-brand-secondary); }
+.role-label.role-admin { background: #f5f3ff; color: #5b21b6; }
+
+/* ── Project Teams block ── */
+.users-teams-block {
   background: var(--clr-bg-card);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
@@ -3293,7 +3352,7 @@ h6 {
   margin-bottom: 1.5rem;
 }
 
-.users-team-header {
+.users-teams-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3302,74 +3361,91 @@ h6 {
   flex-wrap: wrap;
 }
 
-.users-team-title {
-  font-size: 0.9rem;
-  font-weight: 600;
+.users-teams-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--clr-text-main);
+  margin: 0;
 }
 
-.users-team-chips {
+.users-teams-picker {
+  min-width: 180px;
+}
+
+.users-team-members {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-bottom: 0.85rem;
 }
 
-.users-team-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.5rem 0.3rem 0.4rem;
-  background: var(--clr-bg-main);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-}
-
-.users-team-chip-name {
-  font-weight: 600;
-}
-
-.users-team-chip-role {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.1rem 0.4rem;
-  border-radius: var(--radius-full);
-  background: var(--clr-info-bg);
-  color: var(--clr-brand-secondary);
-}
-
-.users-team-chip-role.role-contractor { background: #ecfdf5; color: #065f46; }
-.users-team-chip-role.role-consultant { background: var(--clr-info-bg); color: var(--clr-brand-secondary); }
-.users-team-chip-role.role-admin { background: #f5f3ff; color: #5b21b6; }
-
-.users-team-chip-remove {
+.users-team-member {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: none;
-  background: none;
-  cursor: pointer;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--clr-bg-main);
+  border: 1px solid var(--clr-border);
+}
+
+.users-team-member-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.users-team-member-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.users-team-member-company {
+  font-size: 0.78rem;
   color: var(--clr-text-muted);
-  border-radius: 50%;
-  padding: 0;
-  transition: background 0.15s, color 0.15s;
+  margin-left: auto;
+  margin-right: 0.5rem;
 }
 
-.users-team-chip-remove:hover {
-  background: var(--clr-danger-bg);
-  color: var(--clr-danger);
-}
-
-.users-add-member-row {
+.users-team-add-row {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
   padding-top: 0.75rem;
   border-top: 1px solid var(--clr-border);
+}
+
+/* ── Stat pill variants ── */
+.ustat-pill.ustat-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.ustat-pill.ustat-info { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
+
+/* ── User card project tags ── */
+.user-card-projects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.4rem 0;
+}
+
+.user-project-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.user-project-tag-none {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
 }
 
 /* User cards grid */
