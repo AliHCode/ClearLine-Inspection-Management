@@ -5,6 +5,7 @@ import { formatDateDisplay } from './rfiLogic';
 import { sanitizeColumnWidth, widthPxToExcelChars } from './tableLayout';
 
 const PDF_PX_TO_PT = 0.6;
+const PDF_SAFE_MARGIN = 10;
 const DEFAULT_EXPORT_TEMPLATE = {
     header: {
         title: 'RFI Summary',
@@ -40,6 +41,10 @@ function normalizeExportTemplate(projectTemplate, fallbackTitle = '') {
 
     if (!merged.header.title) {
         merged.header.title = fallbackTitle || DEFAULT_EXPORT_TEMPLATE.header.title;
+    }
+
+    if (!Array.isArray(merged.header.additionalLogos)) {
+        merged.header.additionalLogos = [];
     }
 
     return merged;
@@ -87,19 +92,37 @@ function addImageSafe(doc, dataUrl, x, y, w, h) {
 
 function getPdfLayoutMap(doc, template) {
     const canvasW = template?.layout?.canvasWidth || 1200;
-    const scale = doc.internal.pageSize.getWidth() / canvasW;
+    const canvasH = template?.layout?.canvasHeight || 800;
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const safeMargin = PDF_SAFE_MARGIN;
+    const availW = Math.max(60, pageW - safeMargin * 2);
+    const availH = Math.max(60, pageH - safeMargin * 2);
+    const scale = Math.min(availW / canvasW, availH / canvasH);
+    const originX = safeMargin + (availW - canvasW * scale) / 2;
+    const originY = safeMargin + (availH - canvasH * scale) / 2;
     const elements = template?.layout?.elements || {};
 
     function mapRect(key, fallback) {
         const src = elements[key] || fallback;
         return {
-            x: (src.x || 0) * scale,
-            y: (src.y || 0) * scale,
+            x: originX + (src.x || 0) * scale,
+            y: originY + (src.y || 0) * scale,
             w: (src.w || 0) * scale,
             h: (src.h || 0) * scale,
             fontSize: Math.max(7, (src.fontSize || 12) * scale),
         };
     }
+
+    const additionalLogos = (elements.additionalLogos || template?.header?.additionalLogos || [])
+        .map((logo) => ({
+            ...logo,
+            x: originX + (logo.x || 0) * scale,
+            y: originY + (logo.y || 0) * scale,
+            w: (logo.w || 120) * scale,
+            h: (logo.h || 40) * scale,
+        }))
+        .filter((logo) => logo.visible !== false && !!logo.url);
 
     return {
         leftLogo: mapRect('leftLogo', { x: 20, y: 20, w: 140, h: 46 }),
@@ -109,6 +132,9 @@ function getPdfLayoutMap(doc, template) {
         projectLine: mapRect('projectLine', { x: 380, y: 82, w: 440, h: 22, fontSize: 12 }),
         submissionDate: mapRect('submissionDate', { x: 960, y: 86, w: 220, h: 20, fontSize: 11 }),
         table: mapRect('table', { x: 20, y: 142, w: 1160, h: 150 }),
+        additionalLogos,
+        safeMargin,
+        scale,
     };
 }
 
@@ -384,6 +410,9 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     // Header
     if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
     if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
+    layout.additionalLogos.forEach((logo) => {
+        addImageSafe(doc, logo.url, logo.x, logo.y, logo.w, logo.h);
+    });
 
     doc.setFontSize(layout.title.fontSize);
     doc.text(template.header.title || title, layout.title.x + layout.title.w / 2, layout.title.y + layout.title.h * 0.7, { align: 'center' });
@@ -404,15 +433,17 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     const groupedMeta = buildGroupedHeaderMeta(fieldKeys, template.table.groupedHeaders || []);
     const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = fieldKeys.indexOf('status');
-    const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, 14, 14);
+    const tableLeft = layout.table.x;
+    const tableRight = pageWidth - (layout.table.x + layout.table.w);
+    const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, tableLeft, tableRight);
 
     autoTable(doc, {
         head: pdfHeadRows,
         body: body,
         startY: Math.max(32, layout.table.y),
         theme: 'grid',
-        margin: { left: 14, right: 14 },
-        tableWidth: 'auto',
+        margin: { left: tableLeft, right: tableRight },
+        tableWidth: layout.table.w,
         columnStyles,
         styles: {
             fontSize: template.table.compactMode ? Math.max(7, template.table.bodyFontSize - 1) : template.table.bodyFontSize,
@@ -468,6 +499,9 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     doc.setTextColor(255, 255, 255);
     if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
     if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
+    layout.additionalLogos.forEach((logo) => {
+        addImageSafe(doc, logo.url, logo.x, logo.y, logo.w, logo.h);
+    });
 
     doc.setFontSize(layout.title.fontSize);
     doc.setFont('helvetica', 'bold');
@@ -551,15 +585,17 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     const groupedMeta = buildGroupedHeaderMeta(fieldKeys, template.table.groupedHeaders || []);
     const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = fieldKeys.indexOf('status');
-    const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, 14, 14);
+    const tableLeft = layout.table.x;
+    const tableRight = pageWidth - (layout.table.x + layout.table.w);
+    const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, tableLeft, tableRight);
 
     autoTable(doc, {
         head: pdfHeadRows,
         body: body,
         startY: statsY + boxH + 10,
         theme: 'grid',
-        margin: { left: 14, right: 14 },
-        tableWidth: 'auto',
+        margin: { left: tableLeft, right: tableRight },
+        tableWidth: layout.table.w,
         columnStyles,
         styles: {
             fontSize: template.table.compactMode ? Math.max(7, template.table.bodyFontSize - 1) : template.table.bodyFontSize,

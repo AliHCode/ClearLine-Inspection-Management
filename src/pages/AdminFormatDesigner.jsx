@@ -47,6 +47,38 @@ function normalizeStudioTemplate(rawTemplate) {
     const base = deepClone(DEFAULT_TEMPLATE);
     if (!rawTemplate || typeof rawTemplate !== 'object') return base;
 
+    // Saved export schema that embeds studio state
+    if (rawTemplate.studioDesigner && typeof rawTemplate.studioDesigner === 'object') {
+        const studio = rawTemplate.studioDesigner;
+        return ensureRequiredElements({
+            ...base,
+            elements: Array.isArray(studio.elements) ? studio.elements : base.elements,
+            tableConfig: {
+                ...base.tableConfig,
+                ...(studio.tableConfig || {}),
+                // Keep latest saved export table style as source of truth when present.
+                headFillColor: rawTemplate?.table?.headFillColor || studio?.tableConfig?.headFillColor || base.tableConfig.headFillColor,
+                headTextColor: rawTemplate?.table?.headTextColor || studio?.tableConfig?.headTextColor || base.tableConfig.headTextColor,
+                columnLabels: {
+                    ...base.tableConfig.columnLabels,
+                    ...(studio?.tableConfig?.columnLabels || {}),
+                },
+                groupedHeaders: studio?.tableConfig?.groupedHeaders || rawTemplate?.table?.groupedHeaders || base.tableConfig.groupedHeaders,
+            },
+            canvas: {
+                ...base.canvas,
+                ...(studio.canvas || {}),
+                zones: {
+                    ...DEFAULT_ZONES,
+                    ...(studio?.canvas?.zones || {}),
+                },
+                // Keep editor on A4 landscape for consistent WYSIWYG.
+                width: A4_LANDSCAPE_WIDTH,
+                height: A4_LANDSCAPE_HEIGHT,
+            },
+        });
+    }
+
     // New studio schema
     if (Array.isArray(rawTemplate.elements) && rawTemplate.tableConfig && rawTemplate.canvas) {
         return ensureRequiredElements({
@@ -167,22 +199,75 @@ function buildExportTemplateFromStudio(studioTemplate, activeProjectName = '') {
     const byId = Object.fromEntries(elements.map((e) => [e.id, e]));
 
     const titleEl = byId.default_title || elements.find((e) => e.type === 'text');
-    const subtitleEl = byId.legacy_subtitle || elements.find((e) => e.id === 'subtitle');
-    const projectLineEl = byId.legacy_project_line || elements.find((e) => e.id === 'project_line');
+    const subtitleEl = byId.default_subtitle || byId.legacy_subtitle || elements.find((e) => e.id === 'subtitle');
+    const projectLineEl = byId.default_project_line || byId.legacy_project_line || elements.find((e) => e.id === 'project_line');
+    const submissionDateEl = byId.default_submission_date || elements.find((e) => e.id === 'submission_date');
     const leftLogoEl = byId.legacy_left_logo || elements.find((e) => e.id === 'left_logo' || (e.type === 'image' && e.x < 300));
     const rightLogoEl = byId.legacy_right_logo || elements.find((e) => e.id === 'right_logo' || (e.type === 'image' && e.x > 800));
     const tableEl = byId.master_table || elements.find((e) => e.type === 'table');
     const submittedByEl = byId.footer_submitted_by;
     const submittedToEl = byId.footer_submitted_to;
 
+    const additionalLogos = elements
+        .filter((e) => e.type === 'image' && e.id !== leftLogoEl?.id && e.id !== rightLogoEl?.id)
+        .map((e) => ({
+            id: e.id,
+            url: e.url || '',
+            x: Number(e.x || 0),
+            y: Number(e.y || 0),
+            w: Number(e.w || 120),
+            h: Number(e.h || 40),
+            visible: e.visible !== false,
+        }))
+        .filter((e) => !!e.url);
+
+    const canvasW = studioTemplate?.canvas?.width || A4_LANDSCAPE_WIDTH;
+    const canvasH = studioTemplate?.canvas?.height || A4_LANDSCAPE_HEIGHT;
+
+    const zones = {
+        ...DEFAULT_ZONES,
+        ...(studioTemplate?.canvas?.zones || {}),
+    };
+
+    const defaultLayoutElements = {
+        leftLogo: { x: 20, y: 20, w: 140, h: 46 },
+        rightLogo: { x: 960, y: 20, w: 140, h: 46 },
+        title: { x: 300, y: 40, w: 520, h: 36, fontSize: 30 },
+        subtitle: { x: 300, y: 80, w: 520, h: 24, fontSize: 12 },
+        projectLine: { x: 260, y: 104, w: 600, h: 20, fontSize: 11 },
+        submissionDate: { x: 880, y: 26, w: 210, h: 18, fontSize: 10 },
+        table: { x: zones.table.x, y: zones.table.y, w: zones.table.w, h: zones.table.h },
+    };
+
+    function mapElement(el, fallback, textDefault = '') {
+        return {
+            x: Number(el?.x ?? fallback.x),
+            y: Number(el?.y ?? fallback.y),
+            w: Number(el?.w ?? fallback.w),
+            h: Number(el?.h ?? fallback.h),
+            fontSize: Number(el?.styles?.fontSize ?? fallback.fontSize ?? 12),
+            visible: el?.visible !== false,
+            text: typeof el?.content === 'string' ? el.content : textDefault,
+        };
+    }
+
+    const mappedTitle = mapElement(titleEl, defaultLayoutElements.title, 'RFI Summary');
+    const mappedSubtitle = mapElement(subtitleEl, defaultLayoutElements.subtitle, '');
+    const mappedProject = mapElement(projectLineEl, defaultLayoutElements.projectLine, activeProjectName || '');
+    const mappedSubmission = mapElement(submissionDateEl, defaultLayoutElements.submissionDate, 'Submission Date');
+    const mappedLeftLogo = mapElement(leftLogoEl, defaultLayoutElements.leftLogo, '');
+    const mappedRightLogo = mapElement(rightLogoEl, defaultLayoutElements.rightLogo, '');
+    const mappedTable = mapElement(tableEl, defaultLayoutElements.table, '');
+
     return {
         header: {
-            title: titleEl?.content || 'RFI Summary',
-            subtitle: subtitleEl?.content || '',
-            projectLine: projectLineEl?.content || activeProjectName || '',
-            showSubmissionDate: true,
+            title: mappedTitle.text || 'RFI Summary',
+            subtitle: mappedSubtitle.text || '',
+            projectLine: mappedProject.text || activeProjectName || '',
+            showSubmissionDate: submissionDateEl?.visible !== false,
             leftLogoUrl: leftLogoEl?.url || '',
             rightLogoUrl: rightLogoEl?.url || '',
+            additionalLogos,
         },
         table: {
             headFillColor: studioTemplate?.tableConfig?.headFillColor || '#1e293b',
@@ -200,17 +285,24 @@ function buildExportTemplateFromStudio(studioTemplate, activeProjectName = '') {
             showFooter: true,
         },
         layout: {
-            canvasWidth: studioTemplate?.canvas?.width || 1200,
-            canvasHeight: studioTemplate?.canvas?.height || 1600,
+            canvasWidth: canvasW,
+            canvasHeight: canvasH,
             gridSize: 8,
             snapToGrid: !!studioTemplate?.canvas?.snapToGrid,
             elements: {
+                leftLogo: mappedLeftLogo,
+                rightLogo: mappedRightLogo,
+                title: mappedTitle,
+                subtitle: mappedSubtitle,
+                projectLine: mappedProject,
+                submissionDate: mappedSubmission,
                 table: {
-                    x: tableEl?.x || 20,
-                    y: tableEl?.y || 142,
-                    w: tableEl?.w || 1160,
-                    h: tableEl?.h || 150,
+                    x: mappedTable.x,
+                    y: mappedTable.y,
+                    w: mappedTable.w,
+                    h: mappedTable.h,
                 },
+                additionalLogos,
             },
         },
         studioDesigner: {
