@@ -4,12 +4,23 @@ import toast from 'react-hot-toast';
 import Header from '../components/Header';
 import { useProject } from '../context/ProjectContext';
 
-const CANVAS_WIDTH = 1200;
+const A4_LANDSCAPE_WIDTH = 1123;
+const A4_LANDSCAPE_HEIGHT = 794;
+const DEFAULT_ZONES = {
+    header: { x: 30, y: 24, w: 1063, h: 132 },
+    table: { x: 30, y: 170, w: 1063, h: 510 },
+    footer: { x: 30, y: 694, w: 1063, h: 74 },
+};
 
 const DEFAULT_TEMPLATE = {
     elements: [
-        { id: 'master_table', type: 'table', x: 40, y: 300, w: 1120, h: 1000, zIndex: 10 },
-        { id: 'default_title', type: 'text', content: 'RFI SUMMARY', x: 300, y: 40, w: 600, h: 50, styles: { fontSize: 32, fontWeight: 800, textAlign: 'center' }, zIndex: 20 },
+        { id: 'master_table', type: 'table', x: 30, y: 170, w: 1063, h: 510, zIndex: 10 },
+        { id: 'default_title', type: 'text', content: 'RFI Summary', x: 360, y: 42, w: 400, h: 36, styles: { fontSize: 30, fontWeight: 800, textAlign: 'center' }, zIndex: 20 },
+        { id: 'default_subtitle', type: 'text', content: 'Construction Report', x: 360, y: 80, w: 400, h: 22, styles: { fontSize: 12, fontWeight: 600, textAlign: 'center' }, zIndex: 21 },
+        { id: 'default_project_line', type: 'text', content: 'Project Name', x: 300, y: 104, w: 520, h: 20, styles: { fontSize: 11, fontWeight: 500, textAlign: 'center' }, zIndex: 21 },
+        { id: 'default_submission_date', type: 'text', content: 'Submission Date: DD.MM.YYYY', x: 900, y: 26, w: 180, h: 18, styles: { fontSize: 10, fontWeight: 600, textAlign: 'right' }, zIndex: 22 },
+        { id: 'footer_submitted_by', type: 'text', content: 'Submitted by', x: 36, y: 730, w: 250, h: 20, styles: { fontSize: 11, fontWeight: 600, textAlign: 'left' }, zIndex: 23 },
+        { id: 'footer_submitted_to', type: 'text', content: 'Submitted to', x: 837, y: 730, w: 250, h: 20, styles: { fontSize: 11, fontWeight: 600, textAlign: 'right' }, zIndex: 23 },
     ],
     tableConfig: {
         headFillColor: '#5bb3d9',
@@ -20,12 +31,195 @@ const DEFAULT_TEMPLATE = {
         ],
     },
     canvas: {
-        width: CANVAS_WIDTH,
-        height: 1600,
+        width: A4_LANDSCAPE_WIDTH,
+        height: A4_LANDSCAPE_HEIGHT,
         showGrid: true,
         snapToGrid: true,
+        zones: DEFAULT_ZONES,
     }
 };
+
+function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeStudioTemplate(rawTemplate) {
+    const base = deepClone(DEFAULT_TEMPLATE);
+    if (!rawTemplate || typeof rawTemplate !== 'object') return base;
+
+    // New studio schema
+    if (Array.isArray(rawTemplate.elements) && rawTemplate.tableConfig && rawTemplate.canvas) {
+        return ensureRequiredElements({
+            ...base,
+            ...rawTemplate,
+            elements: Array.isArray(rawTemplate.elements) ? rawTemplate.elements : base.elements,
+            tableConfig: {
+                ...base.tableConfig,
+                ...(rawTemplate.tableConfig || {}),
+                columnLabels: {
+                    ...base.tableConfig.columnLabels,
+                    ...(rawTemplate.tableConfig?.columnLabels || {}),
+                },
+                groupedHeaders: rawTemplate.tableConfig?.groupedHeaders || base.tableConfig.groupedHeaders,
+            },
+            canvas: {
+                ...base.canvas,
+                ...(rawTemplate.canvas || {}),
+                zones: {
+                    ...DEFAULT_ZONES,
+                    ...(rawTemplate.canvas?.zones || {}),
+                },
+            },
+        });
+    }
+
+    // Legacy export schema -> convert to studio schema
+    const legacy = rawTemplate;
+    const converted = deepClone(base);
+
+    const titleEl = converted.elements.find((e) => e.id === 'default_title');
+    if (titleEl) titleEl.content = legacy?.header?.title || 'RFI SUMMARY';
+
+    if (legacy?.header?.subtitle) {
+        converted.elements.push({
+            id: 'legacy_subtitle',
+            type: 'text',
+            content: legacy.header.subtitle,
+            x: 350,
+            y: 90,
+            w: 500,
+            h: 28,
+            styles: { fontSize: 18, fontWeight: 500, textAlign: 'center' },
+            zIndex: 21,
+        });
+    }
+
+    if (legacy?.header?.projectLine) {
+        converted.elements.push({
+            id: 'legacy_project_line',
+            type: 'text',
+            content: legacy.header.projectLine,
+            x: 300,
+            y: 120,
+            w: 600,
+            h: 24,
+            styles: { fontSize: 13, fontWeight: 400, textAlign: 'center' },
+            zIndex: 22,
+        });
+    }
+
+    if (legacy?.header?.leftLogoUrl) {
+        converted.elements.push({
+            id: 'legacy_left_logo',
+            type: 'image',
+            url: legacy.header.leftLogoUrl,
+            x: 40,
+            y: 30,
+            w: 160,
+            h: 64,
+            zIndex: 15,
+            styles: {},
+        });
+    }
+
+    if (legacy?.header?.rightLogoUrl) {
+        converted.elements.push({
+            id: 'legacy_right_logo',
+            type: 'image',
+            url: legacy.header.rightLogoUrl,
+            x: 1000,
+            y: 30,
+            w: 160,
+            h: 64,
+            zIndex: 15,
+            styles: {},
+        });
+    }
+
+    converted.tableConfig = {
+        ...converted.tableConfig,
+        headFillColor: legacy?.table?.headFillColor || converted.tableConfig.headFillColor,
+        headTextColor: legacy?.table?.headTextColor || converted.tableConfig.headTextColor,
+        columnLabels: legacy?.table?.columnLabels || {},
+        groupedHeaders: legacy?.table?.groupedHeaders || [],
+    };
+
+    converted.canvas = {
+        ...converted.canvas,
+        width: legacy?.layout?.canvasWidth || A4_LANDSCAPE_WIDTH,
+        height: legacy?.layout?.canvasHeight || A4_LANDSCAPE_HEIGHT,
+        zones: DEFAULT_ZONES,
+    };
+
+    return ensureRequiredElements(converted);
+}
+
+function ensureRequiredElements(template) {
+    const withCopy = deepClone(template);
+    const existingIds = new Set((withCopy.elements || []).map((e) => e.id));
+    const required = deepClone(DEFAULT_TEMPLATE.elements).filter((e) => !existingIds.has(e.id));
+    withCopy.elements = [...(withCopy.elements || []), ...required];
+    return withCopy;
+}
+
+function buildExportTemplateFromStudio(studioTemplate, activeProjectName = '') {
+    const elements = Array.isArray(studioTemplate?.elements) ? studioTemplate.elements : [];
+    const byId = Object.fromEntries(elements.map((e) => [e.id, e]));
+
+    const titleEl = byId.default_title || elements.find((e) => e.type === 'text');
+    const subtitleEl = byId.legacy_subtitle || elements.find((e) => e.id === 'subtitle');
+    const projectLineEl = byId.legacy_project_line || elements.find((e) => e.id === 'project_line');
+    const leftLogoEl = byId.legacy_left_logo || elements.find((e) => e.id === 'left_logo' || (e.type === 'image' && e.x < 300));
+    const rightLogoEl = byId.legacy_right_logo || elements.find((e) => e.id === 'right_logo' || (e.type === 'image' && e.x > 800));
+    const tableEl = byId.master_table || elements.find((e) => e.type === 'table');
+    const submittedByEl = byId.footer_submitted_by;
+    const submittedToEl = byId.footer_submitted_to;
+
+    return {
+        header: {
+            title: titleEl?.content || 'RFI Summary',
+            subtitle: subtitleEl?.content || '',
+            projectLine: projectLineEl?.content || activeProjectName || '',
+            showSubmissionDate: true,
+            leftLogoUrl: leftLogoEl?.url || '',
+            rightLogoUrl: rightLogoEl?.url || '',
+        },
+        table: {
+            headFillColor: studioTemplate?.tableConfig?.headFillColor || '#1e293b',
+            headTextColor: studioTemplate?.tableConfig?.headTextColor || '#ffffff',
+            bodyFontSize: 8,
+            headFontSize: 8,
+            compactMode: false,
+            headerLayerHeight: 110,
+            columnLabels: studioTemplate?.tableConfig?.columnLabels || {},
+            groupedHeaders: studioTemplate?.tableConfig?.groupedHeaders || [],
+        },
+        footer: {
+            leftLabel: submittedByEl?.content || 'Submitted by',
+            rightLabel: submittedToEl?.content || 'Submitted to',
+            showFooter: true,
+        },
+        layout: {
+            canvasWidth: studioTemplate?.canvas?.width || 1200,
+            canvasHeight: studioTemplate?.canvas?.height || 1600,
+            gridSize: 8,
+            snapToGrid: !!studioTemplate?.canvas?.snapToGrid,
+            elements: {
+                table: {
+                    x: tableEl?.x || 20,
+                    y: tableEl?.y || 142,
+                    w: tableEl?.w || 1160,
+                    h: tableEl?.h || 150,
+                },
+            },
+        },
+        studioDesigner: {
+            elements: studioTemplate?.elements || [],
+            tableConfig: studioTemplate?.tableConfig || {},
+            canvas: studioTemplate?.canvas || {},
+        },
+    };
+}
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -45,12 +239,56 @@ export default function AdminFormatDesigner() {
     const [drawerOpen, setDrawerOpen] = useState(true);
     const [interaction, setInteraction] = useState(null);
     const [zoom, setZoom] = useState(0.8);
+    const [hasDraft, setHasDraft] = useState(false);
+
+    const draftStorageKey = useMemo(() => {
+        if (!activeProject?.id) return '';
+        return `format_studio_draft_${activeProject.id}`;
+    }, [activeProject?.id]);
+
+    function getElementZone(id) {
+        if (id === 'master_table') return 'table';
+        if (id === 'footer_submitted_by' || id === 'footer_submitted_to') return 'footer';
+        return 'header';
+    }
+
+    function clampRectToZone(rect, zoneName, canvas) {
+        const zones = canvas?.zones || DEFAULT_ZONES;
+        const zone = zones[zoneName] || { x: 0, y: 0, w: canvas.width, h: canvas.height };
+
+        const w = clamp(rect.w, 40, zone.w);
+        const h = clamp(rect.h, 16, zone.h);
+        const x = clamp(rect.x, zone.x, zone.x + zone.w - w);
+        const y = clamp(rect.y, zone.y, zone.y + zone.h - h);
+        return { ...rect, x, y, w, h };
+    }
 
     useEffect(() => {
-        if (activeProject?.export_template) {
-            setTemplate(activeProject.export_template);
+        if (!activeProject?.id) return;
+        try {
+            const rawDraft = draftStorageKey ? localStorage.getItem(draftStorageKey) : null;
+            if (rawDraft) {
+                const parsed = JSON.parse(rawDraft);
+                setTemplate(normalizeStudioTemplate(parsed));
+                setHasDraft(true);
+                return;
+            }
+        } catch {
+            // Ignore corrupted drafts and fallback to server template.
         }
-    }, [activeProject?.id, activeProject?.export_template]);
+
+        setTemplate(normalizeStudioTemplate(activeProject?.export_template || null));
+        setHasDraft(false);
+    }, [activeProject?.id, activeProject?.export_template, draftStorageKey]);
+
+    useEffect(() => {
+        if (!draftStorageKey || !activeProject?.id) return;
+        try {
+            localStorage.setItem(draftStorageKey, JSON.stringify(template));
+        } catch {
+            // Ignore quota/storage errors.
+        }
+    }, [template, draftStorageKey, activeProject?.id]);
 
     const previewColumns = useMemo(() => {
         return (orderedTableColumns || []).filter((c) => c.field_key !== 'actions');
@@ -119,7 +357,7 @@ export default function AdminFormatDesigner() {
     };
 
     const previewGroupedHeaders = useMemo(() => {
-        return (template.tableConfig.groupedHeaders || [])
+        return (template?.tableConfig?.groupedHeaders || [])
             .map((g) => {
                 const start = previewHeaderKeys.indexOf(g.fromKey);
                 const end = previewHeaderKeys.indexOf(g.toKey);
@@ -128,7 +366,7 @@ export default function AdminFormatDesigner() {
             })
             .filter(Boolean)
             .sort((a, b) => a.start - b.start);
-    }, [template.tableConfig.groupedHeaders, previewHeaderKeys]);
+    }, [template?.tableConfig?.groupedHeaders, previewHeaderKeys]);
 
     function startInteraction(e, id, mode, handle = null) {
         e.preventDefault(); e.stopPropagation();
@@ -143,10 +381,18 @@ export default function AdminFormatDesigner() {
         function onMouseMove(e) {
             const dx = (e.clientX - interaction.startX) / zoom;
             const dy = (e.clientY - interaction.startY) / zoom;
-            const grid = template.canvas.snapToGrid ? 8 : 1;
+            const grid = template?.canvas?.snapToGrid ? 8 : 1;
             const el = interaction.startRect;
             if (interaction.mode === 'move') {
-                updateElement(interaction.id, { x: snap(el.x + dx, grid, true), y: snap(el.y + dy, grid, true) });
+                const nextRect = {
+                    ...el,
+                    x: snap(el.x + dx, grid, true),
+                    y: snap(el.y + dy, grid, true),
+                    w: el.w,
+                    h: el.h,
+                };
+                const safe = clampRectToZone(nextRect, getElementZone(interaction.id), template.canvas);
+                updateElement(interaction.id, { x: safe.x, y: safe.y });
             } else if (interaction.mode === 'resize') {
                 const h = interaction.handle;
                 let { x, y, w, h: height } = el;
@@ -154,7 +400,8 @@ export default function AdminFormatDesigner() {
                 if (h.includes('s')) height = snap(el.h + dy, grid, true);
                 if (h.includes('w')) { const nextW = snap(el.w - dx, grid, true); if (nextW > 10) { x = snap(el.x + (el.w - nextW), grid, true); w = nextW; } }
                 if (h.includes('n')) { const nextH = snap(el.h - dy, grid, true); if (nextH > 10) { y = snap(el.y + (el.h - nextH), grid, true); height = nextH; } }
-                updateElement(interaction.id, { x, y, w, h: height });
+                const safe = clampRectToZone({ ...el, x, y, w, h: height }, getElementZone(interaction.id), template.canvas);
+                updateElement(interaction.id, { x: safe.x, y: safe.y, w: safe.w, h: safe.h });
             } else if (interaction.mode === 'rotate') {
                 const rect = document.getElementById('el_' + interaction.id).getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
@@ -167,13 +414,20 @@ export default function AdminFormatDesigner() {
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', onMouseUp);
         return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-    }, [interaction, zoom, template.canvas.snapToGrid]);
+    }, [interaction, zoom, template?.canvas?.snapToGrid]);
 
     const handleSave = async () => {
+        const exportTemplate = buildExportTemplateFromStudio(template, activeProject?.name || '');
         setSaving(true);
-        const result = await saveProjectExportTemplate(template);
+        const result = await saveProjectExportTemplate(exportTemplate);
         setSaving(false);
-        if (result?.success) toast.success('Studio design deployed');
+        if (result?.success) {
+            if (draftStorageKey) {
+                localStorage.removeItem(draftStorageKey);
+            }
+            setHasDraft(false);
+            toast.success('Studio design deployed');
+        }
         else toast.error(result?.error || 'Save failed');
     };
 
@@ -187,7 +441,8 @@ export default function AdminFormatDesigner() {
                     <div className="terminal-window-dots"><div className="window-dot red"></div><div className="window-dot yellow"></div><div className="window-dot green"></div></div>
                     <div className="terminal-app-title">Visual Studio V2 // Genesis Mode</div>
                     <div className="terminal-actions">
-                        <button className="terminal-btn" onClick={() => setTemplate(DEFAULT_TEMPLATE)}><RotateCcw size={14} /> Reset</button>
+                        {hasDraft && <span style={{ fontSize: '0.72rem', color: '#facc15', marginRight: '0.45rem' }}>Draft auto-saved</span>}
+                        <button className="terminal-btn" onClick={() => setTemplate(deepClone(DEFAULT_TEMPLATE))}><RotateCcw size={14} /> Reset</button>
                         <button className="terminal-btn primary" onClick={handleSave} disabled={saving}><Save size={14} /> {saving ? 'Saving...' : 'Deploy'}</button>
                     </div>
                 </header>
@@ -326,6 +581,38 @@ export default function AdminFormatDesigner() {
                                     boxShadow: '0 30px 60px rgba(0,0,0,0.5)'
                                 }}
                             >
+                                {Object.entries(template.canvas.zones || DEFAULT_ZONES).map(([zoneName, z]) => (
+                                    <div
+                                        key={`zone_${zoneName}`}
+                                        style={{
+                                            position: 'absolute',
+                                            left: z.x,
+                                            top: z.y,
+                                            width: z.w,
+                                            height: z.h,
+                                            border: zoneName === 'table' ? '2px dashed rgba(14,116,144,0.6)' : '1.5px dashed rgba(71,85,105,0.45)',
+                                            background: zoneName === 'header' ? 'rgba(14,116,144,0.04)' : zoneName === 'footer' ? 'rgba(15,118,110,0.04)' : 'transparent',
+                                            pointerEvents: 'none',
+                                            zIndex: 1,
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                top: -16,
+                                                left: 0,
+                                                fontSize: 10,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.08em',
+                                                color: '#334155',
+                                                fontWeight: 700,
+                                            }}
+                                        >
+                                            {zoneName} zone
+                                        </span>
+                                    </div>
+                                ))}
+
                                 {template.elements.slice().sort((a,b) => (a.zIndex||0) - (b.zIndex||0)).map(el => (
                                     <div
                                         key={el.id}
@@ -368,9 +655,9 @@ export default function AdminFormatDesigner() {
                                                 <div style={{ width: '100%', height: '100%', border: '2px solid #000' }}>
                                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                                                         <thead style={{ background: template.tableConfig.headFillColor }}>
-                                                            <tr>{previewColumns.slice(0, 10).map(c => <th key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>{template.tableConfig.columnLabels?.[c.field_key] || c.field_name}</th>)}</tr>
+                                                            <tr>{previewColumns.map(c => <th key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>{template.tableConfig.columnLabels?.[c.field_key] || c.field_name}</th>)}</tr>
                                                         </thead>
-                                                        <tbody>{[1,2,3,4,5].map(r => <tr key={r}>{previewColumns.slice(0, 10).map(c => <td key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>&nbsp;</td>)}</tr>)}</tbody>
+                                                        <tbody>{[1,2,3,4,5,6,7,8,9,10].map(r => <tr key={r}>{previewColumns.map(c => <td key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>{r === 1 ? `Sample ${template.tableConfig.columnLabels?.[c.field_key] || c.field_name}` : ' '}</td>)}</tr>)}</tbody>
                                                     </table>
                                                 </div>
                                             )}
