@@ -10,42 +10,46 @@ const CANVAS_HEIGHT = 760;
 const DEFAULT_TEMPLATE = {
     header: {
         title: 'RFI Summary',
-        subtitle: '',
-        projectLine: '',
+        subtitle: 'Construction of 05 Bridges at Sohar Buraimi Road.',
+        projectLine: 'PROJECT:',
         showSubmissionDate: true,
         leftLogoUrl: '',
+        middleLogoUrl: '',
         rightLogoUrl: '',
     },
-    customImages: [], // New: Multiple images
+    customImages: [],
     table: {
         headFillColor: '#5bb3d9',
-        headTextColor: '#0b1f33',
+        headTextColor: '#000000',
         bodyFontSize: 8,
         headFontSize: 8,
         compactMode: false,
         headerLayerHeight: 130,
         columnLabels: {},
-        groupedHeaders: [],
+        groupedHeaders: [
+            { title: 'Chainage', fromKey: 'chainage_from', toKey: 'chainage_to' }
+        ],
     },
     footer: {
-        leftLabel: 'Contractor Representative',
-        rightLabel: 'Consultant Representative',
+        leftLabel: 'Submitted By',
+        rightLabel: 'Received By',
         showFooter: true,
     },
     layout: {
         canvasWidth: CANVAS_WIDTH,
-        canvasHeight: 1600, // Increased height for professional sheet
+        canvasHeight: 1600,
         gridSize: 8,
         snapToGrid: true,
-        showConnector: true, // New: Header-to-Columns outline
+        showConnector: true,
         elements: {
             leftLogo: { x: 40, y: 40, w: 100, h: 60, visible: true },
+            middleLogo: { x: 550, y: 40, w: 100, h: 60, visible: true },
             rightLogo: { x: 1060, y: 40, w: 100, h: 60, visible: true },
             title: { x: 300, y: 35, w: 600, h: 45, visible: true },
             subtitle: { x: 300, y: 85, w: 600, h: 25, visible: true },
             projectLine: { x: 40, y: 130, w: 1120, h: 30, visible: true },
             submissionDate: { x: 960, y: 130, w: 200, h: 20, visible: true },
-            table: { x: 40, y: 190, w: 1120, h: 500, visible: true },
+            table: { x: 40, y: 190, w: 1120, h: 1000, visible: true },
         },
     },
 };
@@ -419,16 +423,16 @@ export default function AdminFormatDesigner() {
 
                 <div className="format-studio-layout">
                     <aside className="studio-vertical-rail">
-                        <div className={`rail-item ${activeRailTab === 'canvas' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('canvas')} title="Canvas Settings">
+                        <div className={`rail-item ${activeRailTab === 'canvas' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('canvas')} title="Layout & Grid">
                             <Layers size={22} />
                         </div>
-                        <div className={`rail-item ${activeRailTab === 'branding' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('branding')} title="Branding & Logos">
+                        <div className={`rail-item ${activeRailTab === 'branding' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('branding')} title="Sheet Elements">
                             <Settings size={22} />
                         </div>
                         <div className={`rail-item ${activeRailTab === 'images' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('images')} title="Dynamic Images">
                             <Image size={22} />
                         </div>
-                        <div className={`rail-item ${activeRailTab === 'columns' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('columns')} title="Table Headings">
+                        <div className={`rail-item ${activeRailTab === 'columns' && drawerOpen ? 'active' : ''}`} onClick={() => toggleRailTab('columns')} title="Table Designer">
                             <Columns size={22} />
                         </div>
                     </aside>
@@ -443,17 +447,21 @@ export default function AdminFormatDesigner() {
                                 {activeRailTab === 'canvas' && (
                                     <div className="studio-sidebar-section">
                                         <div className="studio-controls-grid">
+                                            <div className="studio-input-group">
+                                                <label>Sheet Height</label>
+                                                <input type="number" value={template.layout.canvasHeight} onChange={(e) => updateSection('layout', 'canvasHeight', Number(e.target.value || 1600))} />
+                                            </div>
+                                            <div className="studio-input-group">
+                                                <label>Grid size</label>
+                                                <input type="number" value={template.layout.gridSize} onChange={(e) => updateSection('layout', 'gridSize', Number(e.target.value || 8))} />
+                                            </div>
                                             <label className="studio-label-row">
                                                 <input type="checkbox" checked={template.layout.snapToGrid} onChange={(e) => updateSection('layout', 'snapToGrid', e.target.checked)} />
                                                 <span>Snap Grid</span>
                                             </label>
-                                            <div className="studio-input-group">
-                                                <label>Size</label>
-                                                <input type="number" value={template.layout.gridSize} onChange={(e) => updateSection('layout', 'gridSize', Number(e.target.value || 8))} />
-                                            </div>
-                                            <label className="studio-label-row" style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
+                                            <label className="studio-label-row">
                                                 <input type="checkbox" checked={template.layout.showConnector} onChange={(e) => updateSection('layout', 'showConnector', e.target.checked)} />
-                                                <span>Header Connector</span>
+                                                <span>Header Connect</span>
                                             </label>
                                         </div>
                                     </div>
@@ -462,22 +470,28 @@ export default function AdminFormatDesigner() {
                                 {activeRailTab === 'branding' && (
                                     <>
                                         <div className="studio-sidebar-section">
-                                            <div className="studio-input-group">
+                                            <div className="studio-input-group mb-4">
                                                 <label>Headline</label>
                                                 <input type="text" value={template.header.title} onChange={(e) => updateSection('header', 'title', e.target.value)} />
                                             </div>
-                                            <div className="studio-input-group" style={{ marginTop: '1rem' }}>
+                                            <div className="studio-input-group mb-4">
                                                 <label>Sub-text</label>
                                                 <input type="text" value={template.header.subtitle} onChange={(e) => updateSection('header', 'subtitle', e.target.value)} />
                                             </div>
+                                            <div className="studio-input-group">
+                                                <label>Project Label</label>
+                                                <input type="text" value={template.header.projectLine} onChange={(e) => updateSection('header', 'projectLine', e.target.value)} />
+                                            </div>
                                         </div>
                                         <div className="studio-sidebar-section">
-                                            <div className="studio-input-group">
-                                                <label>Left Logo</label>
+                                            <h4 className="text-xs mb-3 var(--studio-text-muted)">Logos (Left/Middle/Right)</h4>
+                                            <div className="studio-input-group mb-2">
                                                 <input type="file" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'leftLogoUrl')} />
                                             </div>
-                                            <div className="studio-input-group" style={{ marginTop: '1rem' }}>
-                                                <label>Right Logo</label>
+                                            <div className="studio-input-group mb-2">
+                                                <input type="file" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'middleLogoUrl')} />
+                                            </div>
+                                            <div className="studio-input-group">
                                                 <input type="file" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'rightLogoUrl')} />
                                             </div>
                                         </div>
@@ -503,6 +517,10 @@ export default function AdminFormatDesigner() {
 
                                 {activeRailTab === 'columns' && (
                                     <div className="studio-sidebar-section">
+                                        <div className="studio-input-group mb-4">
+                                            <label>Head Fill Color</label>
+                                            <input type="color" value={template.table.headFillColor} onChange={(e) => updateSection('table', 'headFillColor', e.target.value)} />
+                                        </div>
                                         <div className="studio-scroll-area">
                                             {previewColumns.map((col) => (
                                                 <div key={`col_${col.field_key}`} className="studio-input-group" style={{ marginBottom: '1rem' }}>
@@ -557,15 +575,15 @@ export default function AdminFormatDesigner() {
                                     <>
                                         <div className="header-connector-box" style={{
                                             left: template.layout.elements.table.x,
-                                            top: Math.min(template.layout.elements.leftLogo.y, template.layout.elements.rightLogo.y, template.layout.elements.title.y) - 20,
+                                            top: Math.min(template.layout.elements.leftLogo.y, template.layout.elements.middleLogo.y, template.layout.elements.rightLogo.y, template.layout.elements.title.y) - 20,
                                             width: template.layout.elements.table.w,
-                                            height: template.layout.elements.table.y - (Math.min(template.layout.elements.leftLogo.y, template.layout.elements.rightLogo.y, template.layout.elements.title.y) - 20)
+                                            height: template.layout.elements.table.y - (Math.min(template.layout.elements.leftLogo.y, template.layout.elements.middleLogo.y, template.layout.elements.rightLogo.y, template.layout.elements.title.y) - 20)
                                         }} />
                                     </>
                                 )}
 
                                 {/* Standard Elements */}
-                                {['leftLogo', 'rightLogo', 'title', 'subtitle', 'projectLine', 'submissionDate', 'table'].map(key => {
+                                {['leftLogo', 'middleLogo', 'rightLogo', 'title', 'subtitle', 'projectLine', 'submissionDate', 'table'].map(key => {
                                     const rect = template.layout.elements[key];
                                     if (!rect?.visible) return null;
                                     const isSelected = selectedElement === key;
@@ -591,37 +609,90 @@ export default function AdminFormatDesigner() {
                                                 {key === 'leftLogo' && (
                                                     <img src={template.header.leftLogoUrl || '/dashboardlogo.png'} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                                                 )}
+                                                {key === 'middleLogo' && (
+                                                    <img src={template.header.middleLogoUrl || '/dashboardlogo.png'} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                )}
                                                 {key === 'rightLogo' && (
                                                     <img src={template.header.rightLogoUrl || '/dashboardlogo.png'} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                                                 )}
                                                 {key === 'title' && (
-                                                    <h1 style={{ margin: 0, fontSize: `${rect.fontSize || 24}px`, textAlign: 'center', width: '100%' }}>{template.header.title}</h1>
+                                                    <h1 style={{ margin: 0, fontSize: `${rect.fontSize || 32}px`, textAlign: 'center', width: '100%', fontWeight: 800 }}>{template.header.title}</h1>
                                                 )}
                                                 {key === 'subtitle' && (
-                                                    <p style={{ margin: 0, fontSize: `${rect.fontSize || 14}px`, textAlign: 'center', color: '#64748b' }}>{template.header.subtitle}</p>
+                                                    <p style={{ margin: 0, fontSize: `${rect.fontSize || 16}px`, textAlign: 'center', color: '#000', fontWeight: 600 }}>{template.header.subtitle}</p>
                                                 )}
                                                 {key === 'projectLine' && (
-                                                    <div style={{ width: '100%', borderBottom: '2px solid #000', paddingBottom: '4px', fontSize: `${rect.fontSize || 12}px` }}>
-                                                        {template.header.projectLine}
+                                                    <div style={{ width: '100%', fontSize: `${rect.fontSize || 14}px`, fontWeight: 700 }}>
+                                                        {template.header.projectLine} _________________________________________________________________
                                                     </div>
                                                 )}
                                                 {key === 'submissionDate' && template.header.showSubmissionDate && (
-                                                    <div style={{ width: '100%', textAlign: 'right', fontSize: `${rect.fontSize || 11}px` }}>Date: DD.MM.YYYY</div>
+                                                    <div style={{ width: '100%', textAlign: 'right', fontSize: `${rect.fontSize || 12}px` }}>Submission Date: 07.03.2026</div>
                                                 )}
                                                 {key === 'table' && (
-                                                    <div style={{ width: '100%', height: '100%', border: '1px solid #000', padding: '1px' }}>
-                                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
+                                                    <div style={{ width: '100%', height: '100%', border: '2px solid #000', padding: '0px' }}>
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                                                             <thead>
+                                                                {template.table.groupedHeaders?.length > 0 && (
+                                                                    <tr style={{ background: template.table.headFillColor, color: template.table.headTextColor }}>
+                                                                        {(() => {
+                                                                            const cells = [];
+                                                                            let i = 0;
+                                                                            while (i < previewColumns.length) {
+                                                                                const group = template.table.groupedHeaders.find(g => {
+                                                                                    const idx = previewColumns.findIndex(c => c.field_key === g.fromKey);
+                                                                                    return idx === i;
+                                                                                });
+                                                                                if (group) {
+                                                                                    const startIdx = previewColumns.findIndex(c => c.field_key === group.fromKey);
+                                                                                    const endIdx = previewColumns.findIndex(c => c.field_key === group.toKey);
+                                                                                    const span = endIdx - startIdx + 1;
+                                                                                    cells.push(<th key={`g_${i}`} colSpan={span} style={{ border: '1px solid #000', padding: '6px' }}>{group.title}</th>);
+                                                                                    i += span;
+                                                                                } else {
+                                                                                    cells.push(<th key={`s_${i}`} rowSpan={2} style={{ border: '1px solid #000', padding: '6px' }}>{template.table.columnLabels?.[previewColumns[i].field_key] || previewColumns[i].field_name}</th>);
+                                                                                    i++;
+                                                                                }
+                                                                            }
+                                                                            return cells;
+                                                                        })()}
+                                                                    </tr>
+                                                                )}
                                                                 <tr style={{ background: template.table.headFillColor, color: template.table.headTextColor }}>
-                                                                    {previewColumns.map(c => (
-                                                                        <th key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>{template.table.columnLabels?.[c.field_key] || c.field_name}</th>
-                                                                    ))}
+                                                                    {previewColumns
+                                                                        .filter(c => {
+                                                                            if (!template.table.groupedHeaders?.length) return true;
+                                                                            return template.table.groupedHeaders.some(g => {
+                                                                                const startIdx = previewColumns.findIndex(col => col.field_key === g.fromKey);
+                                                                                const endIdx = previewColumns.findIndex(col => col.field_key === g.toKey);
+                                                                                const curIdx = previewColumns.findIndex(col => col.field_key === c.field_key);
+                                                                                return curIdx >= startIdx && curIdx <= endIdx;
+                                                                            }) || !template.table.groupedHeaders.some(g => {
+                                                                                const idx = previewColumns.findIndex(col => col.field_key === c.field_key);
+                                                                                const gStart = previewColumns.findIndex(col => col.field_key === g.fromKey);
+                                                                                const gEnd = previewColumns.findIndex(col => col.field_key === g.toKey);
+                                                                                // If it's NOT in any group, it was already rendered with rowSpan=2
+                                                                                return false; 
+                                                                            });
+                                                                        })
+                                                                        .map(c => {
+                                                                            const isInGroup = template.table.groupedHeaders?.some(g => {
+                                                                                const startIdx = previewColumns.findIndex(col => col.field_key === g.fromKey);
+                                                                                const endIdx = previewColumns.findIndex(col => col.field_key === g.toKey);
+                                                                                const curIdx = previewColumns.findIndex(col => col.field_key === c.field_key);
+                                                                                return curIdx >= startIdx && curIdx <= endIdx;
+                                                                            });
+                                                                            if (!isInGroup && template.table.groupedHeaders?.length > 0) return null;
+                                                                            return (
+                                                                                <th key={c.field_key} style={{ border: '1px solid #000', padding: '6px' }}>{template.table.columnLabels?.[c.field_key] || c.field_name}</th>
+                                                                            );
+                                                                        })}
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {[1, 2, 3].map(r => (
+                                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(r => (
                                                                     <tr key={r}>
-                                                                        {previewColumns.map(c => <td key={c.field_key} style={{ border: '1px solid #000', padding: '4px' }}>-</td>)}
+                                                                        {previewColumns.map(c => <td key={c.field_key} style={{ border: '1px solid #000', padding: '6px' }}>&nbsp;</td>)}
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -634,11 +705,16 @@ export default function AdminFormatDesigner() {
                                                 <>
                                                     <div className="tech-block-outline" />
                                                     <div className="tech-drag-handle" style={{ right: -5, bottom: -5 }} onMouseDown={(e) => startInteraction(e, key, 'resize')} />
+                                                    <div className="tech-delete-btn" onClick={() => updateLayoutElement(key, { visible: false })}>×</div>
                                                 </>
                                             )}
                                         </div>
                                     );
                                 })}
+
+                                {/* Footer Area Label */}
+                                <div style={{ position: 'absolute', bottom: 40, left: 40, fontSize: '14px', fontWeight: 900 }}>{template.footer.leftLabel}</div>
+                                <div style={{ position: 'absolute', bottom: 40, right: 40, fontSize: '14px', fontWeight: 900, textAlign: 'right' }}>{template.footer.rightLabel}</div>
 
                                 {/* Custom Images Layer */}
                                 {(template.customImages || []).map(img => (
@@ -665,7 +741,7 @@ export default function AdminFormatDesigner() {
                                             <>
                                                 <div className="tech-block-outline" />
                                                 <div className="tech-drag-handle" style={{ right: -5, bottom: -5 }} onMouseDown={(e) => startInteraction(e, img.id, 'resize')} />
-                                                <div className="tech-drag-handle" style={{ left: -5, top: -5 }} title="Move Origin" />
+                                                <div className="tech-delete-btn" onClick={() => removeCustomImage(img.id)}>×</div>
                                             </>
                                         )}
                                     </div>

@@ -2997,17 +2997,22 @@ h6 {
   display: none; /* Moving title into the terminal frame */
 }
 
+.format-studio-page {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #000;
+}
+
 .studio-terminal-frame {
-  flex: 1;
-  margin: 1rem;
-  background: var(--studio-drawer-bg);
-  border: 1px solid var(--studio-border);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
-  position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background: var(--studio-bg);
+    overflow: hidden;
+    border-top: 1px solid var(--studio-border);
 }
 
 .terminal-titlebar {
@@ -3169,6 +3174,34 @@ h6 {
   flex-shrink: 0;
   position: relative;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 2px solid #000; /* Replicate outer box from image */
+}
+
+/* Delete Button on Canvas */
+.tech-delete-btn {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  border: 2px solid #fff;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.tech-delete-btn:hover {
+  transform: scale(1.1);
+  background: #dc2626;
 }
 
 /* Header Connector Style */
