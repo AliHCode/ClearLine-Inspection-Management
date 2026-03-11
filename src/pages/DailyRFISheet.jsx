@@ -274,7 +274,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`)}
+                                    onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, projectFields)}
                                     title="Export to PDF"
                                 >
                                     <FileDown size={16} /> PDF
@@ -282,7 +282,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`)}
+                                    onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, projectFields)}
                                     title="Export to Excel"
                                 >
                                     <Table size={16} /> Excel
@@ -290,7 +290,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName)}
+                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, projectFields)}
                                     title="Generate branded daily report"
                                 >
                                     <ClipboardList size={16} /> Daily Report

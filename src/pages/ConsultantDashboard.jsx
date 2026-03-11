@@ -30,10 +30,10 @@ export default function ConsultantDashboard() {
 
     // --- Chart Data Preparation ---
     const pieData = [
-        { name: 'Approved', value: stats.overallApproved, color: 'var(--clr-success)' },
-        { name: 'Pending', value: stats.overallPending, color: 'var(--clr-warning)' },
-        { name: 'Rejected', value: stats.overallRejected, color: 'var(--clr-danger)' },
-        { name: 'Info Req.', value: stats.infoRequested, color: 'var(--clr-brand-secondary)' },
+        { name: 'Approved', value: stats.todayApproved, color: 'var(--clr-success)' },
+        { name: 'Pending', value: stats.todayPending, color: 'var(--clr-warning)' },
+        { name: 'Rejected', value: stats.todayRejected, color: 'var(--clr-danger)' },
+        { name: 'Info Req.', value: stats.todayInfoRequested || 0, color: 'var(--clr-brand-secondary)' },
     ];
 
     // Group all RFIs by date for the area chart (last 7 days of activity)
@@ -102,7 +102,7 @@ export default function ConsultantDashboard() {
                             <h2><Clock size={20} /> Recent Activity</h2>
                         </div>
                         <div style={{ padding: '1.5rem' }}>
-                            <ActivityTimeline rfis={rfis} limit={5} />
+                            <ActivityTimeline rfis={rfis.filter(r => r.filedDate === today)} limit={5} />
                         </div>
                     </div>
 

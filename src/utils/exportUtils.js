@@ -6,29 +6,39 @@ import { formatDateDisplay } from './rfiLogic';
 /**
  * Format RFI data for export
  */
-function prepareDataForExport(rfis) {
-    return rfis.map((rfi) => ({
-        'Serial No': rfi.serialNo,
-        'Description': rfi.description,
-        'Location': rfi.location,
-        'Type': rfi.inspectionType,
-        'Filed Date': formatDateDisplay(rfi.originalFiledDate || rfi.filedDate),
-        'Status': rfi.status.toUpperCase(),
-        'Remarks': rfi.remarks || 'None',
-        'Review Date': rfi.reviewedAt ? formatDateDisplay(rfi.reviewedAt.split('T')[0]) : 'Pending'
-    }));
+function prepareDataForExport(rfis, projectFields = []) {
+    return rfis.map((rfi) => {
+        const base = {
+            'Serial No': rfi.serialNo,
+            'Description': rfi.description,
+            'Location': rfi.location,
+            'Type': rfi.inspectionType,
+        };
+        
+        projectFields.forEach(f => {
+            base[f.field_name] = rfi.customFields?.[f.field_key] || '—';
+        });
+
+        return {
+            ...base,
+            'Filed Date': formatDateDisplay(rfi.originalFiledDate || rfi.filedDate),
+            'Status': rfi.status.toUpperCase(),
+            'Remarks': rfi.remarks || 'None',
+            'Review Date': rfi.reviewedAt ? formatDateDisplay(rfi.reviewedAt.split('T')[0]) : 'Pending'
+        };
+    });
 }
 
 /**
  * Export RFIs to Excel Spreadsheet (.xlsx)
  */
-export function exportToExcel(rfis, filename = 'RFI_Report') {
+export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = []) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
     }
 
-    const data = prepareDataForExport(rfis);
+    const data = prepareDataForExport(rfis, projectFields);
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
 
@@ -48,7 +58,7 @@ export function exportToExcel(rfis, filename = 'RFI_Report') {
 /**
  * Export RFIs to PDF Document (.pdf)
  */
-export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report') {
+export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', projectFields = []) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
@@ -62,7 +72,7 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report') {
     doc.setFontSize(11);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
-    const data = prepareDataForExport(rfis);
+    const data = prepareDataForExport(rfis, projectFields);
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
 
@@ -90,7 +100,7 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report') {
 /**
  * Generate a branded Daily Inspection Report PDF
  */
-export function generateDailyReport(rfis, date, projectName = 'ProWay Project') {
+export function generateDailyReport(rfis, date, projectName = 'ProWay Project', projectFields = []) {
     if (!rfis || rfis.length === 0) {
         alert("No data available for this date.");
         return;
@@ -179,7 +189,7 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project') 
 
     // ========== DATA TABLE ==========
     doc.setTextColor(0, 0, 0);
-    const data = prepareDataForExport(rfis);
+    const data = prepareDataForExport(rfis, projectFields);
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
 

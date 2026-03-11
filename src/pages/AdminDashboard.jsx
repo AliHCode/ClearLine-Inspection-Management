@@ -8,7 +8,7 @@ import Header from '../components/Header';
 import UserAvatar from '../components/UserAvatar';
 import {
     Users, Shield, UserX, UserCheck, RefreshCw,
-    FolderPlus, Trash2, Plus, GripVertical,
+    FolderPlus, Trash2, Plus, GripVertical, ArrowUp, ArrowDown, Save,
     Building, Columns3, UserPlus, X, AlertCircle
 } from 'lucide-react';
 
@@ -51,6 +51,14 @@ export default function AdminDashboard() {
     // Field creation form
     const [showNewField, setShowNewField] = useState(false);
     const [newField, setNewField] = useState({ field_name: '', field_key: '', field_type: 'text', is_required: false, options: '' });
+    
+    // Field ordering state
+    const [orderedFields, setOrderedFields] = useState([]);
+    const [isReordering, setIsReordering] = useState(false);
+
+    useEffect(() => {
+        setOrderedFields(projectFields || []);
+    }, [projectFields]);
 
     // ─── Fetch all users ───
     const fetchUsers = useCallback(async () => {
@@ -219,6 +227,35 @@ export default function AdminDashboard() {
         }
     }
 
+    const moveField = (index, direction) => {
+        const newArray = [...orderedFields];
+        if (direction === 'up' && index > 0) {
+            [newArray[index - 1], newArray[index]] = [newArray[index], newArray[index - 1]];
+        } else if (direction === 'down' && index < newArray.length - 1) {
+            [newArray[index + 1], newArray[index]] = [newArray[index], newArray[index + 1]];
+        }
+        setOrderedFields(newArray);
+        setIsReordering(true);
+    };
+
+    const saveFieldOrder = async () => {
+        try {
+            setLoading(true);
+            for (let i = 0; i < orderedFields.length; i++) {
+                const field = orderedFields[i];
+                await supabase.from('project_fields').update({ sort_order: i }).eq('id', field.id);
+            }
+            showMsg('Column order updated successfully. Refresh to see changes match globally.');
+            setIsReordering(false);
+            // Refresh to ensure ProjectContext gets the new order
+            window.location.reload(); 
+        } catch (err) {
+            showMsg('Error updating order: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     async function handleDeleteField(fieldId) {
         if (!window.confirm('Delete this RFI field?')) return;
         const result = await deleteProjectField(fieldId);
@@ -386,27 +423,83 @@ export default function AdminDashboard() {
                             </form>
                         )}
 
+                        {isReordering && (
+                            <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.9rem', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <AlertCircle size={16} /> <strong>Unsaved order changes:</strong> The custom columns have been moved mapping position.
+                                </span>
+                                <button onClick={saveFieldOrder} className="btn btn-sm" style={{ backgroundColor: '#d97706', color: 'white', border: 'none', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                    <Save size={14} /> Update Order
+                                </button>
+                            </div>
+                        )}
+
                         <div className="rfi-table-wrapper">
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '40px' }}>#</th>
+                                        <th style={{ width: '60px', textAlign: 'center' }}>Order</th>
                                         <th>Column Name</th>
                                         <th>Key</th>
                                         <th>Type</th>
                                         <th>Options</th>
-                                        <th style={{ width: '80px' }}>Required</th>
+                                        <th style={{ width: '80px', textAlign: 'center' }}>Required</th>
                                         <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {projectFields.length === 0 ? (
-                                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>No custom fields yet. Click "Add Column" to create RFI table headings.</td></tr>
+                                    {/* BUILT-IN TOP */}
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Sr#</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>serial</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Description</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>description</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Location</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>location</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Type</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>inspection_type</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+
+                                    {orderedFields.length === 0 ? (
+                                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>No custom fields yet. Click "Add Column" to create dynamic RFI table headings.</td></tr>
                                     ) : (
-                                        projectFields.map((f, i) => (
-                                            <tr key={f.id}>
-                                                <td>{i + 1}</td>
-                                                <td style={{ fontWeight: 600 }}>{f.field_name}</td>
+                                        orderedFields.map((f, i) => (
+                                            <tr key={f.id} style={{ backgroundColor: '#fff' }}>
+                                                <td style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+                                                    <button type="button" className="btn btn-sm btn-ghost" disabled={i === 0} onClick={() => moveField(i, 'up')} style={{ padding: '0.2rem', color: i === 0 ? '#cbd5e1' : '#64748b' }}>
+                                                        <ArrowUp size={16} />
+                                                    </button>
+                                                    <button type="button" className="btn btn-sm btn-ghost" disabled={i === orderedFields.length - 1} onClick={() => moveField(i, 'down')} style={{ padding: '0.2rem', color: i === orderedFields.length - 1 ? '#cbd5e1' : '#64748b' }}>
+                                                        <ArrowDown size={16} />
+                                                    </button>
+                                                </td>
+                                                <td style={{ fontWeight: 600, color: 'var(--clr-brand-primary)' }}>{f.field_name}</td>
                                                 <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{f.field_key}</code></td>
                                                 <td>{FIELD_TYPES.find(t => t.value === f.field_type)?.label || f.field_type}</td>
                                                 <td>
@@ -430,6 +523,44 @@ export default function AdminDashboard() {
                                             </tr>
                                         ))
                                     )}
+
+                                    {/* BUILT-IN BOTTOM */}
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Status</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>status</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Remarks</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>remarks</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Attachments</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>attachments</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
+                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
+                                        <td style={{ textAlign: 'center' }}>-</td>
+                                        <td style={{ fontWeight: 600 }}>Actions</td>
+                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>actions</code></td>
+                                        <td>Built-in</td>
+                                        <td>—</td>
+                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
+                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>

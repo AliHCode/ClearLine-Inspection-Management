@@ -360,7 +360,7 @@ export function RFIProvider({ children }) {
         images: rfi.images || [],
         assigned_to: rfi.assignedTo || null,
         project_id: activeProject?.id,
-        parent_id: rfi.parentId || null,
+        // parent_id: rfi.parentId || null, // TEMPORARILY COMMENTED OUT: requires DB migration to add parent_id column
         custom_fields: rfi.customFields || null,
     });
 
@@ -1005,6 +1005,7 @@ export function RFIProvider({ children }) {
             todayPending: all.filter((r) => r.status === RFI_STATUS.PENDING).length,
             todayApproved: all.filter((r) => r.status === RFI_STATUS.APPROVED).length,
             todayRejected: all.filter((r) => r.status === RFI_STATUS.REJECTED).length,
+            todayInfoRequested: all.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
 
             queueTotal: queue.length,
             reviewedApprovedToday: reviewedToday.filter(r => r.status === RFI_STATUS.APPROVED).length,
@@ -1014,6 +1015,7 @@ export function RFIProvider({ children }) {
             overallPending: rfis.filter((r) => r.status === RFI_STATUS.PENDING).length,
             overallApproved: rfis.filter((r) => r.status === RFI_STATUS.APPROVED).length,
             overallRejected: rfis.filter((r) => r.status === RFI_STATUS.REJECTED).length,
+            overallInfoRequested: rfis.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
         };
     }
 
