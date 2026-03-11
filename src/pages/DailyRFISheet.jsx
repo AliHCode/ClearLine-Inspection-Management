@@ -15,7 +15,7 @@ import { useProject } from '../context/ProjectContext';
 
 export default function DailyRFISheet() {
     const { user } = useAuth();
-    const { activeProject, projectFields } = useProject();
+    const { activeProject, projectFields, orderedTableColumns, getTableColumnStyle, columnWidthMap } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants, rfis, pendingSyncCount } = useRFI();
     const [currentDate, setCurrentDate] = useState(getToday());
@@ -274,7 +274,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, projectFields)}
+                                    onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap)}
                                     title="Export to PDF"
                                 >
                                     <FileDown size={16} /> PDF
@@ -282,7 +282,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, projectFields)}
+                                    onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap)}
                                     title="Export to Excel"
                                 >
                                     <Table size={16} /> Excel
@@ -290,7 +290,7 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, projectFields)}
+                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, orderedTableColumns, columnWidthMap)}
                                     title="Generate branded daily report"
                                 >
                                     <ClipboardList size={16} /> Daily Report
@@ -315,37 +315,37 @@ export default function DailyRFISheet() {
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
-                                        <th className="col-serial">#</th>
-                                        <th className="col-desc">Description</th>
-                                        <th className="col-loc">Location</th>
-                                        <th className="col-type">Type</th>
+                                        <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
+                                        <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
+                                        <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
+                                        <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
                                         {projectFields.map(f => (
-                                            <th key={f.id}>{f.field_name}</th>
+                                            <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
                                         ))}
-                                        <th className="col-status">Status</th>
-                                        <th className="col-remarks">Remarks</th>
-                                        <th className="col-files">Attachments</th>
-                                        <th className="col-actions">Action</th>
+                                        <th className="col-status" style={getTableColumnStyle('status')}>Status</th>
+                                        <th className="col-remarks" style={getTableColumnStyle('remarks')}>Remarks</th>
+                                        <th className="col-files" style={getTableColumnStyle('attachments')}>Attachments</th>
+                                        <th className="col-actions" style={getTableColumnStyle('actions')}>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {myCarriedOver.map((rfi, idx) => (
                                         <tr key={rfi.id} className="carryover-row">
-                                            <td className="col-serial" data-label="#">{idx + 1}</td>
-                                            <td className="col-desc" data-label="Description">{rfi.description}</td>
-                                            <td className="col-loc" data-label="Location">{rfi.location}</td>
-                                            <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                            <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>{idx + 1}</td>
+                                            <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
+                                            <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
+                                            <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
                                             {projectFields.map(f => (
-                                                <td key={f.id} data-label={f.field_name}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
                                             ))}
-                                            <td className="col-status" data-label="Status">
+                                            <td className="col-status" data-label="Status" style={getTableColumnStyle('status')}>
                                                 <StatusBadge status={rfi.status} />
                                                 {rfi.carryoverCount > 0 && (
                                                     <span className="carryover-count">×{rfi.carryoverCount}</span>
                                                 )}
                                             </td>
-                                            <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
-                                            <td className="col-files" data-label="Attachments">
+                                            <td className="col-remarks remarks-text" data-label="Remarks" style={getTableColumnStyle('remarks')}>{rfi.remarks || '—'}</td>
+                                            <td className="col-files" data-label="Attachments" style={getTableColumnStyle('attachments')}>
                                                 {rfi.images && rfi.images.length > 0 ? (
                                                     <div
                                                         className="image-preview-grid consultant-grid"
@@ -365,7 +365,7 @@ export default function DailyRFISheet() {
                                                     <span className="text-muted">—</span>
                                                 )}
                                             </td>
-                                            <td className="col-actions">
+                                            <td className="col-actions" style={getTableColumnStyle('actions')}>
                                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                                     <button
                                                         className="btn btn-sm btn-action btn-resubmit"
@@ -415,32 +415,32 @@ export default function DailyRFISheet() {
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
-                                        <th className="col-serial">#</th>
-                                        <th className="col-desc">Description</th>
-                                        <th className="col-loc">Location</th>
-                                        <th className="col-type">Type</th>
+                                        <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
+                                        <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
+                                        <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
+                                        <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
                                         {projectFields.map(f => (
-                                            <th key={f.id}>{f.field_name}</th>
+                                            <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
                                         ))}
-                                        <th className="col-status">Status</th>
-                                        <th className="col-remarks">Remarks</th>
-                                        <th className="col-files">Attachments</th>
-                                        <th className="col-actions">Action</th>
+                                        <th className="col-status" style={getTableColumnStyle('status')}>Status</th>
+                                        <th className="col-remarks" style={getTableColumnStyle('remarks')}>Remarks</th>
+                                        <th className="col-files" style={getTableColumnStyle('attachments')}>Attachments</th>
+                                        <th className="col-actions" style={getTableColumnStyle('actions')}>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {myNewRfis.map((rfi) => (
                                         <tr key={rfi.id}>
-                                            <td className="col-serial" data-label="#">{rfi.serialNo}</td>
-                                            <td className="col-desc" data-label="Description">{rfi.description}</td>
-                                            <td className="col-loc" data-label="Location">{rfi.location}</td>
-                                            <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                            <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>{rfi.serialNo}</td>
+                                            <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
+                                            <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
+                                            <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
                                             {projectFields.map(f => (
-                                                <td key={f.id} data-label={f.field_name}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
                                             ))}
-                                            <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>
-                                            <td className="col-remarks remarks-text" data-label="Remarks">{rfi.remarks || '—'}</td>
-                                            <td className="col-files" data-label="Attachments">
+                                            <td className="col-status" data-label="Status" style={getTableColumnStyle('status')}><StatusBadge status={rfi.status} /></td>
+                                            <td className="col-remarks remarks-text" data-label="Remarks" style={getTableColumnStyle('remarks')}>{rfi.remarks || '—'}</td>
+                                            <td className="col-files" data-label="Attachments" style={getTableColumnStyle('attachments')}>
                                                 {rfi.images && rfi.images.length > 0 ? (
                                                     <div
                                                         className="image-preview-grid consultant-grid"
@@ -460,7 +460,7 @@ export default function DailyRFISheet() {
                                                     <span className="text-muted">—</span>
                                                 )}
                                             </td>
-                                            <td className="col-actions">
+                                            <td className="col-actions" style={getTableColumnStyle('actions')}>
                                                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                     <button
                                                         className="btn btn-sm btn-ghost"
@@ -528,23 +528,23 @@ export default function DailyRFISheet() {
                         <table className="rfi-table editable">
                             <thead>
                                 <tr>
-                                    <th className="col-serial">#</th>
-                                    <th className="col-desc">Description *</th>
-                                    <th className="col-loc">Location *</th>
-                                    <th className="col-type">Inspection Type</th>
+                                    <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
+                                    <th className="col-desc" style={getTableColumnStyle('description')}>Description *</th>
+                                    <th className="col-loc" style={getTableColumnStyle('location')}>Location *</th>
+                                    <th className="col-type" style={getTableColumnStyle('inspection_type')}>Inspection Type</th>
                                     {projectFields.map(f => (
-                                        <th key={f.id}>{f.field_name}{f.is_required ? ' *' : ''}</th>
+                                        <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}{f.is_required ? ' *' : ''}</th>
                                     ))}
                                     <th className="col-assign">Assign To</th>
-                                    <th className="col-files">Attachments</th>
-                                    <th className="col-actions"></th>
+                                    <th className="col-files" style={getTableColumnStyle('attachments')}>Attachments</th>
+                                    <th className="col-actions" style={getTableColumnStyle('actions')}></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {newRows.map((row, idx) => (
                                     <tr key={row.tempId}>
-                                        <td className="col-serial">{myNewRfis.length + idx + 1}</td>
-                                        <td className="col-desc">
+                                        <td className="col-serial" style={getTableColumnStyle('serial')}>{myNewRfis.length + idx + 1}</td>
+                                        <td className="col-desc" style={getTableColumnStyle('description')}>
                                             <input
                                                 type="text"
                                                 className="cell-input"
@@ -553,7 +553,7 @@ export default function DailyRFISheet() {
                                                 placeholder="e.g. Concrete pouring Zone B"
                                             />
                                         </td>
-                                        <td className="col-loc">
+                                        <td className="col-loc" style={getTableColumnStyle('location')}>
                                             <input
                                                 type="text"
                                                 className="cell-input"
@@ -562,7 +562,7 @@ export default function DailyRFISheet() {
                                                 placeholder="e.g. Floor 3, Zone A"
                                             />
                                         </td>
-                                        <td className="col-type">
+                                        <td className="col-type" style={getTableColumnStyle('inspection_type')}>
                                             <select
                                                 className="cell-select"
                                                 value={row.inspectionType}
@@ -574,7 +574,7 @@ export default function DailyRFISheet() {
                                             </select>
                                         </td>
                                         {projectFields.map(f => (
-                                            <td key={f.id}>
+                                            <td key={f.id} style={getTableColumnStyle(f.field_key)}>
                                                 {f.field_type === 'select' ? (
                                                     <select
                                                         className="cell-select"
@@ -626,7 +626,7 @@ export default function DailyRFISheet() {
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="col-files">
+                                        <td className="col-files" style={getTableColumnStyle('attachments')}>
                                             <div className="file-upload-cell">
                                                 <label className="file-upload-label">
                                                     <input
@@ -709,7 +709,7 @@ export default function DailyRFISheet() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="col-actions">
+                                        <td className="col-actions" style={getTableColumnStyle('actions')}>
                                             {newRows.length > 1 && (
                                                 <button
                                                     className="btn btn-sm btn-action btn-delete"

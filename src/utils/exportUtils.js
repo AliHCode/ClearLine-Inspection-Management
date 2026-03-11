@@ -2,28 +2,41 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { formatDateDisplay } from './rfiLogic';
+import { sanitizeColumnWidth, widthPxToExcelChars } from './tableLayout';
 
 /**
  * Format RFI data for export
  */
-function prepareDataForExport(rfis, projectFields = []) {
+function prepareDataForExport(rfis, orderedTableColumns = []) {
     return rfis.map((rfi) => {
-        const base = {
-            'Serial No': rfi.serialNo,
-            'Description': rfi.description,
-            'Location': rfi.location,
-            'Type': rfi.inspectionType,
-        };
-        
-        projectFields.forEach(f => {
-            base[f.field_name] = rfi.customFields?.[f.field_key] || '—';
-        });
+        const row = {};
+
+        // If no orderedTableColumns provided, fallback to standard keys mapped sequentially
+        if (orderedTableColumns.length === 0) {
+            row['Serial No'] = rfi.serialNo;
+            row['Description'] = rfi.description;
+            row['Location'] = rfi.location;
+            row['Type'] = rfi.inspectionType;
+        } else {
+            orderedTableColumns.forEach(c => {
+                if (c.field_key === 'serial') row['Serial No'] = rfi.serialNo;
+                else if (c.field_key === 'description') row['Description'] = rfi.description;
+                else if (c.field_key === 'location') row['Location'] = rfi.location;
+                else if (c.field_key === 'inspection_type') row['Type'] = rfi.inspectionType;
+                else if (c.field_key === 'status') row['Status'] = (rfi.status || '').toUpperCase();
+                else if (c.field_key === 'remarks') row['Remarks'] = rfi.remarks || 'None';
+                else if (c.field_key === 'attachments') row['Attachments'] = (rfi.images?.length || 0) + ' files';
+                else if (c.field_key !== 'actions') row[c.field_name] = rfi.customFields?.[c.field_key] || '—';
+            });
+        }
+
+        // Catch missing base metrics and append metadata tracking
+        if (!row['Status']) row['Status'] = rfi.status?.toUpperCase() || 'UNKNOWN';
+        if (!row['Remarks']) row['Remarks'] = rfi.remarks || 'None';
 
         return {
-            ...base,
+            ...row,
             'Filed Date': formatDateDisplay(rfi.originalFiledDate || rfi.filedDate),
-            'Status': rfi.status.toUpperCase(),
-            'Remarks': rfi.remarks || 'None',
             'Review Date': rfi.reviewedAt ? formatDateDisplay(rfi.reviewedAt.split('T')[0]) : 'Pending'
         };
     });
@@ -32,7 +45,7 @@ function prepareDataForExport(rfis, projectFields = []) {
 /**
  * Export RFIs to Excel Spreadsheet (.xlsx)
  */
-export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = []) {
+export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [], columnWidthMap = {}) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
@@ -41,14 +54,19 @@ export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [])
     const data = prepareDataForExport(rfis, projectFields);
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
+    const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
 
     // Auto-size columns roughly
-    const cols = Object.keys(data[0]).map(key => ({
-        wch: Math.max(
+    const cols = Object.keys(data[0]).map((key, index) => {
+        const defaultWch = Math.max(
             key.length,
             ...data.map(row => (row[key] ? row[key].toString().length : 0))
-        ) + 2
-    }));
+        ) + 2;
+        const sourceColumn = orderedVisibleColumns[index];
+        if (!sourceColumn) return { wch: defaultWch };
+        const px = sanitizeColumnWidth(columnWidthMap[sourceColumn.field_key]);
+        return { wch: Math.max(defaultWch, widthPxToExcelChars(px)) };
+    });
     worksheet['!cols'] = cols;
 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'RFIs');
@@ -58,7 +76,7 @@ export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [])
 /**
  * Export RFIs to PDF Document (.pdf)
  */
-export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', projectFields = []) {
+export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', projectFields = [], columnWidthMap = {}) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
@@ -75,17 +93,24 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', pro
     const data = prepareDataForExport(rfis, projectFields);
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
+    const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
+    const statusIndex = headers.indexOf('Status');
+    const columnStyles = {};
+    orderedVisibleColumns.forEach((col, index) => {
+        columnStyles[index] = { cellWidth: sanitizeColumnWidth(columnWidthMap[col.field_key]) };
+    });
 
     autoTable(doc, {
         head: [headers],
         body: body,
         startY: 35,
         theme: 'grid',
+        columnStyles,
         styles: { fontSize: 9, cellPadding: 3 },
         headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
-            if (data.section === 'body' && data.column.index === 5) {
+            if (statusIndex >= 0 && data.section === 'body' && data.column.index === statusIndex) {
                 const status = data.cell.raw;
                 if (status === 'APPROVED') data.cell.styles.textColor = [16, 185, 129];
                 if (status === 'REJECTED') data.cell.styles.textColor = [239, 68, 68];
@@ -100,7 +125,7 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', pro
 /**
  * Generate a branded Daily Inspection Report PDF
  */
-export function generateDailyReport(rfis, date, projectName = 'ProWay Project', projectFields = []) {
+export function generateDailyReport(rfis, date, projectName = 'ProWay Project', projectFields = [], columnWidthMap = {}) {
     if (!rfis || rfis.length === 0) {
         alert("No data available for this date.");
         return;
@@ -192,17 +217,24 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project', 
     const data = prepareDataForExport(rfis, projectFields);
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
+    const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
+    const statusIndex = headers.indexOf('Status');
+    const columnStyles = {};
+    orderedVisibleColumns.forEach((col, index) => {
+        columnStyles[index] = { cellWidth: sanitizeColumnWidth(columnWidthMap[col.field_key]) };
+    });
 
     autoTable(doc, {
         head: [headers],
         body: body,
         startY: statsY + boxH + 10,
         theme: 'grid',
+        columnStyles,
         styles: { fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
         headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
-            if (data.section === 'body' && data.column.index === 5) {
+            if (statusIndex >= 0 && data.section === 'body' && data.column.index === statusIndex) {
                 const status = data.cell.raw;
                 if (status === 'APPROVED') data.cell.styles.textColor = [16, 185, 129];
                 if (status === 'REJECTED') data.cell.styles.textColor = [239, 68, 68];

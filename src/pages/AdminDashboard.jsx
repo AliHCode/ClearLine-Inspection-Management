@@ -6,6 +6,7 @@ import { useProject } from '../context/ProjectContext';
 import { USER_ROLES } from '../utils/constants';
 import Header from '../components/Header';
 import UserAvatar from '../components/UserAvatar';
+import { buildColumnWidthMap, getDefaultColumnWidth, sanitizeColumnWidth } from '../utils/tableLayout';
 import {
     Users, Shield, UserX, UserCheck, RefreshCw,
     FolderPlus, Trash2, Plus, GripVertical, ArrowUp, ArrowDown, Save,
@@ -55,10 +56,81 @@ export default function AdminDashboard() {
     // Field ordering state
     const [orderedFields, setOrderedFields] = useState([]);
     const [isReordering, setIsReordering] = useState(false);
+    const [columnWidthsDraft, setColumnWidthsDraft] = useState({});
+    const [resizeState, setResizeState] = useState(null);
+
+    const BUILT_IN_COLUMNS = [
+        { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_description', field_key: 'description', field_name: 'Description', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_location', field_key: 'location', field_name: 'Location', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_type', field_key: 'inspection_type', field_name: 'Type', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_status', field_key: 'status', field_name: 'Status', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_remarks', field_key: 'remarks', field_name: 'Remarks', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_attachments', field_key: 'attachments', field_name: 'Attachments', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', field_type: 'Built-in', is_builtin: true },
+    ];
 
     useEffect(() => {
-        setOrderedFields(projectFields || []);
-    }, [projectFields]);
+        const order = activeProject?.column_order || [
+            'serial', 'description', 'location', 'inspection_type',
+            ...(projectFields || []).map(f => f.field_key),
+            'status', 'remarks', 'attachments', 'actions'
+        ];
+        
+        const allFields = [
+            ...BUILT_IN_COLUMNS,
+            ...(projectFields || []).map(f => ({ ...f, is_builtin: false }))
+        ];
+
+        const mappedFields = order.map(key => allFields.find(f => f.field_key === key)).filter(Boolean);
+        
+        // Add any fields that aren't in the order string yet (new fields)
+        allFields.forEach(f => {
+            if (!mappedFields.some(mf => mf.field_key === f.field_key)) {
+                mappedFields.push(f);
+            }
+        });
+
+        setOrderedFields(mappedFields);
+        setColumnWidthsDraft(buildColumnWidthMap(mappedFields, activeProject?.column_widths || {}));
+    }, [projectFields, activeProject]);
+
+    useEffect(() => {
+        if (!resizeState) return;
+
+        function onMouseMove(e) {
+            const delta = e.clientX - resizeState.startX;
+            const next = sanitizeColumnWidth(resizeState.startWidth + delta, resizeState.startWidth);
+            setColumnWidthsDraft((prev) => ({ ...prev, [resizeState.fieldKey]: next }));
+            setIsReordering(true);
+        }
+
+        function onMouseUp() {
+            setResizeState(null);
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [resizeState]);
+
+    const getDraftWidth = (fieldKey) => {
+        return sanitizeColumnWidth(columnWidthsDraft[fieldKey], getDefaultColumnWidth(fieldKey));
+    };
+
+    const startResize = (event, fieldKey) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setResizeState({
+            fieldKey,
+            startX: event.clientX,
+            startWidth: getDraftWidth(fieldKey),
+        });
+    };
 
     // ─── Fetch all users ───
     const fetchUsers = useCallback(async () => {
@@ -241,14 +313,29 @@ export default function AdminDashboard() {
     const saveFieldOrder = async () => {
         try {
             setLoading(true);
+            const columnOrderKeys = orderedFields.map(f => f.field_key);
+            await supabase
+                .from('projects')
+                .update({
+                    column_order: columnOrderKeys,
+                    column_widths: columnWidthsDraft,
+                })
+                .eq('id', activeProject.id);
+
+            // Also update traditional sort_order for custom fields for backward compatibility
+            let customIndex = 0;
             for (let i = 0; i < orderedFields.length; i++) {
                 const field = orderedFields[i];
-                await supabase.from('project_fields').update({ sort_order: i }).eq('id', field.id);
+                if (!field.is_builtin) {
+                    await supabase.from('project_fields').update({ sort_order: customIndex }).eq('id', field.id);
+                    customIndex++;
+                }
             }
-            showMsg('Column order updated successfully. Refresh to see changes match globally.');
+
+            showMsg('Column layout saved successfully. Refresh to see changes across tables.');
             setIsReordering(false);
-            // Refresh to ensure ProjectContext gets the new order
-            window.location.reload(); 
+            // Give time for context reload
+            setTimeout(() => window.location.reload(), 1000);
         } catch (err) {
             showMsg('Error updating order: ' + err.message);
         } finally {
@@ -426,13 +513,116 @@ export default function AdminDashboard() {
                         {isReordering && (
                             <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontSize: '0.9rem', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <AlertCircle size={16} /> <strong>Unsaved order changes:</strong> The custom columns have been moved mapping position.
+                                    <AlertCircle size={16} /> <strong>Unsaved layout changes:</strong> Order and width settings are pending save.
                                 </span>
-                                <button onClick={saveFieldOrder} className="btn btn-sm" style={{ backgroundColor: '#d97706', color: 'white', border: 'none', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                    <Save size={14} /> Update Order
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={() => {
+                                            const reset = {};
+                                            orderedFields.forEach((f) => {
+                                                reset[f.field_key] = getDefaultColumnWidth(f.field_key);
+                                            });
+                                            setColumnWidthsDraft(reset);
+                                            setIsReordering(true);
+                                        }}
+                                        className="btn btn-sm btn-ghost"
+                                        style={{ border: '1px solid #f59e0b', color: '#b45309' }}
+                                    >
+                                        Reset Widths
+                                    </button>
+                                    <button onClick={saveFieldOrder} className="btn btn-sm" style={{ backgroundColor: '#d97706', color: 'white', border: 'none', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                        <Save size={14} /> Save Layout
+                                    </button>
+                                </div>
                             </div>
                         )}
+
+                        <div style={{ marginBottom: '1rem', border: '1px solid var(--clr-border)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid var(--clr-border)', background: 'var(--clr-bg-secondary)', fontSize: '0.85rem', color: 'var(--clr-text-muted)' }}>
+                                Drag the right edge of each header below to resize columns visually.
+                            </div>
+                            <div className="rfi-table-wrapper" style={{ margin: 0 }}>
+                                <table className="rfi-table editable" style={{ tableLayout: 'fixed' }}>
+                                    <thead>
+                                        <tr>
+                                            {orderedFields.map((f) => {
+                                                const width = getDraftWidth(f.field_key);
+                                                return (
+                                                    <th
+                                                        key={`preview_${f.field_key}`}
+                                                        style={{
+                                                            width: `${width}px`,
+                                                            minWidth: `${width}px`,
+                                                            position: 'relative',
+                                                            userSelect: 'none',
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                            <span>{f.field_name}</span>
+                                                            <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500 }}>{width}px</span>
+                                                        </div>
+                                                        <span
+                                                            role="separator"
+                                                            aria-orientation="vertical"
+                                                            title="Drag to resize"
+                                                            onMouseDown={(e) => startResize(e, f.field_key)}
+                                                            onDoubleClick={() => {
+                                                                const resetWidth = getDefaultColumnWidth(f.field_key);
+                                                                setColumnWidthsDraft((prev) => ({ ...prev, [f.field_key]: resetWidth }));
+                                                                setIsReordering(true);
+                                                            }}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 0,
+                                                                right: -5,
+                                                                width: '10px',
+                                                                height: '100%',
+                                                                cursor: 'col-resize',
+                                                                zIndex: 2,
+                                                            }}
+                                                        >
+                                                            <span
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: '22%',
+                                                                    bottom: '22%',
+                                                                    left: '50%',
+                                                                    width: '2px',
+                                                                    transform: 'translateX(-50%)',
+                                                                    background: resizeState?.fieldKey === f.field_key ? 'var(--clr-brand-secondary)' : '#cbd5e1',
+                                                                    borderRadius: '2px',
+                                                                }}
+                                                            />
+                                                        </span>
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            {orderedFields.map((f) => {
+                                                const width = getDraftWidth(f.field_key);
+                                                return (
+                                                    <td
+                                                        key={`preview_cell_${f.field_key}`}
+                                                        style={{
+                                                            width: `${width}px`,
+                                                            minWidth: `${width}px`,
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                        }}
+                                                    >
+                                                        Sample {f.field_name}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
                         <div className="rfi-table-wrapper">
                             <table className="rfi-table editable">
@@ -442,55 +632,18 @@ export default function AdminDashboard() {
                                         <th>Column Name</th>
                                         <th>Key</th>
                                         <th>Type</th>
+                                        <th style={{ width: '110px', textAlign: 'center' }}>Width (px)</th>
                                         <th>Options</th>
                                         <th style={{ width: '80px', textAlign: 'center' }}>Required</th>
                                         <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {/* BUILT-IN TOP */}
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Sr#</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>serial</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Description</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>description</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Location</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>location</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Type</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>inspection_type</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-
                                     {orderedFields.length === 0 ? (
-                                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>No custom fields yet. Click "Add Column" to create dynamic RFI table headings.</td></tr>
+                                        <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>No columns configured yet.</td></tr>
                                     ) : (
                                         orderedFields.map((f, i) => (
-                                            <tr key={f.id} style={{ backgroundColor: '#fff' }}>
+                                            <tr key={f.id || f.field_key} style={{ backgroundColor: f.is_builtin ? '#f8fafc' : '#fff' }}>
                                                 <td style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
                                                     <button type="button" className="btn btn-sm btn-ghost" disabled={i === 0} onClick={() => moveField(i, 'up')} style={{ padding: '0.2rem', color: i === 0 ? '#cbd5e1' : '#64748b' }}>
                                                         <ArrowUp size={16} />
@@ -499,11 +652,25 @@ export default function AdminDashboard() {
                                                         <ArrowDown size={16} />
                                                     </button>
                                                 </td>
-                                                <td style={{ fontWeight: 600, color: 'var(--clr-brand-primary)' }}>{f.field_name}</td>
+                                                <td style={{ fontWeight: 600, color: f.is_builtin ? '#64748b' : 'var(--clr-brand-primary)' }}>{f.field_name}</td>
                                                 <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{f.field_key}</code></td>
-                                                <td>{FIELD_TYPES.find(t => t.value === f.field_type)?.label || f.field_type}</td>
+                                                <td>{f.is_builtin ? 'Built-in' : (FIELD_TYPES.find(t => t.value === f.field_type)?.label || f.field_type)}</td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input
+                                                        type="number"
+                                                        min={80}
+                                                        max={640}
+                                                        value={columnWidthsDraft[f.field_key] ?? getDefaultColumnWidth(f.field_key)}
+                                                        onChange={(e) => {
+                                                            const nextWidth = sanitizeColumnWidth(e.target.value, getDefaultColumnWidth(f.field_key));
+                                                            setColumnWidthsDraft((prev) => ({ ...prev, [f.field_key]: nextWidth }));
+                                                            setIsReordering(true);
+                                                        }}
+                                                        style={{ width: '88px' }}
+                                                    />
+                                                </td>
                                                 <td>
-                                                    {f.field_type === 'select' && Array.isArray(f.options) ? (
+                                                    {!f.is_builtin && f.field_type === 'select' && Array.isArray(f.options) ? (
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                                                             {f.options.map((o, idx) => (
                                                                 <span key={idx} style={{ background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem' }}>{o}</span>
@@ -512,55 +679,21 @@ export default function AdminDashboard() {
                                                     ) : '—'}
                                                 </td>
                                                 <td style={{ textAlign: 'center' }}>
-                                                    <input type="checkbox" checked={f.is_required} onChange={() => handleToggleRequired(f)} />
+                                                    <input type="checkbox" checked={f.is_required || f.is_builtin} disabled={f.is_builtin} onChange={() => !f.is_builtin && handleToggleRequired(f)} />
                                                 </td>
                                                 <td style={{ textAlign: 'center' }}>
-                                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}
-                                                        onClick={() => handleDeleteField(f.id)} title="Delete field">
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    {!f.is_builtin ? (
+                                                        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}
+                                                            onClick={() => handleDeleteField(f.id)} title="Delete custom field">
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Fixed</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
                                     )}
-
-                                    {/* BUILT-IN BOTTOM */}
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Status</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>status</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Remarks</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>remarks</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Attachments</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>attachments</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
-                                    <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-                                        <td style={{ textAlign: 'center' }}>-</td>
-                                        <td style={{ fontWeight: 600 }}>Actions</td>
-                                        <td><code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>actions</code></td>
-                                        <td>Built-in</td>
-                                        <td>—</td>
-                                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked disabled /></td>
-                                        <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>Fixed</td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>

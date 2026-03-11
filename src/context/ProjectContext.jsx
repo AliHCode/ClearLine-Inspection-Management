@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
+import { buildColumnWidthMap, getColumnWidthStyle } from '../utils/tableLayout';
 
 const ProjectContext = createContext(null);
 
@@ -12,6 +13,8 @@ export function ProjectProvider({ children }) {
 
     // Custom fields for active project
     const [projectFields, setProjectFields] = useState([]);
+    const [orderedTableColumns, setOrderedTableColumns] = useState([]);
+    const [columnWidthMap, setColumnWidthMap] = useState({});
     const [loadingFields, setLoadingFields] = useState(false);
 
     // Project members
@@ -117,6 +120,47 @@ export function ProjectProvider({ children }) {
             fetchProjectMembers(activeProject.id);
         }
     }, [activeProject, fetchProjectFields, fetchProjectMembers]);
+
+    // Build the ordered table columns anytime fields or active project changes
+    useEffect(() => {
+        const order = activeProject?.column_order || [
+            'serial', 'description', 'location', 'inspection_type',
+            ...(projectFields || []).map(f => f.field_key),
+            'status', 'remarks', 'attachments', 'actions'
+        ];
+        
+        const BUILT_IN_COLUMNS = [
+            { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', is_builtin: true },
+            { id: 'builtin_description', field_key: 'description', field_name: 'Description', is_builtin: true },
+            { id: 'builtin_location', field_key: 'location', field_name: 'Location', is_builtin: true },
+            { id: 'builtin_type', field_key: 'inspection_type', field_name: 'Type', is_builtin: true },
+            { id: 'builtin_status', field_key: 'status', field_name: 'Status', is_builtin: true },
+            { id: 'builtin_remarks', field_key: 'remarks', field_name: 'Remarks', is_builtin: true },
+            { id: 'builtin_attachments', field_key: 'attachments', field_name: 'Attachments', is_builtin: true },
+            { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', is_builtin: true },
+        ];
+
+        const allFields = [
+            ...BUILT_IN_COLUMNS,
+            ...(projectFields || []).map(f => ({ ...f, is_builtin: false }))
+        ];
+
+        const mappedFields = order.map(key => allFields.find(f => f.field_key === key)).filter(Boolean);
+        
+        // Add any missing custom fields that might accidentally be missing in column_order
+        allFields.forEach(f => {
+            if (!mappedFields.some(mf => mf.field_key === f.field_key)) {
+                mappedFields.push(f);
+            }
+        });
+
+        setOrderedTableColumns(mappedFields);
+        setColumnWidthMap(buildColumnWidthMap(mappedFields, activeProject?.column_widths || {}));
+    }, [projectFields, activeProject]);
+
+    function getTableColumnStyle(fieldKey) {
+        return getColumnWidthStyle(fieldKey, columnWidthMap);
+    }
 
     // ─── Change active project ───
     async function changeActiveProject(projectId) {
@@ -267,7 +311,7 @@ export function ProjectProvider({ children }) {
 
     return (
         <ProjectContext.Provider value={{
-            projects, activeProject, loadingProjects, projectFields, loadingFields, projectMembers,
+            projects, activeProject, loadingProjects, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectMembers,
             fetchProjects, changeActiveProject, createProject, deleteProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,

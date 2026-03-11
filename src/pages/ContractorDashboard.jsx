@@ -27,7 +27,7 @@ import { useProject } from '../context/ProjectContext';
 export default function ContractorDashboard() {
     const { user } = useAuth();
     const { rfis, getStats } = useRFI();
-    const { activeProject, projectFields } = useProject();
+    const { activeProject, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const navigate = useNavigate();
     const today = getToday();
@@ -152,7 +152,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, projectFields)}
+                                            onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap)}
                                             title="Export to PDF"
                                         >
                                             <FileDown size={16} /> PDF
@@ -160,7 +160,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, projectFields)}
+                                            onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap)}
                                             title="Export to Excel"
                                         >
                                             <Table size={16} /> Excel
@@ -168,7 +168,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName, projectFields)}
+                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap)}
                                             title="Generate branded daily report"
                                         >
                                             <ClipboardList size={16} /> Daily Report
@@ -195,12 +195,12 @@ export default function ContractorDashboard() {
                                 <table className="rfi-table editable">
                                     <thead>
                                         <tr>
-                                            <th className="col-serial">#</th>
-                                            <th className="col-desc">Description</th>
-                                            <th className="col-loc">Location</th>
-                                            <th className="col-type">Type</th>
+                                            <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
+                                            <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
+                                            <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
+                                            <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
                                             {projectFields.map(f => (
-                                                <th key={f.id}>{f.field_name}</th>
+                                                <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
                                             ))}
                                             <th>Date</th>
                                             <th className="col-status">Status</th>
@@ -209,12 +209,12 @@ export default function ContractorDashboard() {
                                     <tbody>
                                         {myRfis.map((rfi) => (
                                             <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
-                                                <td className="col-serial" data-label="#">{rfi.serialNo}</td>
-                                                <td className="col-desc" data-label="Description">{rfi.description}</td>
-                                                <td className="col-loc" data-label="Location">{rfi.location}</td>
-                                                <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                                <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>{rfi.serialNo}</td>
+                                                <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
+                                                <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
+                                                <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
                                                 {projectFields.map(f => (
-                                                    <td key={f.id} data-label={f.field_name}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                    <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
                                                 ))}
                                                 <td data-label="Date">{rfi.filedDate}</td>
                                                 <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>

@@ -16,7 +16,7 @@ import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList 
 export default function ReviewQueue() {
     const { user } = useAuth();
     const { approveRFI, rejectRFI, requestInfo, getReviewQueue, rfis, uploadImages, contractors } = useRFI();
-    const { activeProject, projectFields } = useProject();
+    const { activeProject, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [rejectTarget, setRejectTarget] = useState(null);
@@ -133,7 +133,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, projectFields)}
+                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap)}
                                 title="Export to PDF"
                                 aria-label="Export to PDF"
                             >
@@ -142,7 +142,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, projectFields)}
+                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap)}
                                 title="Export to Excel"
                                 aria-label="Export to Excel"
                             >
@@ -151,7 +151,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, projectFields)}
+                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, orderedTableColumns, columnWidthMap)}
                                 title="Generate branded daily report"
                             >
                                 <ClipboardList size={16} /> Daily Report
@@ -210,18 +210,18 @@ export default function ReviewQueue() {
                                                 />
                                             )}
                                         </th>
-                                        <th className="col-serial">#</th>
-                                        <th className="col-desc">Description</th>
-                                        <th className="col-loc">Location</th>
-                                        <th className="col-type">Type</th>
+                                        <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
+                                        <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
+                                        <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
+                                        <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
                                         {projectFields.map(f => (
-                                            <th key={f.id}>{f.field_name}</th>
+                                            <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
                                         ))}
                                         <th className="col-assign">Assigned To</th>
                                         <th className="col-status">Filed</th>
-                                        <th className="col-remarks">Remarks/Notes</th>
-                                        <th className="col-files">Attachments</th>
-                                        <th className="col-actions">{filter === 'to_review' || filter === 'my_assigned' ? 'Actions' : 'Status'}</th>
+                                        <th className="col-remarks" style={getTableColumnStyle('remarks')}>Remarks/Notes</th>
+                                        <th className="col-files" style={getTableColumnStyle('attachments')}>Attachments</th>
+                                        <th className="col-actions" style={getTableColumnStyle('actions')}>{filter === 'to_review' || filter === 'my_assigned' ? 'Actions' : 'Status'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -238,7 +238,7 @@ export default function ReviewQueue() {
                                                         />
                                                     )}
                                                 </td>
-                                                <td className="col-serial" data-label="#">
+                                                <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                         <UserAvatar name={rfi.filerName} size={32} />
                                                         <div>
@@ -254,11 +254,11 @@ export default function ReviewQueue() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="col-desc" data-label="Description">{rfi.description}</td>
-                                                <td className="col-loc" data-label="Location">{rfi.location}</td>
-                                                <td className="col-type" data-label="Type">{rfi.inspectionType}</td>
+                                                <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
+                                                <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
+                                                <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
                                                 {projectFields.map(f => (
-                                                    <td key={f.id} data-label={f.field_name}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                    <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
                                                 ))}
                                                 <td className="col-assign" data-label="Assigned To">
                                                     {rfi.assigneeName ? (
@@ -270,12 +270,12 @@ export default function ReviewQueue() {
                                                     )}
                                                 </td>
                                                 <td className="col-status" data-label="Filed Date">{formatDateDisplay(rfi.originalFiledDate)}</td>
-                                                <td className="col-remarks" data-label="Remarks">
+                                                <td className="col-remarks" data-label="Remarks" style={getTableColumnStyle('remarks')}>
                                                     {isCarryover && rfi.remarks ? (
                                                         <span className="remarks-text">{rfi.remarks}</span>
                                                     ) : '—'}
                                                 </td>
-                                                <td className="col-files" data-label="Attachments">
+                                                <td className="col-files" data-label="Attachments" style={getTableColumnStyle('attachments')}>
                                                     {rfi.images && rfi.images.length > 0 ? (
                                                         <div
                                                             className="image-preview-grid consultant-grid"
