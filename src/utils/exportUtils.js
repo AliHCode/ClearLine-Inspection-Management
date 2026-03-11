@@ -5,7 +5,7 @@ import { formatDateDisplay } from './rfiLogic';
 import { sanitizeColumnWidth, widthPxToExcelChars } from './tableLayout';
 
 const PDF_PX_TO_PT = 0.6;
-const PDF_SAFE_MARGIN = 10;
+const PDF_SAFE_MARGIN = 14;
 const PDF_COMPACT_FACTOR = 0.84;
 const DEFAULT_EXPORT_TEMPLATE = {
     header: {
@@ -92,16 +92,16 @@ function addImageSafe(doc, dataUrl, x, y, w, h) {
 }
 
 function getPdfLayoutMap(doc, template) {
-    const canvasW = template?.layout?.canvasWidth || 1200;
-    const canvasH = template?.layout?.canvasHeight || 800;
+    const canvasW = template?.layout?.canvasWidth || 1123;
+    const canvasH = template?.layout?.canvasHeight || 794;
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const safeMargin = PDF_SAFE_MARGIN;
-    const availW = Math.max(60, pageW - safeMargin * 2);
-    const availH = Math.max(60, pageH - safeMargin * 2);
+    const margin = PDF_SAFE_MARGIN;
+    const availW = Math.max(60, pageW - margin * 2);
+    const availH = Math.max(60, pageH - margin * 2);
     const scale = Math.min(availW / canvasW, availH / canvasH);
-    const originX = safeMargin + (availW - canvasW * scale) / 2;
-    const originY = safeMargin + (availH - canvasH * scale) / 2;
+    const originX = margin + (availW - canvasW * scale) / 2;
+    const originY = margin;
     const elements = template?.layout?.elements || {};
 
     function mapRect(key, fallback) {
@@ -134,7 +134,7 @@ function getPdfLayoutMap(doc, template) {
         submissionDate: mapRect('submissionDate', { x: 960, y: 86, w: 220, h: 20, fontSize: 11 }),
         table: mapRect('table', { x: 20, y: 142, w: 1160, h: 150 }),
         additionalLogos,
-        safeMargin,
+        margin,
         scale,
     };
 }
@@ -257,7 +257,7 @@ function buildPdfColumnStyles(doc, fieldKeys = [], columnWidthMap = {}, leftMarg
     const columnStyles = {};
     rawWidths.forEach((w, idx) => {
         columnStyles[idx] = {
-            cellWidth: Math.max(28, Number((w * scale).toFixed(2))),
+            cellWidth: Math.max(5, Number((w * scale).toFixed(2))),
             overflow: 'linebreak',
         };
     });
@@ -408,12 +408,13 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     const leftLogo = await srcToDataUrl(template.header.leftLogoUrl);
     const rightLogo = await srcToDataUrl(template.header.rightLogoUrl);
 
-    // Header
+    // Header — logos
     if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
     if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
-    layout.additionalLogos.forEach((logo) => {
-        addImageSafe(doc, logo.url, logo.x, logo.y, logo.w, logo.h);
-    });
+    for (const logo of layout.additionalLogos) {
+        const logoData = await srcToDataUrl(logo.url);
+        if (logoData) addImageSafe(doc, logoData, logo.x, logo.y, logo.w, logo.h);
+    }
 
     doc.setFontSize(Math.max(9, layout.title.fontSize * PDF_COMPACT_FACTOR));
     doc.text(template.header.title || title, layout.title.x + layout.title.w / 2, layout.title.y + layout.title.h * 0.7, { align: 'center' });
@@ -424,8 +425,8 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
         doc.setFontSize(Math.max(7.5, layout.submissionDate.fontSize * PDF_COMPACT_FACTOR));
         doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, layout.submissionDate.x + layout.submissionDate.w, layout.submissionDate.y + layout.submissionDate.h * 0.75, { align: 'right' });
     }
-    doc.setFontSize(8);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, Math.max(26, layout.table.y - 4));
+    doc.setFontSize(7);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, layout.table.x, layout.table.y - 2);
 
     const exportData = prepareDataForExport(rfis, projectFields, template);
     const headers = exportData.headers;
@@ -434,8 +435,9 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     const groupedMeta = buildGroupedHeaderMeta(fieldKeys, template.table.groupedHeaders || []);
     const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = fieldKeys.indexOf('status');
-    const tableLeft = layout.table.x;
-    const tableRight = pageWidth - (layout.table.x + layout.table.w);
+    const tableLeft = Math.max(layout.margin, layout.table.x);
+    const tableRight = Math.max(layout.margin, pageWidth - (layout.table.x + layout.table.w));
+    const tableW = pageWidth - tableLeft - tableRight;
     const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, tableLeft, tableRight);
 
     autoTable(doc, {
@@ -444,7 +446,7 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
         startY: Math.max(32, layout.table.y),
         theme: 'grid',
         margin: { left: tableLeft, right: tableRight },
-        tableWidth: layout.table.w,
+        tableWidth: tableW,
         columnStyles,
         styles: {
             fontSize: template.table.compactMode ? Math.max(6.8, (template.table.bodyFontSize - 1) * PDF_COMPACT_FACTOR) : Math.max(6.8, template.table.bodyFontSize * PDF_COMPACT_FACTOR),
@@ -500,9 +502,10 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     doc.setTextColor(255, 255, 255);
     if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
     if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
-    layout.additionalLogos.forEach((logo) => {
-        addImageSafe(doc, logo.url, logo.x, logo.y, logo.w, logo.h);
-    });
+    for (const logo of layout.additionalLogos) {
+        const logoData = await srcToDataUrl(logo.url);
+        if (logoData) addImageSafe(doc, logoData, logo.x, logo.y, logo.w, logo.h);
+    }
 
     doc.setFontSize(Math.max(9, layout.title.fontSize * PDF_COMPACT_FACTOR));
     doc.setFont('helvetica', 'bold');
@@ -588,8 +591,9 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     const groupedMeta = buildGroupedHeaderMeta(fieldKeys, template.table.groupedHeaders || []);
     const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = fieldKeys.indexOf('status');
-    const tableLeft = layout.table.x;
-    const tableRight = pageWidth - (layout.table.x + layout.table.w);
+    const tableLeft = Math.max(layout.margin, layout.table.x);
+    const tableRight = Math.max(layout.margin, pageWidth - (layout.table.x + layout.table.w));
+    const tableW = pageWidth - tableLeft - tableRight;
     const columnStyles = buildPdfColumnStyles(doc, fieldKeys, columnWidthMap, tableLeft, tableRight);
 
     autoTable(doc, {
@@ -598,7 +602,7 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
         startY: statsY + boxH + 10,
         theme: 'grid',
         margin: { left: tableLeft, right: tableRight },
-        tableWidth: layout.table.w,
+        tableWidth: tableW,
         columnStyles,
         styles: {
             fontSize: template.table.compactMode ? Math.max(6.8, (template.table.bodyFontSize - 1) * PDF_COMPACT_FACTOR) : Math.max(6.8, template.table.bodyFontSize * PDF_COMPACT_FACTOR),
