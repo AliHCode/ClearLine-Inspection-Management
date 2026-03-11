@@ -75,6 +75,19 @@ export default function ContractorDashboard() {
         }))
         .slice(-7);
 
+    const contractorVisibleColumns = orderedTableColumns.filter(c => c.field_key !== 'actions');
+
+    function renderContractorCell(rfi, col) {
+        if (col.field_key === 'serial') return rfi.serialNo;
+        if (col.field_key === 'description') return rfi.description;
+        if (col.field_key === 'location') return rfi.location;
+        if (col.field_key === 'inspection_type') return rfi.inspectionType;
+        if (col.field_key === 'status') return <StatusBadge status={rfi.status} />;
+        if (col.field_key === 'remarks') return rfi.remarks || '—';
+        if (col.field_key === 'attachments') return (rfi.images?.length || 0) > 0 ? `${rfi.images.length} file(s)` : '—';
+        return rfi.customFields?.[col.field_key] || '—';
+    }
+
     return (
         <div className="page-wrapper">
             <Header />
@@ -195,29 +208,21 @@ export default function ContractorDashboard() {
                                 <table className="rfi-table editable">
                                     <thead>
                                         <tr>
-                                            <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
-                                            <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
-                                            <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
-                                            <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
-                                            {projectFields.map(f => (
-                                                <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
+                                            {contractorVisibleColumns.map((col) => (
+                                                <th key={col.id || col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
                                             ))}
                                             <th>Date</th>
-                                            <th className="col-status">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {myRfis.map((rfi) => (
                                             <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
-                                                <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>{rfi.serialNo}</td>
-                                                <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
-                                                <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
-                                                <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
-                                                {projectFields.map(f => (
-                                                    <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                {contractorVisibleColumns.map((col) => (
+                                                    <td key={`${rfi.id}_${col.field_key}`} data-label={col.field_name} style={getTableColumnStyle(col.field_key)}>
+                                                        {renderContractorCell(rfi, col)}
+                                                    </td>
                                                 ))}
                                                 <td data-label="Date">{rfi.filedDate}</td>
-                                                <td className="col-status" data-label="Status"><StatusBadge status={rfi.status} /></td>
                                             </tr>
                                         ))}
                                     </tbody>

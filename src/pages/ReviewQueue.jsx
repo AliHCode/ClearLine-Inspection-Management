@@ -119,6 +119,147 @@ export default function ReviewQueue() {
         setTimeout(scrollNow, 600);
     }
 
+    function renderReviewActionCell(rfi) {
+        if (filter === 'to_review' || filter === 'my_assigned') {
+            return (
+                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                    <button
+                        onClick={() => handleApprove(rfi.id)}
+                        title="Approve"
+                        style={{
+                            background: 'transparent', border: '1.5px solid #d1d5db',
+                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '3px',
+                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <CheckCircle size={15} />
+                    </button>
+                    <button
+                        onClick={() => {
+                            setRejectTarget(rfi);
+                            setDetailTarget(null);
+                        }}
+                        title="Reject"
+                        style={{
+                            background: 'transparent', border: '1.5px solid #d1d5db',
+                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '3px',
+                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <XCircle size={15} />
+                    </button>
+                    <button
+                        onClick={() => {
+                            setDetailTarget(rfi);
+                            setRejectTarget(null);
+                            setInfoRequestTarget(null);
+                            setScrollTrigger(prev => prev + 1);
+                            setTimeout(() => scrollToPageBottom(), 80);
+                        }}
+                        title="Chat"
+                        style={{
+                            background: 'transparent', border: '1.5px solid #d1d5db',
+                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '3px',
+                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <MessageSquare size={15} />
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                <StatusBadge status={rfi.status} />
+                <button
+                    onClick={() => {
+                        setDetailTarget(rfi);
+                        setRejectTarget(null);
+                        setInfoRequestTarget(null);
+                        setScrollTrigger(prev => prev + 1);
+                        setTimeout(() => scrollToPageBottom(), 80);
+                    }}
+                    title="Open Discussion"
+                    style={{
+                        background: 'transparent', border: '1.5px solid #d1d5db',
+                        borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '3px',
+                        color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                >
+                    <MessageSquare size={15} />
+                </button>
+            </div>
+        );
+    }
+
+    function renderReviewOrderedCell(rfi, col, isCarryover) {
+        if (col.field_key === 'serial') {
+            return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <UserAvatar name={rfi.filerName} size={32} />
+                    <div>
+                        <div style={{ fontWeight: 600 }}>#{rfi.serialNo}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>
+                            {rfi.filerName}
+                        </div>
+                    </div>
+                    {isCarryover && (
+                        <div className="carryover-count" style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                            ×{rfi.carryoverCount} Carryover
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        if (col.field_key === 'description') return rfi.description;
+        if (col.field_key === 'location') return rfi.location;
+        if (col.field_key === 'inspection_type') return rfi.inspectionType;
+        if (col.field_key === 'status') return <StatusBadge status={rfi.status} />;
+        if (col.field_key === 'remarks') return isCarryover && rfi.remarks ? <span className="remarks-text">{rfi.remarks}</span> : '—';
+
+        if (col.field_key === 'attachments') {
+            return rfi.images && rfi.images.length > 0 ? (
+                <div
+                    className="image-preview-grid consultant-grid"
+                    onClick={() => setSelectedImages(rfi.images)}
+                    title="Click to view full size"
+                >
+                    {rfi.images.slice(0, 3).map((url, idx) => (
+                        <img key={idx} src={url} alt="attachment" className="thumbnail" />
+                    ))}
+                    {rfi.images.length > 3 && (
+                        <div className="thumbnail-more">
+                            +{rfi.images.length - 3}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <span className="text-muted">—</span>
+            );
+        }
+
+        if (col.field_key === 'actions') return renderReviewActionCell(rfi);
+        return rfi.customFields?.[col.field_key] || '—';
+    }
+
     return (
         <div className="page-wrapper">
             <Header />
@@ -210,18 +351,11 @@ export default function ReviewQueue() {
                                                 />
                                             )}
                                         </th>
-                                        <th className="col-serial" style={getTableColumnStyle('serial')}>#</th>
-                                        <th className="col-desc" style={getTableColumnStyle('description')}>Description</th>
-                                        <th className="col-loc" style={getTableColumnStyle('location')}>Location</th>
-                                        <th className="col-type" style={getTableColumnStyle('inspection_type')}>Type</th>
-                                        {projectFields.map(f => (
-                                            <th key={f.id} style={getTableColumnStyle(f.field_key)}>{f.field_name}</th>
+                                        {orderedTableColumns.map((col) => (
+                                            <th key={col.id || col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
                                         ))}
                                         <th className="col-assign">Assigned To</th>
                                         <th className="col-status">Filed</th>
-                                        <th className="col-remarks" style={getTableColumnStyle('remarks')}>Remarks/Notes</th>
-                                        <th className="col-files" style={getTableColumnStyle('attachments')}>Attachments</th>
-                                        <th className="col-actions" style={getTableColumnStyle('actions')}>{filter === 'to_review' || filter === 'my_assigned' ? 'Actions' : 'Status'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -238,27 +372,14 @@ export default function ReviewQueue() {
                                                         />
                                                     )}
                                                 </td>
-                                                <td className="col-serial" data-label="#" style={getTableColumnStyle('serial')}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                        <UserAvatar name={rfi.filerName} size={32} />
-                                                        <div>
-                                                            <div style={{ fontWeight: 600 }}>#{rfi.serialNo}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>
-                                                                {rfi.filerName}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {isCarryover && (
-                                                        <div className="carryover-count" style={{ marginTop: '0.5rem', display: 'inline-block' }}>
-                                                            ×{rfi.carryoverCount} Carryover
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="col-desc" data-label="Description" style={getTableColumnStyle('description')}>{rfi.description}</td>
-                                                <td className="col-loc" data-label="Location" style={getTableColumnStyle('location')}>{rfi.location}</td>
-                                                <td className="col-type" data-label="Type" style={getTableColumnStyle('inspection_type')}>{rfi.inspectionType}</td>
-                                                {projectFields.map(f => (
-                                                    <td key={f.id} data-label={f.field_name} style={getTableColumnStyle(f.field_key)}>{rfi.customFields?.[f.field_key] || '—'}</td>
+                                                {orderedTableColumns.map((col) => (
+                                                    <td
+                                                        key={`${rfi.id}_${col.field_key}`}
+                                                        data-label={col.field_name}
+                                                        style={getTableColumnStyle(col.field_key)}
+                                                    >
+                                                        {renderReviewOrderedCell(rfi, col, isCarryover)}
+                                                    </td>
                                                 ))}
                                                 <td className="col-assign" data-label="Assigned To">
                                                     {rfi.assigneeName ? (
@@ -270,121 +391,6 @@ export default function ReviewQueue() {
                                                     )}
                                                 </td>
                                                 <td className="col-status" data-label="Filed Date">{formatDateDisplay(rfi.originalFiledDate)}</td>
-                                                <td className="col-remarks" data-label="Remarks" style={getTableColumnStyle('remarks')}>
-                                                    {isCarryover && rfi.remarks ? (
-                                                        <span className="remarks-text">{rfi.remarks}</span>
-                                                    ) : '—'}
-                                                </td>
-                                                <td className="col-files" data-label="Attachments" style={getTableColumnStyle('attachments')}>
-                                                    {rfi.images && rfi.images.length > 0 ? (
-                                                        <div
-                                                            className="image-preview-grid consultant-grid"
-                                                            onClick={() => setSelectedImages(rfi.images)}
-                                                            title="Click to view full size"
-                                                        >
-                                                            {rfi.images.slice(0, 3).map((url, idx) => (
-                                                                <img
-                                                                    key={idx}
-                                                                    src={url}
-                                                                    alt="attachment"
-                                                                    className="thumbnail"
-                                                                />
-                                                            ))}
-                                                            {rfi.images.length > 3 && (
-                                                                <div className="thumbnail-more">
-                                                                    +{rfi.images.length - 3}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted">—</span>
-                                                    )}
-                                                </td>
-                                                <td className="col-actions" style={{ width: (filter === 'to_review' || filter === 'my_assigned') ? '340px' : '100px' }}>
-                                                    {(filter === 'to_review' || filter === 'my_assigned') ? (
-                                                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
-                                                            <button
-                                                                onClick={() => handleApprove(rfi.id)}
-                                                                title="Approve"
-                                                                style={{
-                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
-                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                                                    display: 'flex', alignItems: 'center', gap: '3px',
-                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
-                                                                }}
-                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                                                            >
-                                                                <CheckCircle size={15} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setRejectTarget(rfi);
-                                                                    setDetailTarget(null); // Close chat if open
-                                                                }}
-                                                                title="Reject"
-                                                                style={{
-                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
-                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                                                    display: 'flex', alignItems: 'center', gap: '3px',
-                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
-                                                                }}
-                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                                                            >
-                                                                <XCircle size={15} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setDetailTarget(rfi);
-                                                                    setRejectTarget(null); // Ensure rejection is closed
-                                                                    setInfoRequestTarget(null); // Ensure info request is closed
-                                                                    setScrollTrigger(prev => prev + 1);
-                                                                    setTimeout(() => scrollToPageBottom(), 80);
-                                                                }}
-                                                                title="Chat"
-                                                                style={{
-                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
-                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                                                    display: 'flex', alignItems: 'center', gap: '3px',
-                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
-                                                                }}
-                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                                                            >
-                                                                <MessageSquare size={15} />
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
-                                                            <StatusBadge status={rfi.status} />
-                                                            <button
-                                                                onClick={() => {
-                                                                    setDetailTarget(rfi);
-                                                                    setRejectTarget(null); 
-                                                                    setInfoRequestTarget(null);
-                                                                    setScrollTrigger(prev => prev + 1);
-                                                                    setTimeout(() => scrollToPageBottom(), 80);
-                                                                }}
-                                                                title="Open Discussion"
-                                                                style={{
-                                                                    background: 'transparent', border: '1.5px solid #d1d5db',
-                                                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                                                    display: 'flex', alignItems: 'center', gap: '3px',
-                                                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                                                    fontFamily: 'inherit', transition: 'all 0.15s',
-                                                                }}
-                                                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                                                            >
-                                                                <MessageSquare size={15} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </td>
                                             </tr>
                                         );
                                     })}
