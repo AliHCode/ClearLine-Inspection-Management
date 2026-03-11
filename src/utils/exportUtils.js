@@ -85,6 +85,33 @@ function addImageSafe(doc, dataUrl, x, y, w, h) {
     }
 }
 
+function getPdfLayoutMap(doc, template) {
+    const canvasW = template?.layout?.canvasWidth || 1200;
+    const scale = doc.internal.pageSize.getWidth() / canvasW;
+    const elements = template?.layout?.elements || {};
+
+    function mapRect(key, fallback) {
+        const src = elements[key] || fallback;
+        return {
+            x: (src.x || 0) * scale,
+            y: (src.y || 0) * scale,
+            w: (src.w || 0) * scale,
+            h: (src.h || 0) * scale,
+            fontSize: Math.max(7, (src.fontSize || 12) * scale),
+        };
+    }
+
+    return {
+        leftLogo: mapRect('leftLogo', { x: 20, y: 20, w: 140, h: 46 }),
+        rightLogo: mapRect('rightLogo', { x: 1040, y: 20, w: 140, h: 46 }),
+        title: mapRect('title', { x: 420, y: 18, w: 360, h: 36, fontSize: 30 }),
+        subtitle: mapRect('subtitle', { x: 420, y: 56, w: 360, h: 24, fontSize: 14 }),
+        projectLine: mapRect('projectLine', { x: 380, y: 82, w: 440, h: 22, fontSize: 12 }),
+        submissionDate: mapRect('submissionDate', { x: 960, y: 86, w: 220, h: 20, fontSize: 11 }),
+        table: mapRect('table', { x: 20, y: 142, w: 1160, h: 150 }),
+    };
+}
+
 function buildGroupedHeaderMeta(headerFieldKeys = [], groupedHeaders = []) {
     const normalizedGroups = (groupedHeaders || [])
         .map((group) => {
@@ -350,22 +377,25 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     const doc = new jsPDF('landscape'); // Landscape for better table fit
     const template = normalizeExportTemplate(projectTemplate, title);
     const pageWidth = doc.internal.pageSize.getWidth();
+    const layout = getPdfLayoutMap(doc, template);
     const leftLogo = await srcToDataUrl(template.header.leftLogoUrl);
     const rightLogo = await srcToDataUrl(template.header.rightLogoUrl);
 
     // Header
-    if (leftLogo) addImageSafe(doc, leftLogo, 14, 8, 22, 12);
-    if (rightLogo) addImageSafe(doc, rightLogo, pageWidth - 36, 8, 22, 12);
+    if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
+    if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
 
-    doc.setFontSize(16);
-    doc.text(template.header.title || title, pageWidth / 2, 16, { align: 'center' });
-    doc.setFontSize(10);
-    if (template.header.subtitle) doc.text(template.header.subtitle, pageWidth / 2, 22, { align: 'center' });
-    if (template.header.projectLine) doc.text(template.header.projectLine, pageWidth / 2, 27, { align: 'center' });
+    doc.setFontSize(layout.title.fontSize);
+    doc.text(template.header.title || title, layout.title.x + layout.title.w / 2, layout.title.y + layout.title.h * 0.7, { align: 'center' });
+    doc.setFontSize(layout.subtitle.fontSize);
+    if (template.header.subtitle) doc.text(template.header.subtitle, layout.subtitle.x + layout.subtitle.w / 2, layout.subtitle.y + layout.subtitle.h * 0.75, { align: 'center' });
+    if (template.header.projectLine) doc.text(template.header.projectLine, layout.projectLine.x + layout.projectLine.w / 2, layout.projectLine.y + layout.projectLine.h * 0.75, { align: 'center' });
     if (template.header.showSubmissionDate) {
-        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, pageWidth - 14, 16, { align: 'right' });
+        doc.setFontSize(layout.submissionDate.fontSize);
+        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, layout.submissionDate.x + layout.submissionDate.w, layout.submissionDate.y + layout.submissionDate.h * 0.75, { align: 'right' });
     }
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
+    doc.setFontSize(9);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, Math.max(26, layout.table.y - 4));
 
     const exportData = prepareDataForExport(rfis, projectFields, template);
     const headers = exportData.headers;
@@ -379,7 +409,7 @@ export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report
     autoTable(doc, {
         head: pdfHeadRows,
         body: body,
-        startY: 38,
+        startY: Math.max(32, layout.table.y),
         theme: 'grid',
         margin: { left: 14, right: 14 },
         tableWidth: 'auto',
@@ -420,6 +450,7 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     const doc = new jsPDF('landscape');
     const template = normalizeExportTemplate(projectTemplate, 'RFI Summary');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const layout = getPdfLayoutMap(doc, template);
     const leftLogo = await srcToDataUrl(template.header.leftLogoUrl);
     const rightLogo = await srcToDataUrl(template.header.rightLogoUrl);
 
@@ -432,36 +463,36 @@ export async function generateDailyReport(rfis, date, projectName = 'ProWay Proj
     // ========== HEADER ==========
     const tableHeaderColor = hexToRgb(template.table.headFillColor, [15, 23, 42]);
     doc.setFillColor(tableHeaderColor[0], tableHeaderColor[1], tableHeaderColor[2]);
-    doc.rect(0, 0, pageWidth, 38, 'F');
+    doc.rect(0, 0, pageWidth, Math.max(38, layout.table.y - 8), 'F');
 
     doc.setTextColor(255, 255, 255);
-    if (leftLogo) addImageSafe(doc, leftLogo, 8, 4, 24, 14);
-    if (rightLogo) addImageSafe(doc, rightLogo, pageWidth - 32, 4, 24, 14);
+    if (leftLogo) addImageSafe(doc, leftLogo, layout.leftLogo.x, layout.leftLogo.y, layout.leftLogo.w, layout.leftLogo.h);
+    if (rightLogo) addImageSafe(doc, rightLogo, layout.rightLogo.x, layout.rightLogo.y, layout.rightLogo.w, layout.rightLogo.h);
 
-    doc.setFontSize(20);
+    doc.setFontSize(layout.title.fontSize);
     doc.setFont('helvetica', 'bold');
-    doc.text(template.header.title || 'RFI Summary', pageWidth / 2, 15, { align: 'center' });
-    doc.setFontSize(10);
+    doc.text(template.header.title || 'RFI Summary', layout.title.x + layout.title.w / 2, layout.title.y + layout.title.h * 0.7, { align: 'center' });
+    doc.setFontSize(layout.subtitle.fontSize);
     doc.setFont('helvetica', 'normal');
-    doc.text(template.header.subtitle || 'Daily Inspection Report', pageWidth / 2, 22, { align: 'center' });
+    doc.text(template.header.subtitle || 'Daily Inspection Report', layout.subtitle.x + layout.subtitle.w / 2, layout.subtitle.y + layout.subtitle.h * 0.75, { align: 'center' });
     if (template.header.projectLine) {
-        doc.text(template.header.projectLine, pageWidth / 2, 29, { align: 'center' });
+        doc.text(template.header.projectLine, layout.projectLine.x + layout.projectLine.w / 2, layout.projectLine.y + layout.projectLine.h * 0.75, { align: 'center' });
     }
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text(projectName, pageWidth - 14, 14, { align: 'right' });
+    doc.text(projectName, pageWidth - 14, Math.max(14, layout.title.y + 2), { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Date: ${formatDateDisplay(date)}`, pageWidth - 14, 22, { align: 'right' });
+    doc.setFontSize(layout.submissionDate.fontSize);
+    doc.text(`Date: ${formatDateDisplay(date)}`, pageWidth - 14, Math.max(22, layout.subtitle.y + 4), { align: 'right' });
     if (template.header.showSubmissionDate) {
-        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, pageWidth - 14, 28, { align: 'right' });
+        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, pageWidth - 14, Math.max(28, layout.projectLine.y + 2), { align: 'right' });
     }
-    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, pageWidth - 14, 30, { align: 'right' });
+    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, pageWidth - 14, Math.max(32, layout.projectLine.y + 6), { align: 'right' });
 
     // ========== SUMMARY STATS ==========
     doc.setTextColor(0, 0, 0);
-    const statsY = 48;
+    const statsY = Math.max(48, layout.table.y + 4);
     const boxW = 55;
     const boxH = 18;
     const startX = 14;
