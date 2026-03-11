@@ -4,6 +4,229 @@ import * as XLSX from 'xlsx';
 import { formatDateDisplay } from './rfiLogic';
 import { sanitizeColumnWidth, widthPxToExcelChars } from './tableLayout';
 
+const PDF_PX_TO_PT = 0.6;
+const DEFAULT_EXPORT_TEMPLATE = {
+    header: {
+        title: 'RFI Summary',
+        subtitle: '',
+        projectLine: '',
+        showSubmissionDate: true,
+        leftLogoUrl: '',
+        rightLogoUrl: '',
+    },
+    table: {
+        headFillColor: '#1e293b',
+        headTextColor: '#ffffff',
+        bodyFontSize: 8,
+        headFontSize: 8,
+        compactMode: false,
+    },
+    footer: {
+        leftLabel: 'Contractor Representative',
+        rightLabel: 'Consultant Representative',
+        showFooter: true,
+    },
+};
+
+function normalizeExportTemplate(projectTemplate, fallbackTitle = '') {
+    const merged = {
+        header: { ...DEFAULT_EXPORT_TEMPLATE.header, ...(projectTemplate?.header || {}) },
+        table: { ...DEFAULT_EXPORT_TEMPLATE.table, ...(projectTemplate?.table || {}) },
+        footer: { ...DEFAULT_EXPORT_TEMPLATE.footer, ...(projectTemplate?.footer || {}) },
+    };
+
+    if (!merged.header.title) {
+        merged.header.title = fallbackTitle || DEFAULT_EXPORT_TEMPLATE.header.title;
+    }
+
+    return merged;
+}
+
+function hexToRgb(hex, fallback = [30, 41, 59]) {
+    if (!hex || typeof hex !== 'string') return fallback;
+    const normalized = hex.replace('#', '');
+    if (normalized.length !== 6) return fallback;
+    const r = Number.parseInt(normalized.slice(0, 2), 16);
+    const g = Number.parseInt(normalized.slice(2, 4), 16);
+    const b = Number.parseInt(normalized.slice(4, 6), 16);
+    if ([r, g, b].some(Number.isNaN)) return fallback;
+    return [r, g, b];
+}
+
+async function srcToDataUrl(src) {
+    if (!src) return null;
+    if (src.startsWith('data:image')) return src;
+
+    try {
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+        return typeof dataUrl === 'string' ? dataUrl : null;
+    } catch {
+        return null;
+    }
+}
+
+function addImageSafe(doc, dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const format = dataUrl.includes('image/png') ? 'PNG' : dataUrl.includes('image/webp') ? 'WEBP' : 'JPEG';
+    try {
+        doc.addImage(dataUrl, format, x, y, w, h);
+    } catch {
+        // Ignore bad image payloads to keep export resilient.
+    }
+}
+
+function buildGroupedHeaderMeta(headers, orderedVisibleColumns = [], groupedHeaders = []) {
+    const headerFieldKeys = headers.map((h) => getHeaderFieldKey(h, orderedVisibleColumns));
+    const normalizedGroups = (groupedHeaders || [])
+        .map((group) => {
+            const start = headerFieldKeys.indexOf(group.fromKey);
+            const end = headerFieldKeys.indexOf(group.toKey);
+            if (start < 0 || end < 0 || end <= start) return null;
+            return {
+                title: group.title || 'Group',
+                start,
+                end,
+                span: end - start + 1,
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.start - b.start);
+
+    const nonOverlapping = [];
+    let lastEnd = -1;
+    normalizedGroups.forEach((g) => {
+        if (g.start > lastEnd) {
+            nonOverlapping.push(g);
+            lastEnd = g.end;
+        }
+    });
+
+    return nonOverlapping;
+}
+
+function buildPdfHeadRows(headers, groups) {
+    if (!groups || groups.length === 0) return [headers];
+
+    const topRow = [];
+    const bottomRow = [];
+
+    let idx = 0;
+    while (idx < headers.length) {
+        const group = groups.find((g) => g.start === idx);
+        if (group) {
+            topRow.push({ content: group.title, colSpan: group.span, styles: { halign: 'center' } });
+            for (let j = group.start; j <= group.end; j++) {
+                bottomRow.push(headers[j]);
+            }
+            idx += group.span;
+            continue;
+        }
+
+        topRow.push({ content: headers[idx], rowSpan: 2, styles: { valign: 'middle', halign: 'center' } });
+        idx += 1;
+    }
+
+    return [topRow, bottomRow];
+}
+
+function buildExcelGroupedHeaderRows(headers, groups, startRowIndex) {
+    if (!groups || groups.length === 0) {
+        return {
+            rows: [headers],
+            merges: [],
+            bodyStartRow: startRowIndex + 1,
+        };
+    }
+
+    const topRow = Array(headers.length).fill('');
+    const bottomRow = Array(headers.length).fill('');
+    const merges = [];
+
+    headers.forEach((header, idx) => {
+        const group = groups.find((g) => idx >= g.start && idx <= g.end);
+        if (!group) {
+            topRow[idx] = header;
+            merges.push({
+                s: { r: startRowIndex, c: idx },
+                e: { r: startRowIndex + 1, c: idx },
+            });
+            return;
+        }
+
+        if (idx === group.start) {
+            topRow[idx] = group.title;
+            merges.push({
+                s: { r: startRowIndex, c: group.start },
+                e: { r: startRowIndex, c: group.end },
+            });
+        }
+        bottomRow[idx] = header;
+    });
+
+    return {
+        rows: [topRow, bottomRow],
+        merges,
+        bodyStartRow: startRowIndex + 2,
+    };
+}
+
+function getHeaderFieldKey(header, orderedVisibleColumns = []) {
+    if (header === 'Serial No') return 'serial';
+    if (header === 'Description') return 'description';
+    if (header === 'Location') return 'location';
+    if (header === 'Type') return 'inspection_type';
+    if (header === 'Status') return 'status';
+    if (header === 'Remarks') return 'remarks';
+    if (header === 'Attachments') return 'attachments';
+
+    const custom = orderedVisibleColumns.find((c) => c.field_name === header);
+    if (custom) return custom.field_key;
+
+    if (header === 'Filed Date') return 'filed_date';
+    if (header === 'Review Date') return 'review_date';
+    return null;
+}
+
+function buildPdfColumnStyles(doc, headers, orderedVisibleColumns = [], columnWidthMap = {}, leftMargin = 14, rightMargin = 14) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const availableWidth = Math.max(120, pageWidth - leftMargin - rightMargin);
+
+    const rawWidths = headers.map((header) => {
+        const fieldKey = getHeaderFieldKey(header, orderedVisibleColumns);
+
+        if (fieldKey === 'filed_date' || fieldKey === 'review_date') {
+            return 72;
+        }
+
+        if (!fieldKey) {
+            return 64;
+        }
+
+        const px = sanitizeColumnWidth(columnWidthMap[fieldKey]);
+        return Math.max(36, px * PDF_PX_TO_PT);
+    });
+
+    const totalRawWidth = rawWidths.reduce((sum, w) => sum + w, 0);
+    const scale = totalRawWidth > availableWidth ? availableWidth / totalRawWidth : 1;
+
+    const columnStyles = {};
+    rawWidths.forEach((w, idx) => {
+        columnStyles[idx] = {
+            cellWidth: Math.max(28, Number((w * scale).toFixed(2))),
+            overflow: 'linebreak',
+        };
+    });
+
+    return columnStyles;
+}
+
 /**
  * Format RFI data for export
  */
@@ -45,26 +268,57 @@ function prepareDataForExport(rfis, orderedTableColumns = []) {
 /**
  * Export RFIs to Excel Spreadsheet (.xlsx)
  */
-export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [], columnWidthMap = {}) {
+export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [], columnWidthMap = {}, projectTemplate = null) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
     }
 
+    const template = normalizeExportTemplate(projectTemplate, filename);
     const data = prepareDataForExport(rfis, projectFields);
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
+    const headers = Object.keys(data[0]);
+    const body = data.map((obj) => headers.map((h) => obj[h]));
     const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
+    const groupedMeta = buildGroupedHeaderMeta(headers, orderedVisibleColumns, template.table.groupedHeaders || []);
+    const aoa = [];
+
+    aoa.push([template.header.title || filename]);
+    if (template.header.subtitle) aoa.push([template.header.subtitle]);
+    if (template.header.projectLine) aoa.push([template.header.projectLine]);
+    if (template.header.showSubmissionDate) aoa.push([`Submission Date: ${new Date().toLocaleDateString()}`]);
+    if (template.header.leftLogoUrl || template.header.rightLogoUrl) {
+        aoa.push([
+            `Logos: Left=${template.header.leftLogoUrl || 'N/A'} | Right=${template.header.rightLogoUrl || 'N/A'}`,
+        ]);
+    }
+    aoa.push([]);
+    const headerStart = aoa.length;
+    const groupedHeaderRows = buildExcelGroupedHeaderRows(headers, groupedMeta, headerStart);
+    aoa.push(...groupedHeaderRows.rows);
+    aoa.push(...body);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+    const workbook = XLSX.utils.book_new();
+
+    const headerLineCount = aoa.length - (1 + body.length);
+    const mergeEnd = Math.max(0, headers.length - 1);
+    const baseMerges = Array.from({ length: Math.max(0, headerLineCount - groupedHeaderRows.rows.length) }, (_, idx) => ({
+        s: { r: idx, c: 0 },
+        e: { r: idx, c: mergeEnd },
+    }));
+    worksheet['!merges'] = [...baseMerges, ...groupedHeaderRows.merges];
 
     // Auto-size columns roughly
-    const cols = Object.keys(data[0]).map((key, index) => {
+    const cols = headers.map((key, index) => {
         const defaultWch = Math.max(
             key.length,
             ...data.map(row => (row[key] ? row[key].toString().length : 0))
         ) + 2;
-        const sourceColumn = orderedVisibleColumns[index];
-        if (!sourceColumn) return { wch: defaultWch };
-        const px = sanitizeColumnWidth(columnWidthMap[sourceColumn.field_key]);
+        const mappedFieldKey = getHeaderFieldKey(key, orderedVisibleColumns);
+        if (!mappedFieldKey || mappedFieldKey === 'filed_date' || mappedFieldKey === 'review_date') {
+            return { wch: defaultWch };
+        }
+        const px = sanitizeColumnWidth(columnWidthMap[mappedFieldKey]);
         return { wch: Math.max(defaultWch, widthPxToExcelChars(px)) };
     });
     worksheet['!cols'] = cols;
@@ -76,38 +330,59 @@ export function exportToExcel(rfis, filename = 'RFI_Report', projectFields = [],
 /**
  * Export RFIs to PDF Document (.pdf)
  */
-export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', projectFields = [], columnWidthMap = {}) {
+export async function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', projectFields = [], columnWidthMap = {}, projectTemplate = null) {
     if (!rfis || rfis.length === 0) {
         alert("No data available to export.");
         return;
     }
 
     const doc = new jsPDF('landscape'); // Landscape for better table fit
+    const template = normalizeExportTemplate(projectTemplate, title);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const leftLogo = await srcToDataUrl(template.header.leftLogoUrl);
+    const rightLogo = await srcToDataUrl(template.header.rightLogoUrl);
 
     // Header
-    doc.setFontSize(18);
-    doc.text(title, 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    if (leftLogo) addImageSafe(doc, leftLogo, 14, 8, 22, 12);
+    if (rightLogo) addImageSafe(doc, rightLogo, pageWidth - 36, 8, 22, 12);
+
+    doc.setFontSize(16);
+    doc.text(template.header.title || title, pageWidth / 2, 16, { align: 'center' });
+    doc.setFontSize(10);
+    if (template.header.subtitle) doc.text(template.header.subtitle, pageWidth / 2, 22, { align: 'center' });
+    if (template.header.projectLine) doc.text(template.header.projectLine, pageWidth / 2, 27, { align: 'center' });
+    if (template.header.showSubmissionDate) {
+        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, pageWidth - 14, 16, { align: 'right' });
+    }
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
 
     const data = prepareDataForExport(rfis, projectFields);
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
     const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
+    const groupedMeta = buildGroupedHeaderMeta(headers, orderedVisibleColumns, template.table.groupedHeaders || []);
+    const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = headers.indexOf('Status');
-    const columnStyles = {};
-    orderedVisibleColumns.forEach((col, index) => {
-        columnStyles[index] = { cellWidth: sanitizeColumnWidth(columnWidthMap[col.field_key]) };
-    });
+    const columnStyles = buildPdfColumnStyles(doc, headers, orderedVisibleColumns, columnWidthMap, 14, 14);
 
     autoTable(doc, {
-        head: [headers],
+        head: pdfHeadRows,
         body: body,
-        startY: 35,
+        startY: 38,
         theme: 'grid',
+        margin: { left: 14, right: 14 },
+        tableWidth: 'auto',
         columnStyles,
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+        styles: {
+            fontSize: template.table.compactMode ? Math.max(7, template.table.bodyFontSize - 1) : template.table.bodyFontSize,
+            cellPadding: template.table.compactMode ? 1.8 : 2.5,
+            overflow: 'linebreak',
+        },
+        headStyles: {
+            fillColor: hexToRgb(template.table.headFillColor, [30, 41, 59]),
+            textColor: hexToRgb(template.table.headTextColor, [255, 255, 255]),
+            fontSize: template.table.headFontSize,
+        },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
             if (statusIndex >= 0 && data.section === 'body' && data.column.index === statusIndex) {
@@ -125,14 +400,17 @@ export function exportToPDF(rfis, title = 'ProWay Inspections - RFI Report', pro
 /**
  * Generate a branded Daily Inspection Report PDF
  */
-export function generateDailyReport(rfis, date, projectName = 'ProWay Project', projectFields = [], columnWidthMap = {}) {
+export async function generateDailyReport(rfis, date, projectName = 'ProWay Project', projectFields = [], columnWidthMap = {}, projectTemplate = null) {
     if (!rfis || rfis.length === 0) {
         alert("No data available for this date.");
         return;
     }
 
     const doc = new jsPDF('landscape');
+    const template = normalizeExportTemplate(projectTemplate, 'RFI Summary');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const leftLogo = await srcToDataUrl(template.header.leftLogoUrl);
+    const rightLogo = await srcToDataUrl(template.header.rightLogoUrl);
 
     // Stats
     const approved = rfis.filter(r => r.status === 'approved').length;
@@ -141,16 +419,23 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project', 
     const total = rfis.length;
 
     // ========== HEADER ==========
-    doc.setFillColor(15, 23, 42); // slate-900
+    const tableHeaderColor = hexToRgb(template.table.headFillColor, [15, 23, 42]);
+    doc.setFillColor(tableHeaderColor[0], tableHeaderColor[1], tableHeaderColor[2]);
     doc.rect(0, 0, pageWidth, 38, 'F');
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
+    if (leftLogo) addImageSafe(doc, leftLogo, 8, 4, 24, 14);
+    if (rightLogo) addImageSafe(doc, rightLogo, pageWidth - 32, 4, 24, 14);
+
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('ProWay', 14, 16);
+    doc.text(template.header.title || 'RFI Summary', pageWidth / 2, 15, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Daily Inspection Report', 14, 24);
+    doc.text(template.header.subtitle || 'Daily Inspection Report', pageWidth / 2, 22, { align: 'center' });
+    if (template.header.projectLine) {
+        doc.text(template.header.projectLine, pageWidth / 2, 29, { align: 'center' });
+    }
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -158,6 +443,9 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project', 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`Date: ${formatDateDisplay(date)}`, pageWidth - 14, 22, { align: 'right' });
+    if (template.header.showSubmissionDate) {
+        doc.text(`Submission Date: ${new Date().toLocaleDateString()}`, pageWidth - 14, 28, { align: 'right' });
+    }
     doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, pageWidth - 14, 30, { align: 'right' });
 
     // ========== SUMMARY STATS ==========
@@ -218,20 +506,31 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project', 
     const headers = Object.keys(data[0]);
     const body = data.map(obj => Object.values(obj));
     const orderedVisibleColumns = (projectFields || []).filter((c) => c.field_key !== 'actions');
+    const groupedMeta = buildGroupedHeaderMeta(headers, orderedVisibleColumns, template.table.groupedHeaders || []);
+    const pdfHeadRows = buildPdfHeadRows(headers, groupedMeta);
     const statusIndex = headers.indexOf('Status');
-    const columnStyles = {};
-    orderedVisibleColumns.forEach((col, index) => {
-        columnStyles[index] = { cellWidth: sanitizeColumnWidth(columnWidthMap[col.field_key]) };
-    });
+    const columnStyles = buildPdfColumnStyles(doc, headers, orderedVisibleColumns, columnWidthMap, 14, 14);
 
     autoTable(doc, {
-        head: [headers],
+        head: pdfHeadRows,
         body: body,
         startY: statsY + boxH + 10,
         theme: 'grid',
+        margin: { left: 14, right: 14 },
+        tableWidth: 'auto',
         columnStyles,
-        styles: { fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
-        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: {
+            fontSize: template.table.compactMode ? Math.max(7, template.table.bodyFontSize - 1) : template.table.bodyFontSize,
+            cellPadding: template.table.compactMode ? 1.8 : 2.5,
+            font: 'helvetica',
+            overflow: 'linebreak',
+        },
+        headStyles: {
+            fillColor: hexToRgb(template.table.headFillColor, [30, 41, 59]),
+            textColor: hexToRgb(template.table.headTextColor, [255, 255, 255]),
+            fontStyle: 'bold',
+            fontSize: template.table.headFontSize,
+        },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didParseCell: function (data) {
             if (statusIndex >= 0 && data.section === 'body' && data.column.index === statusIndex) {
@@ -245,20 +544,22 @@ export function generateDailyReport(rfis, date, projectName = 'ProWay Project', 
     });
 
     // ========== SIGNATURES ==========
-    const sigY = doc.lastAutoTable.finalY + 20;
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
+    if (template.footer.showFooter) {
+        const sigY = doc.lastAutoTable.finalY + 20;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
 
-    doc.text('Contractor Representative:', 14, sigY);
-    doc.line(14, sigY + 15, 120, sigY + 15);
-    doc.setFontSize(8);
-    doc.text('Name / Signature / Date', 14, sigY + 20);
+        doc.text(`${template.footer.leftLabel}:`, 14, sigY);
+        doc.line(14, sigY + 15, 120, sigY + 15);
+        doc.setFontSize(8);
+        doc.text('Name / Signature / Date', 14, sigY + 20);
 
-    doc.setFontSize(10);
-    doc.text('Consultant Representative:', pageWidth / 2 + 14, sigY);
-    doc.line(pageWidth / 2 + 14, sigY + 15, pageWidth - 14, sigY + 15);
-    doc.setFontSize(8);
-    doc.text('Name / Signature / Date', pageWidth / 2 + 14, sigY + 20);
+        doc.setFontSize(10);
+        doc.text(`${template.footer.rightLabel}:`, pageWidth / 2 + 14, sigY);
+        doc.line(pageWidth / 2 + 14, sigY + 15, pageWidth - 14, sigY + 15);
+        doc.setFontSize(8);
+        doc.text('Name / Signature / Date', pageWidth / 2 + 14, sigY + 20);
+    }
 
     // Footer
     const footerY = doc.internal.pageSize.getHeight() - 10;

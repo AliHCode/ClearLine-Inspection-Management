@@ -139,12 +139,20 @@ export default function Header() {
                         </>
                     )}
                     {isAdmin && (
-                        <button
-                            onClick={() => { navigate('/admin/users'); setMenuOpen(false); }}
-                            className={`header-dropdown-item ${location.pathname === '/admin/users' ? 'active' : ''}`}
-                        >
-                            <UserCircle size={16} /> Users
-                        </button>
+                        <>
+                            <button
+                                onClick={() => { navigate('/admin/users'); setMenuOpen(false); }}
+                                className={`header-dropdown-item ${location.pathname === '/admin/users' ? 'active' : ''}`}
+                            >
+                                <UserCircle size={16} /> Users
+                            </button>
+                            <button
+                                onClick={() => { navigate('/admin/export-format'); setMenuOpen(false); }}
+                                className={`header-dropdown-item ${location.pathname === '/admin/export-format' ? 'active' : ''}`}
+                            >
+                                <Shield size={16} /> Project Export Format
+                            </button>
+                        </>
                     )}
                     <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">
                         <LogOut size={16} /> Sign Out

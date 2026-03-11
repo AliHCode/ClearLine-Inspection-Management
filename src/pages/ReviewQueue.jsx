@@ -274,7 +274,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap)}
+                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                 title="Export to PDF"
                                 aria-label="Export to PDF"
                             >
@@ -283,7 +283,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap)}
+                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                 title="Export to Excel"
                                 aria-label="Export to Excel"
                             >
@@ -292,7 +292,7 @@ export default function ReviewQueue() {
                             <button
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, orderedTableColumns, columnWidthMap)}
+                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                 title="Generate branded daily report"
                             >
                                 <ClipboardList size={16} /> Daily Report

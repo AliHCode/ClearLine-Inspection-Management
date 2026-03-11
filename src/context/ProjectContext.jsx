@@ -209,6 +209,31 @@ export function ProjectProvider({ children }) {
         }
     }
 
+    // ─── Project export template (admin) ───
+    async function saveProjectExportTemplate(template) {
+        if (!activeProject?.id) {
+            return { success: false, error: 'No active project selected' };
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('projects')
+                .update({ export_template: template })
+                .eq('id', activeProject.id)
+                .select('*')
+                .single();
+
+            if (error) throw error;
+
+            setProjects((prev) => prev.map((p) => (p.id === activeProject.id ? data : p)));
+            setActiveProject(data);
+            return { success: true, template: data?.export_template || template };
+        } catch (error) {
+            console.error('Error saving project export template:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // ─── Custom field CRUD (admin) ───
     async function addProjectField(projectId, field) {
         try {
@@ -315,6 +340,7 @@ export function ProjectProvider({ children }) {
             fetchProjects, changeActiveProject, createProject, deleteProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,
+            saveProjectExportTemplate,
         }}>
             {children}
         </ProjectContext.Provider>

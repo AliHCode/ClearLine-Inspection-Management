@@ -12,6 +12,7 @@ import ConsultantDashboard from './pages/ConsultantDashboard';
 import ReviewQueue from './pages/ReviewQueue';
 import AdminDashboard from './pages/AdminDashboard';
 import UsersPage from './pages/UsersPage';
+import AdminFormatDesigner from './pages/AdminFormatDesigner';
 import { useProject } from './context/ProjectContext';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -91,6 +92,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['admin']}>
                         <UsersPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/export-format"
+                element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminFormatDesigner />
                     </ProtectedRoute>
                 }
             />

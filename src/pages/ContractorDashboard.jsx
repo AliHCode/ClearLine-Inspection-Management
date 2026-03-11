@@ -165,7 +165,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap)}
+                                            onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                             title="Export to PDF"
                                         >
                                             <FileDown size={16} /> PDF
@@ -173,7 +173,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap)}
+                                            onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                             title="Export to Excel"
                                         >
                                             <Table size={16} /> Excel
@@ -181,7 +181,7 @@ export default function ContractorDashboard() {
                                         <button
                                             className="btn btn-sm"
                                             style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap)}
+                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                             title="Generate branded daily report"
                                         >
                                             <ClipboardList size={16} /> Daily Report
