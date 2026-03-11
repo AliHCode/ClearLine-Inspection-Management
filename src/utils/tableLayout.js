@@ -18,7 +18,7 @@ export function getDefaultColumnWidth(fieldKey) {
 export function sanitizeColumnWidth(value, fallback = FALLBACK_WIDTH) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return fallback;
-    return Math.min(640, Math.max(80, Math.round(parsed)));
+    return Math.min(640, Math.max(30, Math.round(parsed)));
 }
 
 export function buildColumnWidthMap(columns = [], savedMap = {}) {

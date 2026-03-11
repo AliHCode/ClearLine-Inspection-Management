@@ -13,6 +13,7 @@ import ReviewQueue from './pages/ReviewQueue';
 import AdminDashboard from './pages/AdminDashboard';
 import UsersPage from './pages/UsersPage';
 import AdminFormatDesigner from './pages/AdminFormatDesigner';
+import PendingApproval from './pages/PendingApproval';
 import { useProject } from './context/ProjectContext';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -38,10 +39,14 @@ function AppRoutes() {
                 path="/"
                 element={
                     user ? (
-                        <Navigate to={
-                            user.role === 'admin' ? '/admin' :
-                                user.role === 'contractor' ? '/contractor' : user.role === 'consultant' ? '/consultant' : '/'
-                        } replace />
+                        user.role === 'pending' || user.role === 'rejected' ? (
+                            <PendingApproval />
+                        ) : (
+                            <Navigate to={
+                                user.role === 'admin' ? '/admin' :
+                                    user.role === 'contractor' ? '/contractor' : user.role === 'consultant' ? '/consultant' : '/admin'
+                            } replace />
+                        )
                     ) : (
                         <LoginPage />
                     )

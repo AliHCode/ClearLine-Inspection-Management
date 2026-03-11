@@ -564,10 +564,12 @@ export default function AdminDashboard() {
                                                             minWidth: `${width}px`,
                                                             position: 'relative',
                                                             userSelect: 'none',
+                                                            wordBreak: 'break-word',
+                                                            whiteSpace: 'normal',
                                                         }}
                                                     >
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                                            <span>{f.field_name}</span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.field_name}</span>
                                                             <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500 }}>{width}px</span>
                                                         </div>
                                                         <span
