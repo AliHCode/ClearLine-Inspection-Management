@@ -38,6 +38,7 @@ function normalizeExportTemplate(projectTemplate, fallbackTitle = '') {
         header: { ...DEFAULT_EXPORT_TEMPLATE.header, ...(projectTemplate?.header || {}) },
         table: { ...DEFAULT_EXPORT_TEMPLATE.table, ...(projectTemplate?.table || {}) },
         footer: { ...DEFAULT_EXPORT_TEMPLATE.footer, ...(projectTemplate?.footer || {}) },
+        layout: projectTemplate?.layout || null,
     };
 
     if (!merged.header.title) {
