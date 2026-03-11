@@ -194,14 +194,14 @@ export default function AdminFormatDesigner() {
 
                 <div className="format-studio-layout h-full">
                     <aside className="studio-vertical-rail">
-                        <div className={ail-item } onClick={() => {setActiveRailTab('branding'); setDrawerOpen(true);}} title="Text & Elements"><FileText size={22} /></div>
-                        <div className={ail-item } onClick={() => {setActiveRailTab('shapes'); setDrawerOpen(true);}} title="Shapes Library"><Square size={22} /></div>
-                        <div className={ail-item } onClick={() => {setActiveRailTab('images'); setDrawerOpen(true);}} title="Images"><Image size={22} /></div>
-                        <div className={ail-item } onClick={() => {setActiveRailTab('columns'); setDrawerOpen(true);}} title="Table Columns"><Columns size={22} /></div>
+                        <div className={`rail-item ${activeRailTab === 'branding' ? 'active' : ''}`} onClick={() => {setActiveRailTab('branding'); setDrawerOpen(true);}} title="Text & Elements"><FileText size={22} /></div>
+                        <div className={`rail-item ${activeRailTab === 'shapes' ? 'active' : ''}`} onClick={() => {setActiveRailTab('shapes'); setDrawerOpen(true);}} title="Shapes Library"><Square size={22} /></div>
+                        <div className={`rail-item ${activeRailTab === 'images' ? 'active' : ''}`} onClick={() => {setActiveRailTab('images'); setDrawerOpen(true);}} title="Images"><Image size={22} /></div>
+                        <div className={`rail-item ${activeRailTab === 'columns' ? 'active' : ''}`} onClick={() => {setActiveRailTab('columns'); setDrawerOpen(true);}} title="Table Columns"><Columns size={22} /></div>
                     </aside>
 
                     <main className="studio-main-stage">
-                        <section className={studio-internal-drawer }>
+                        <section className={`studio-internal-drawer ${drawerOpen ? 'open' : ''}`}>
                             <header className="drawer-header">
                                 <h3>{activeRailTab} engine</h3>
                                 <button className="terminal-btn" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setDrawerOpen(false)}><X size={14} /></button>
@@ -303,8 +303,8 @@ export default function AdminFormatDesigner() {
                                         <div className="grid grid-cols-2 gap-2">
                                             <button className="terminal-btn" onClick={() => duplicateElement(selectedId)}>Clone</button>
                                             <button className="terminal-btn text-red-500" onClick={() => deleteElement(selectedId)}>Delete</button>
-                                            <button className="terminal-btn" onClick={() => bringToFront(selectedId)}>Layer ?</button>
-                                            <button className="terminal-btn" onClick={() => sendToBack(selectedId)}>Layer ?</button>
+                                            <button className="terminal-btn" onClick={() => bringToFront(selectedId)}>Layer ↑</button>
+                                            <button className="terminal-btn" onClick={() => sendToBack(selectedId)}>Layer ↓</button>
                                         </div>
                                     </div>
                                 )}
