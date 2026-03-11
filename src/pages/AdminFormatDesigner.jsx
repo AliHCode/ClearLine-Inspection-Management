@@ -356,104 +356,136 @@ export default function AdminFormatDesigner() {
 
                 <div className="admin-section format-studio-layout">
                     <section className="format-studio-sidebar">
-                        <h3 style={{ marginBottom: '0.65rem' }}>Canvas Settings</h3>
-                        <div style={{ display: 'grid', gap: '0.55rem', marginBottom: '0.85rem' }}>
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={template.layout.snapToGrid}
-                                    onChange={(e) => updateSection('layout', 'snapToGrid', e.target.checked)}
-                                />
-                                Snap to grid
-                            </label>
-                            <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem' }}>
-                                Grid size
-                                <input
-                                    type="number"
-                                    min={2}
-                                    max={40}
-                                    value={template.layout.gridSize}
-                                    onChange={(e) => updateSection('layout', 'gridSize', Number(e.target.value || 8))}
-                                />
-                            </label>
-                        </div>
-
-                        <h3 style={{ marginBottom: '0.65rem' }}>Header Content</h3>
-                        <div style={{ display: 'grid', gap: '0.55rem', marginBottom: '0.9rem' }}>
-                            <input type="text" value={template.header.title} placeholder="Title" onChange={(e) => updateSection('header', 'title', e.target.value)} />
-                            <input type="text" value={template.header.subtitle} placeholder="Subtitle" onChange={(e) => updateSection('header', 'subtitle', e.target.value)} />
-                            <input type="text" value={template.header.projectLine} placeholder="Project line" onChange={(e) => updateSection('header', 'projectLine', e.target.value)} />
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={template.header.showSubmissionDate}
-                                    onChange={(e) => updateSection('header', 'showSubmissionDate', e.target.checked)}
-                                />
-                                Show submission date
-                            </label>
-                            <input type="text" value={template.header.leftLogoUrl} placeholder="Left logo URL" onChange={(e) => updateSection('header', 'leftLogoUrl', e.target.value)} />
-                            <input type="file" accept="image/*" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'leftLogoUrl')} />
-                            <input type="text" value={template.header.rightLogoUrl} placeholder="Right logo URL" onChange={(e) => updateSection('header', 'rightLogoUrl', e.target.value)} />
-                            <input type="file" accept="image/*" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'rightLogoUrl')} />
-                        </div>
-
-                        <h3 style={{ marginBottom: '0.65rem' }}>Table Headings</h3>
-                        <div style={{ display: 'grid', gap: '0.35rem', marginBottom: '0.9rem', maxHeight: '180px', overflowY: 'auto' }}>
-                            {previewColumns.map((col) => (
-                                <div key={`col_${col.field_key}`} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '0.4rem', alignItems: 'center' }}>
-                                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{col.field_key}</div>
+                        <div className="studio-sidebar-section">
+                            <h3><Move size={18} /> Artboard settings</h3>
+                            <div className="studio-controls-grid">
+                                <label className="studio-label-row">
                                     <input
-                                        type="text"
-                                        value={template.table.columnLabels?.[col.field_key] ?? col.field_name}
-                                        onChange={(e) => updateColumnLabel(col.field_key, e.target.value)}
+                                        type="checkbox"
+                                        checked={template.layout.snapToGrid}
+                                        onChange={(e) => updateSection('layout', 'snapToGrid', e.target.checked)}
+                                    />
+                                    <span>Snap to grid</span>
+                                </label>
+                                <div className="studio-input-group">
+                                    <label>Grid size</label>
+                                    <input
+                                        type="number"
+                                        min={2}
+                                        max={40}
+                                        value={template.layout.gridSize}
+                                        onChange={(e) => updateSection('layout', 'gridSize', Number(e.target.value || 8))}
                                     />
                                 </div>
-                            ))}
+                            </div>
                         </div>
 
-                        <h3 style={{ marginBottom: '0.65rem' }}>Grouped Headings</h3>
-                        <div style={{ display: 'grid', gap: '0.45rem', marginBottom: '0.65rem' }}>
-                            {(template.table.groupedHeaders || []).map((group, i) => (
-                                <div key={`grp_${i}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '0.35rem', alignItems: 'center' }}>
-                                    <input
-                                        value={group.title || ''}
-                                        onChange={(e) => updateGroupedHeader(i, 'title', e.target.value)}
-                                        placeholder="Group title"
-                                    />
-                                    <select value={group.fromKey} onChange={(e) => updateGroupedHeader(i, 'fromKey', e.target.value)}>
-                                        {previewColumns.map((c) => <option key={`gf_${i}_${c.field_key}`} value={c.field_key}>{c.field_name}</option>)}
-                                    </select>
-                                    <select value={group.toKey} onChange={(e) => updateGroupedHeader(i, 'toKey', e.target.value)}>
-                                        {previewColumns.map((c) => <option key={`gt_${i}_${c.field_key}`} value={c.field_key}>{c.field_name}</option>)}
-                                    </select>
-                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }} onClick={() => removeGroupedHeader(i)}>Remove</button>
+                        <div className="studio-sidebar-section">
+                            <h3>Branding & Logos</h3>
+                            <div className="studio-controls-stack">
+                                <div className="studio-input-group">
+                                    <label>Left logo (URL or File)</label>
+                                    <input type="text" value={template.header.leftLogoUrl} placeholder="URL" onChange={(e) => updateSection('header', 'leftLogoUrl', e.target.value)} />
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'leftLogoUrl')} />
                                 </div>
-                            ))}
-                            <button className="btn btn-sm btn-ghost" onClick={addGroupedHeader}>Add Grouped Header</button>
+                                <div className="studio-input-group">
+                                    <label>Right logo (URL or File)</label>
+                                    <input type="text" value={template.header.rightLogoUrl} placeholder="URL" onChange={(e) => updateSection('header', 'rightLogoUrl', e.target.value)} />
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileToDataUrl(e.target.files?.[0], 'rightLogoUrl')} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="studio-sidebar-section">
+                            <h3>Header Content</h3>
+                            <div className="studio-controls-stack">
+                                <div className="studio-input-group">
+                                    <label>Main Title</label>
+                                    <input type="text" value={template.header.title} placeholder="Title" onChange={(e) => updateSection('header', 'title', e.target.value)} />
+                                </div>
+                                <div className="studio-input-group">
+                                    <label>Subtitle</label>
+                                    <input type="text" value={template.header.subtitle} placeholder="Subtitle" onChange={(e) => updateSection('header', 'subtitle', e.target.value)} />
+                                </div>
+                                <div className="studio-input-group">
+                                    <label>Project Area Hint</label>
+                                    <input type="text" value={template.header.projectLine} placeholder="Project line" onChange={(e) => updateSection('header', 'projectLine', e.target.value)} />
+                                </div>
+                                <label className="studio-label-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={template.header.showSubmissionDate}
+                                        onChange={(e) => updateSection('header', 'showSubmissionDate', e.target.checked)}
+                                    />
+                                    <span>Show submission date</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="studio-sidebar-section">
+                            <h3>Table Headings</h3>
+                            <div className="studio-scroll-area">
+                                {previewColumns.map((col) => (
+                                    <div key={`col_${col.field_key}`} className="studio-input-group-row">
+                                        <label>{col.field_key}</label>
+                                        <input
+                                            type="text"
+                                            value={template.table.columnLabels?.[col.field_key] ?? col.field_name}
+                                            onChange={(e) => updateColumnLabel(col.field_key, e.target.value)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="studio-sidebar-section">
+                            <h3>Grouped Headings</h3>
+                            <div className="studio-controls-stack">
+                                {(template.table.groupedHeaders || []).map((group, i) => (
+                                    <div key={`grp_${i}`} className="studio-group-item">
+                                        <input
+                                            value={group.title || ''}
+                                            onChange={(e) => updateGroupedHeader(i, 'title', e.target.value)}
+                                            placeholder="Group title"
+                                        />
+                                        <div className="studio-group-controls">
+                                            <select value={group.fromKey} onChange={(e) => updateGroupedHeader(i, 'fromKey', e.target.value)}>
+                                                {previewColumns.map((c) => <option key={`gf_${i}_${c.field_key}`} value={c.field_key}>{c.field_name}</option>)}
+                                            </select>
+                                            <span className="divider">to</span>
+                                            <select value={group.toKey} onChange={(e) => updateGroupedHeader(i, 'toKey', e.target.value)}>
+                                                {previewColumns.map((c) => <option key={`gt_${i}_${c.field_key}`} value={c.field_key}>{c.field_name}</option>)}
+                                            </select>
+                                        </div>
+                                        <button className="ua-btn ua-btn-danger-ghost btn-sm" onClick={() => removeGroupedHeader(i)}>Remove</button>
+                                    </div>
+                                ))}
+                                <button className="ua-btn ua-btn-outline btn-sm" onClick={addGroupedHeader} style={{ justifyContent: 'center' }}>+ Add Grouped Header</button>
+                            </div>
                         </div>
 
                         {selectedRect && (
-                            <>
-                                <h3 style={{ marginBottom: '0.65rem' }}>Selected Block: {selectedElement}</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                    <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
-                                        X
+                            <div className="studio-sidebar-section studio-selection-panel">
+                                <h3>Properties: {selectedElement}</h3>
+                                <div className="studio-prop-grid">
+                                    <div className="studio-input-group">
+                                        <label>X Position</label>
                                         <input type="number" value={selectedRect.x} onChange={(e) => updateLayoutElement(selectedElement, { x: Number(e.target.value || 0) })} />
-                                    </label>
-                                    <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
-                                        Y
+                                    </div>
+                                    <div className="studio-input-group">
+                                        <label>Y Position</label>
                                         <input type="number" value={selectedRect.y} onChange={(e) => updateLayoutElement(selectedElement, { y: Number(e.target.value || 0) })} />
-                                    </label>
-                                    <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
-                                        Width
+                                    </div>
+                                    <div className="studio-input-group">
+                                        <label>Width (px)</label>
                                         <input type="number" value={selectedRect.w} onChange={(e) => updateLayoutElement(selectedElement, { w: Number(e.target.value || 0) })} />
-                                    </label>
-                                    <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
-                                        Height
+                                    </div>
+                                    <div className="studio-input-group">
+                                        <label>Height (px)</label>
                                         <input type="number" value={selectedRect.h} onChange={(e) => updateLayoutElement(selectedElement, { h: Number(e.target.value || 0) })} />
-                                    </label>
+                                    </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </section>
 
