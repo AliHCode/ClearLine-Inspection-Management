@@ -15,6 +15,11 @@ import {
 } from '../utils/offlineQueue';
 
 const RFIContext = createContext(null);
+const NOTIFICATION_PROMPT_SEEN_KEY = 'proway_notification_prompt_seen_v1';
+
+function normalizeMentionKey(value = '') {
+    return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
 export function RFIProvider({ children }) {
     const { activeProject } = useProject();
@@ -23,6 +28,7 @@ export function RFIProvider({ children }) {
     const [loadingRfis, setLoadingRfis] = useState(true);
     const [pendingSyncCount, setPendingSyncCount] = useState(0);
     const isSyncingOfflineRef = useRef(false);
+    const notificationPromptShownRef = useRef(false);
 
     // Consultants list for Direct Assign
     const [consultants, setConsultants] = useState([]);
@@ -191,6 +197,41 @@ export function RFIProvider({ children }) {
         }
     }, []);
 
+    const notifyConsultantsAboutFiledRFI = useCallback(async ({ serialNo, location, rfiId, assignedTo = null, filedBy = null }) => {
+        if (!activeProject?.id) return;
+        try {
+            const { data, error } = await supabase
+                .from('project_members')
+                .select('user_id')
+                .eq('project_id', activeProject.id)
+                .eq('role', 'consultant');
+
+            if (error) throw error;
+
+            const consultantIds = Array.from(new Set((data || []).map((row) => row.user_id).filter(Boolean)));
+            for (const consultantId of consultantIds) {
+                if (consultantId === filedBy) continue;
+                if (assignedTo && consultantId === assignedTo) {
+                    await createNotification(
+                        consultantId,
+                        'RFI Assigned to You 📌',
+                        `A new RFI (#${serialNo}) at ${location} has been assigned to you.`,
+                        rfiId
+                    );
+                } else {
+                    await createNotification(
+                        consultantId,
+                        'New RFI Filed 🆕',
+                        `New RFI #${serialNo} filed at ${location}.`,
+                        rfiId
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying consultants about new RFI:', error);
+        }
+    }, [activeProject]);
+
     // ── Native Push Notification helper ──────────────────────────────────────
     // Shows a browser/OS notification via the service worker when the user
     // has granted permission. Works for background tabs and mobile home screen.
@@ -219,6 +260,15 @@ export function RFIProvider({ children }) {
         if (!('Notification' in window)) return;
         if (Notification.permission === 'granted') return; // already granted
         if (Notification.permission === 'denied') return;  // user already refused
+        if (notificationPromptShownRef.current) return;
+
+        try {
+            if (localStorage.getItem(NOTIFICATION_PROMPT_SEEN_KEY) === 'true') return;
+            localStorage.setItem(NOTIFICATION_PROMPT_SEEN_KEY, 'true');
+        } catch {
+            // Ignore localStorage failures; still guard with ref for this session.
+        }
+        notificationPromptShownRef.current = true;
 
         // Show a friendly in-app toast to prompt the user before the browser dialog
         toast(
@@ -457,16 +507,16 @@ export function RFIProvider({ children }) {
 
             if (insertedData?.[0]) {
                 await logAuditEvent(insertedData[0].id, 'created', { description, location });
-            }
-
-            if (assignedTo && insertedData?.[0]) {
-                await createNotification(
-                    assignedTo,
-                    'RFI Assigned to You 📌',
-                    `A new RFI (#${serialNo}) at ${location} has been assigned to you.`,
-                    insertedData[0].id
-                );
-                await logAuditEvent(insertedData[0].id, 'assigned', { assignee: assignedTo });
+                await notifyConsultantsAboutFiledRFI({
+                    serialNo,
+                    location,
+                    rfiId: insertedData[0].id,
+                    assignedTo: assignedTo || null,
+                    filedBy,
+                });
+                if (assignedTo) {
+                    await logAuditEvent(insertedData[0].id, 'assigned', { assignee: assignedTo });
+                }
             }
 
             await fetchAllRFIs();
@@ -579,17 +629,17 @@ export function RFIProvider({ children }) {
                     const { data: insertedData, error } = await supabase.from('rfis').insert([formatForDB(syncedRfi)]).select();
                     if (error) throw error;
 
-                    if (payload.assignedTo && insertedData?.[0]) {
-                        await createNotification(
-                            payload.assignedTo,
-                            'RFI Assigned to You 📌',
-                            `A new RFI (#${serialNo}) at ${payload.location} has been assigned to you.`,
-                            insertedData[0].id
-                        );
-                        await logAuditEvent(insertedData[0].id, 'assigned', { assignee: payload.assignedTo });
-                    }
-
                     if (insertedData?.[0]) {
+                        await notifyConsultantsAboutFiledRFI({
+                            serialNo,
+                            location: payload.location,
+                            rfiId: insertedData[0].id,
+                            assignedTo: payload.assignedTo || null,
+                            filedBy: payload.filedBy || null,
+                        });
+                        if (payload.assignedTo) {
+                            await logAuditEvent(insertedData[0].id, 'assigned', { assignee: payload.assignedTo });
+                        }
                         await logAuditEvent(insertedData[0].id, 'created', {
                             description: payload.description,
                             location: payload.location,
@@ -614,7 +664,7 @@ export function RFIProvider({ children }) {
         } finally {
             isSyncingOfflineRef.current = false;
         }
-    }, [activeProject, fetchAllRFIs, getNextSerialNoForDate, normalizeImagesForSubmission, refreshPendingSyncCount]);
+    }, [activeProject, fetchAllRFIs, getNextSerialNoForDate, normalizeImagesForSubmission, notifyConsultantsAboutFiledRFI, refreshPendingSyncCount]);
 
     /** Approve an RFI */
     async function approveRFI(rfiId, reviewedBy) {
@@ -888,11 +938,33 @@ export function RFIProvider({ children }) {
             const isFiler = user.id === targetRfi.filedBy;
             const targetUserId = isFiler ? targetRfi.reviewedBy : targetRfi.filedBy;
 
+            const notificationRecipients = new Set();
             if (targetUserId && targetUserId !== user.id) {
+                notificationRecipients.add(targetUserId);
+            }
+
+            const mentionMatches = content.match(/@([a-z0-9._-]+)/gi) || [];
+            const mentionKeys = new Set(mentionMatches.map((m) => normalizeMentionKey(m.slice(1))));
+            const mentionCandidates = [...contractors, ...consultants];
+
+            mentionCandidates.forEach((member) => {
+                if (!member?.id || member.id === user.id) return;
+                const memberKey = normalizeMentionKey(member.name || '');
+                if (memberKey && mentionKeys.has(memberKey)) {
+                    notificationRecipients.add(member.id);
+                }
+            });
+
+            for (const recipientId of notificationRecipients) {
+                const candidate = mentionCandidates.find((m) => m?.id === recipientId);
+                const isMention = candidate && mentionKeys.has(normalizeMentionKey(candidate.name || ''));
+
                 await createNotification(
-                    targetUserId,
-                    "New Message 💬",
-                    `New message on RFI #${targetRfi.serialNo} from ${user.name}`,
+                    recipientId,
+                    isMention ? 'You were mentioned 💬' : 'New Message 💬',
+                    isMention
+                        ? `${user.name} mentioned you on RFI #${targetRfi.serialNo}.`
+                        : `New message on RFI #${targetRfi.serialNo} from ${user.name}`,
                     rfiId
                 );
             }

@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
-import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList } from 'lucide-react';
+import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
@@ -12,11 +12,13 @@ export default function Header() {
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+    const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
 
     if (!user) return null;
 
     const isContractor = user.role === 'contractor';
     const isAdmin = user.role === 'admin';
+    const canManageNotifications = isContractor || user.role === 'consultant';
     const dashPath = isAdmin ? '/admin' : isContractor ? '/contractor' : '/consultant';
     const roleLabel = isAdmin ? 'Admin' : isContractor ? 'Contractor' : 'Consultant';
     const nameInitials = user.name
@@ -27,6 +29,33 @@ export default function Header() {
             .map(part => part[0].toUpperCase())
             .join('')
         : 'U';
+
+    const getNotificationButtonLabel = () => {
+        if (notifPermission === 'granted') return 'Notifications Enabled';
+        if (notifPermission === 'denied') return 'Notifications Blocked (Browser)';
+        if (notifPermission === 'unsupported') return 'Notifications Not Supported';
+        return 'Enable Notifications';
+    };
+
+    const handleEnableNotifications = async () => {
+        if (typeof Notification === 'undefined') {
+            setNotifPermission('unsupported');
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            setNotifPermission('denied');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            setNotifPermission('granted');
+            return;
+        }
+
+        const result = await Notification.requestPermission();
+        setNotifPermission(result);
+    };
 
     return (
         <header className="app-header">
@@ -137,6 +166,15 @@ export default function Header() {
                                 <ClipboardList size={16} /> Review Queue
                             </button>
                         </>
+                    )}
+                    {canManageNotifications && (
+                        <button
+                            onClick={handleEnableNotifications}
+                            className={`header-dropdown-item notify ${notifPermission === 'granted' ? 'active' : ''}`}
+                            disabled={notifPermission === 'unsupported'}
+                        >
+                            <Bell size={16} /> {getNotificationButtonLabel()}
+                        </button>
                     )}
                     {isAdmin && (
                         <>
