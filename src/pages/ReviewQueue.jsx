@@ -10,19 +10,21 @@ import StatusBadge from '../components/StatusBadge';
 import ApproveModal from '../components/ApproveModal';
 import RejectModal from '../components/RejectModal';
 import RFIDetailModal from '../components/RFIDetailModal';
+import EditRFIModal from '../components/EditRFIModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Pencil, X, FileDown, Table, ClipboardList } from 'lucide-react';
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
-    const { approveRFI, rejectRFI, getReviewQueue, rfis, uploadImages, contractors } = useRFI();
+    const { approveRFI, rejectRFI, updateRFI, getReviewQueue, rfis, uploadImages, contractors } = useRFI();
     const { activeProject, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
     const [rejectTarget, setRejectTarget] = useState(null);
+    const [editTarget, setEditTarget] = useState(null);
     const [detailTarget, setDetailTarget] = useState(null);
     const [filter, setFilter] = useState('to_review'); // to_review, approved, rejected
     const [actionMessage, setActionMessage] = useState('');
@@ -58,6 +60,21 @@ export default function ReviewQueue() {
         rejectRFI(rfiId, user.id, remarks, uploaded);
         setActionMessage('❌ Inspection Rejected & Returned');
         setTimeout(() => setActionMessage(''), 3000);
+    }
+
+    async function handleSaveEdit(payload) {
+        if (!editTarget) return;
+        const uploaded = payload.newFiles.length > 0 ? await uploadImages(payload.newFiles) : [];
+        await updateRFI(editTarget.id, {
+            description: payload.description,
+            location: payload.location,
+            inspectionType: payload.inspectionType,
+            remarks: payload.remarks,
+            images: [...payload.existingImages, ...uploaded],
+            customFields: payload.customFields || {},
+        });
+        setActionMessage('✏️ Inspection updated');
+        setTimeout(() => setActionMessage(''), 2500);
     }
 
     const { bulkApproveRFI } = useRFI();
@@ -139,14 +156,14 @@ export default function ReviewQueue() {
 
     // Background Scroll Locking
     useEffect(() => {
-        const isModalOpen = !!(detailTarget || approveTarget || rejectTarget || selectedImages);
+        const isModalOpen = !!(detailTarget || approveTarget || rejectTarget || editTarget || selectedImages);
         if (isModalOpen) {
             document.body.classList.add('no-scroll');
         } else {
             document.body.classList.remove('no-scroll');
         }
         return () => document.body.classList.remove('no-scroll');
-    }, [detailTarget, approveTarget, rejectTarget, selectedImages]);
+    }, [detailTarget, approveTarget, rejectTarget, editTarget, selectedImages]);
 
     function scrollToPageBottom() {
         const scrollNow = () => {
@@ -167,7 +184,7 @@ export default function ReviewQueue() {
     }
 
     function renderReviewActionCell(rfi) {
-        if (filter === 'to_review' || filter === 'my_assigned' || filter === 'approved') {
+        if (filter === 'to_review' || filter === 'my_assigned' || filter === 'approved' || filter === 'rejected') {
             return (
                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                     <button
@@ -209,7 +226,28 @@ export default function ReviewQueue() {
                     </button>
                     <button
                         onClick={() => {
+                            setEditTarget(rfi);
+                            setApproveTarget(null);
+                            setRejectTarget(null);
+                            setDetailTarget(null);
+                        }}
+                        title="Edit"
+                        style={{
+                            background: 'transparent', border: '1.5px solid #d1d5db',
+                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '3px',
+                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                            fontFamily: 'inherit', transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <Pencil size={15} />
+                    </button>
+                    <button
+                        onClick={() => {
                             setDetailTarget(rfi);
+                            setEditTarget(null);
                             setRejectTarget(null);
                             setScrollTrigger(prev => prev + 1);
                             setTimeout(() => scrollToPageBottom(), 80);
@@ -481,6 +519,17 @@ export default function ReviewQueue() {
                         onReject={handleReject}
                         contractors={contractors}
                         onClose={() => setRejectTarget(null)}
+                    />
+                )}
+
+                {editTarget && (
+                    <EditRFIModal
+                        key={editTarget.id}
+                        rfi={editTarget}
+                        projectFields={projectFields}
+                        orderedColumns={orderedTableColumns}
+                        onSave={handleSaveEdit}
+                        onClose={() => setEditTarget(null)}
                     />
                 )}
 

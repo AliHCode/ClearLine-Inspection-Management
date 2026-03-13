@@ -184,6 +184,7 @@ export default function DailyRFISheet() {
             description: payload.description,
             location: payload.location,
             inspectionType: payload.inspectionType,
+            remarks: payload.remarks,
             images: [...payload.existingImages, ...uploaded],
             customFields: payload.customFields || {},
         });
@@ -703,6 +704,7 @@ export default function DailyRFISheet() {
                         key={editTarget.id}
                         rfi={editTarget}
                         projectFields={projectFields}
+                        orderedColumns={orderedTableColumns}
                         onSave={handleSaveEdit}
                         onClose={() => setEditTarget(null)}
                     />

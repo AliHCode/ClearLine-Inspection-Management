@@ -3,10 +3,11 @@ import { X, Pencil, Upload, Brush, Save, MapPin, Tag, FileText, Camera } from 'l
 import { INSPECTION_TYPES } from '../utils/constants';
 import ImageMarkupModal from './ImageMarkupModal';
 
-export default function EditRFIModal({ rfi, projectFields = [], onSave, onClose }) {
+export default function EditRFIModal({ rfi, projectFields = [], orderedColumns = [], onSave, onClose }) {
     const [description, setDescription] = useState(rfi.description || '');
     const [location, setLocation] = useState(rfi.location || '');
     const [inspectionType, setInspectionType] = useState(rfi.inspectionType || INSPECTION_TYPES[0]);
+    const [remarks, setRemarks] = useState(rfi.remarks || '');
     const [existingImages, setExistingImages] = useState(rfi.images || []);
     const [newFiles, setNewFiles] = useState([]);
     const [customFields, setCustomFields] = useState(rfi.customFields || {});
@@ -22,6 +23,7 @@ export default function EditRFIModal({ rfi, projectFields = [], onSave, onClose 
             description: description.trim(),
             location: location.trim(),
             inspectionType,
+            remarks: remarks.trim(),
             existingImages,
             newFiles,
             customFields,
@@ -31,6 +33,169 @@ export default function EditRFIModal({ rfi, projectFields = [], onSave, onClose 
 
     function updateCustomFieldValue(fieldKey, value) {
         setCustomFields((prev) => ({ ...prev, [fieldKey]: value }));
+    }
+
+    const customFieldByKey = (projectFields || []).reduce((acc, field) => {
+        acc[field.field_key] = field;
+        return acc;
+    }, {});
+
+    const fallbackOrder = [
+        { field_key: 'description', field_name: 'Description', is_builtin: true },
+        { field_key: 'location', field_name: 'Location', is_builtin: true },
+        { field_key: 'inspection_type', field_name: 'Inspection Type', is_builtin: true },
+        ...projectFields,
+        { field_key: 'remarks', field_name: 'Remarks', is_builtin: true },
+    ];
+
+    const orderedEditable = ((orderedColumns && orderedColumns.length > 0) ? orderedColumns : fallbackOrder)
+        .filter((col) => !['serial', 'status', 'attachments', 'actions'].includes(col.field_key));
+
+    function renderFieldByColumn(col) {
+        const key = col.field_key;
+        const label = col.field_name || key;
+
+        const labelStyle = {
+            display: 'block',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: 'var(--clr-text-main)',
+            marginBottom: '0.5rem'
+        };
+
+        const inputStyle = {
+            width: '100%',
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            border: '1px solid var(--clr-border)',
+            background: '#fff',
+            fontSize: '0.95rem',
+            fontFamily: 'inherit',
+            outline: 'none',
+            boxSizing: 'border-box',
+        };
+
+        if (key === 'description') {
+            return (
+                <div key={key} style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>
+                        <FileText size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
+                        {label}
+                    </label>
+                    <textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        rows={4}
+                        required
+                        autoFocus
+                        placeholder="Describe the inspection request..."
+                        style={{ ...inputStyle, padding: '1rem', lineHeight: '1.6', resize: 'none' }}
+                    />
+                </div>
+            );
+        }
+
+        if (key === 'location') {
+            return (
+                <div key={key}>
+                    <label style={labelStyle}>
+                        <MapPin size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
+                        {label}
+                    </label>
+                    <input
+                        value={location}
+                        onChange={e => setLocation(e.target.value)}
+                        required
+                        placeholder="e.g. Floor 3, Zone A"
+                        style={inputStyle}
+                    />
+                </div>
+            );
+        }
+
+        if (key === 'inspection_type') {
+            return (
+                <div key={key}>
+                    <label style={labelStyle}>
+                        <Tag size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
+                        {label}
+                    </label>
+                    <select
+                        value={inspectionType}
+                        onChange={e => setInspectionType(e.target.value)}
+                        style={inputStyle}
+                    >
+                        {INSPECTION_TYPES.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
+
+        if (key === 'remarks') {
+            return (
+                <div key={key} style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>{label}</label>
+                    <textarea
+                        rows={3}
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="Optional remarks"
+                        style={{ ...inputStyle, padding: '0.9rem', resize: 'vertical' }}
+                    />
+                </div>
+            );
+        }
+
+        const field = customFieldByKey[key];
+        if (!field) return null;
+
+        const value = customFields?.[key] || '';
+        if (field.field_type === 'select') {
+            return (
+                <div key={key}>
+                    <label style={labelStyle}>{label}</label>
+                    <select
+                        value={value}
+                        onChange={(e) => updateCustomFieldValue(key, e.target.value)}
+                        style={inputStyle}
+                    >
+                        <option value="">- Select -</option>
+                        {(field.options || []).map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
+
+        if (field.field_type === 'textarea') {
+            return (
+                <div key={key} style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>{label}</label>
+                    <textarea
+                        rows={3}
+                        value={value}
+                        onChange={(e) => updateCustomFieldValue(key, e.target.value)}
+                        style={{ ...inputStyle, padding: '0.9rem', resize: 'vertical' }}
+                    />
+                </div>
+            );
+        }
+
+        const type = field.field_type === 'number' ? 'number' : field.field_type === 'date' ? 'date' : 'text';
+        return (
+            <div key={key}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                    type={type}
+                    value={value}
+                    onChange={(e) => updateCustomFieldValue(key, e.target.value)}
+                    style={inputStyle}
+                />
+            </div>
+        );
     }
 
     function getPreviewUrl(file) {
@@ -211,175 +376,10 @@ export default function EditRFIModal({ rfi, projectFields = [], onSave, onClose 
                                     width: '100%', padding: '1rem', borderRadius: '12px',
                                     border: '1px solid var(--clr-border)',
                                     background: '#fff',
-                                    fontSize: '0.95rem', lineHeight: '1.6', resize: 'none',
-                                    fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
-                                    transition: 'all 0.2s',
-                                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                                }}
-                                onFocus={e => {
-                                    e.target.style.borderColor = 'var(--clr-info)';
-                                    e.target.style.boxShadow = '0 0 0 3px rgba(29, 78, 216, 0.1)';
-                                }}
-                                onBlur={e => {
-                                    e.target.style.borderColor = 'var(--clr-border)';
-                                    e.target.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)';
-                                }}
-                            />
-                        </div>
-
-                        {/* Location & Type row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.5rem' }}>
-                                    <MapPin size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
-                                    Location
-                                </label>
-                                <input
-                                    value={location}
-                                    onChange={e => setLocation(e.target.value)}
-                                    required
-                                    placeholder="e.g. Floor 3, Zone A"
-                                    style={{
-                                        width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                                        border: '1px solid var(--clr-border)',
-                                        background: '#fff',
-                                        fontSize: '0.95rem', fontFamily: 'inherit', outline: 'none',
-                                        boxSizing: 'border-box', transition: 'all 0.2s',
-                                    }}
-                                    onFocus={e => {
-                                        e.target.style.borderColor = 'var(--clr-info)';
-                                        e.target.style.boxShadow = '0 0 0 3px rgba(29, 78, 216, 0.1)';
-                                    }}
-                                    onBlur={e => {
-                                        e.target.style.borderColor = 'var(--clr-border)';
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.5rem' }}>
-                                    <Tag size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
-                                    Inspection Type
-                                </label>
-                                <select
-                                    value={inspectionType}
-                                    onChange={e => setInspectionType(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                                        border: '1px solid var(--clr-border)',
-                                        background: '#fff',
-                                        fontSize: '0.95rem', fontFamily: 'inherit', outline: 'none',
-                                        boxSizing: 'border-box', cursor: 'pointer', transition: 'all 0.2s',
-                                    }}
-                                    onFocus={e => {
-                                        e.target.style.borderColor = 'var(--clr-info)';
-                                    }}
-                                    onBlur={e => {
-                                        e.target.style.borderColor = 'var(--clr-border)';
-                                    }}
-                                >
-                                    {INSPECTION_TYPES.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Attachments Section */}
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)' }}>
-                                    Attachments
-                                </label>
-                                <button 
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                        fontSize: '0.8rem', color: 'var(--clr-info)', background: 'transparent',
-                                        border: 'none', fontWeight: 600, cursor: 'pointer'
-                                    }}
-                                >
-                                    <Camera size={14} /> Add Photos
-                                </button>
-                            </div>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                onChange={e => {
-                                    const incoming = Array.from(e.target.files || []);
-                                    setNewFiles(prev => [...prev, ...incoming]);
-                                    e.target.value = '';
-                                }}
-                            />
-
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                                {/* Existing Images */}
-                                {existingImages.map((url, idx) => (
-                                    <div key={`existing-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{
-                                            position: 'relative', width: '90px', height: '90px', borderRadius: '10px',
-                                            overflow: 'hidden', border: '1px solid var(--clr-border)',
-                                            boxShadow: 'var(--shadow-sm)'
-                                        }}>
-                                            <img src={url} alt={`Existing ${idx + 1}`}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            {/* Desktop Hover Controls */}
-                                            <div style={{
-                                                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)',
-                                                opacity: 0, transition: 'opacity 0.2s', display: 'flex',
-                                                alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
-                                            }} className="desktop-hover-only" onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-                                                <button type="button" onClick={() => setMarkupTarget({ source: 'existing', index: idx })}
-                                                    style={{
-                                                        width: '28px', height: '28px', borderRadius: '6px', border: 'none',
-                                                        background: '#fff', color: 'var(--clr-text-main)', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}>
-                                                    <Brush size={14} />
-                                                </button>
-                                                <button type="button" onClick={() => removeExistingImage(idx)}
-                                                    style={{
-                                                        width: '28px', height: '28px', borderRadius: '6px', border: 'none',
-                                                        background: '#fff', color: 'var(--clr-danger)', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
+                                    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.5rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                                            {orderedEditable.map((col) => renderFieldByColumn(col)).filter(Boolean)}
                                         </div>
-                                        {/* Mobile Persistent Controls */}
-                                        <div className="mobile-only-flex" style={{ display: 'none', justifyContent: 'center', gap: '12px' }}>
-                                            <button type="button" onClick={() => setMarkupTarget({ source: 'existing', index: idx })}
-                                                style={{ background: 'transparent', border: 'none', color: 'var(--clr-info)', padding: '4px' }}>
-                                                <Brush size={18} />
-                                            </button>
-                                            <button type="button" onClick={() => removeExistingImage(idx)}
-                                                style={{ background: 'transparent', border: 'none', color: 'var(--clr-danger)', padding: '4px' }}>
-                                                <X size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {/* New Files */}
-                                {newFiles.map((file, idx) => (
-                                    <div key={`new-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{
-                                            position: 'relative', width: '90px', height: '90px', borderRadius: '10px',
-                                            overflow: 'hidden', border: '1.5px solid var(--clr-info)',
-                                            boxShadow: 'var(--shadow-sm)'
-                                        }}>
-                                            <img src={getPreviewUrl(file)} alt={`New ${idx + 1}`}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            {/* Desktop Hover Controls */}
-                                            <div style={{
-                                                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)',
-                                                opacity: 0, transition: 'opacity 0.2s', display: 'flex',
-                                                alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
                                             }} className="desktop-hover-only" onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
                                                 <button type="button" onClick={() => setMarkupTarget({ source: 'new', index: idx })}
                                                     style={{

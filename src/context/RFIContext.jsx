@@ -1030,6 +1030,7 @@ export function RFIProvider({ children }) {
             if (updates.description !== undefined) dbUpdates.description = updates.description;
             if (updates.location !== undefined) dbUpdates.location = updates.location;
             if (updates.inspectionType !== undefined) dbUpdates.inspection_type = updates.inspectionType;
+            if (updates.remarks !== undefined) dbUpdates.remarks = updates.remarks;
             if (updates.images !== undefined) dbUpdates.images = updates.images;
             if (updates.customFields !== undefined) dbUpdates.custom_fields = updates.customFields;
 
