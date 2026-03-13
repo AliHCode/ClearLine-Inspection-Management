@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, Pencil, Upload, Brush, Save, MapPin, Tag, FileText, Camera } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { X, Pencil, Upload, Brush, Save, MapPin, Tag, FileText } from 'lucide-react';
 import { INSPECTION_TYPES } from '../utils/constants';
 import ImageMarkupModal from './ImageMarkupModal';
 
@@ -14,11 +14,41 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
     const [markupTarget, setMarkupTarget] = useState(null); // { source: 'existing'|'new', index }
     const fileInputRef = useRef(null);
 
+    const customFieldByKey = useMemo(() => {
+        return (projectFields || []).reduce((acc, field) => {
+            acc[field.field_key] = field;
+            return acc;
+        }, {});
+    }, [projectFields]);
+
+    const fallbackOrder = useMemo(() => {
+        return [
+            { field_key: 'description', field_name: 'Description', is_builtin: true },
+            { field_key: 'location', field_name: 'Location', is_builtin: true },
+            { field_key: 'inspection_type', field_name: 'Inspection Type', is_builtin: true },
+            ...(projectFields || []),
+            { field_key: 'remarks', field_name: 'Remarks', is_builtin: true },
+            { field_key: 'attachments', field_name: 'Attachments', is_builtin: true },
+        ];
+    }, [projectFields]);
+
+    const orderedEditable = useMemo(() => {
+        const fromAdmin = orderedColumns && orderedColumns.length > 0 ? orderedColumns : fallbackOrder;
+        const skip = new Set(['serial', 'status', 'actions']);
+        return fromAdmin.filter((col) => !skip.has(col.field_key));
+    }, [orderedColumns, fallbackOrder]);
+
+    function updateCustomFieldValue(fieldKey, value) {
+        setCustomFields((prev) => ({ ...prev, [fieldKey]: value }));
+    }
+
     function handleSubmit(e) {
-        e.preventDefault();
+        e?.preventDefault?.();
         if (!description.trim() || !location.trim()) return;
+
         const confirmed = window.confirm('Save changes to this inspection?');
         if (!confirmed) return;
+
         onSave({
             description: description.trim(),
             location: location.trim(),
@@ -31,49 +61,206 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
         onClose();
     }
 
-    function updateCustomFieldValue(fieldKey, value) {
-        setCustomFields((prev) => ({ ...prev, [fieldKey]: value }));
+    function getPreviewUrl(fileOrUrl) {
+        if (typeof fileOrUrl === 'string') return fileOrUrl;
+        return URL.createObjectURL(fileOrUrl);
     }
 
-    const customFieldByKey = (projectFields || []).reduce((acc, field) => {
-        acc[field.field_key] = field;
-        return acc;
-    }, {});
+    function removeExistingImage(index) {
+        setExistingImages((prev) => prev.filter((_, i) => i !== index));
+    }
 
-    const fallbackOrder = [
-        { field_key: 'description', field_name: 'Description', is_builtin: true },
-        { field_key: 'location', field_name: 'Location', is_builtin: true },
-        { field_key: 'inspection_type', field_name: 'Inspection Type', is_builtin: true },
-        ...projectFields,
-        { field_key: 'remarks', field_name: 'Remarks', is_builtin: true },
-    ];
+    function removeNewFile(index) {
+        setNewFiles((prev) => prev.filter((_, i) => i !== index));
+    }
 
-    const orderedEditable = ((orderedColumns && orderedColumns.length > 0) ? orderedColumns : fallbackOrder)
-        .filter((col) => !['serial', 'status', 'attachments', 'actions'].includes(col.field_key));
+    function replaceExistingImage(index, newFile) {
+        setExistingImages((prev) => prev.filter((_, i) => i !== index));
+        setNewFiles((prev) => [...prev, newFile]);
+    }
+
+    function replaceNewFile(index, newFile) {
+        setNewFiles((prev) => prev.map((file, i) => (i === index ? newFile : file)));
+    }
+
+    const markupImage = markupTarget
+        ? markupTarget.source === 'existing'
+            ? existingImages[markupTarget.index]
+            : newFiles[markupTarget.index]
+        : null;
+
+    const labelStyle = {
+        display: 'block',
+        fontSize: '0.875rem',
+        fontWeight: 600,
+        color: 'var(--clr-text-main)',
+        marginBottom: '0.5rem',
+    };
+
+    const inputStyle = {
+        width: '100%',
+        padding: '0.75rem 1rem',
+        borderRadius: '10px',
+        border: '1px solid var(--clr-border)',
+        background: '#fff',
+        fontSize: '0.95rem',
+        fontFamily: 'inherit',
+        outline: 'none',
+        boxSizing: 'border-box',
+    };
+
+    function renderAttachmentsField(label, key) {
+        return (
+            <div key={key} style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) {
+                            setNewFiles((prev) => [...prev, ...files]);
+                            e.target.value = '';
+                        }
+                    }}
+                />
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    {existingImages.map((img, idx) => (
+                        <div key={`existing-${idx}`} style={{ position: 'relative' }}>
+                            <img
+                                src={getPreviewUrl(img)}
+                                alt={`Attachment ${idx + 1}`}
+                                style={{
+                                    width: '90px',
+                                    height: '90px',
+                                    objectFit: 'cover',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--clr-border)',
+                                }}
+                            />
+                            <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '0.35rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setMarkupTarget({ source: 'existing', index: idx })}
+                                    style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: '#fff',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <Brush size={13} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => removeExistingImage(idx)}
+                                    style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: '#fff',
+                                        color: 'var(--clr-danger)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <X size={13} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    {newFiles.map((file, idx) => (
+                        <div key={`new-${idx}`} style={{ position: 'relative' }}>
+                            <img
+                                src={getPreviewUrl(file)}
+                                alt={`New attachment ${idx + 1}`}
+                                style={{
+                                    width: '90px',
+                                    height: '90px',
+                                    objectFit: 'cover',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--clr-border)',
+                                }}
+                            />
+                            <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '0.35rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setMarkupTarget({ source: 'new', index: idx })}
+                                    style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: '#fff',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <Brush size={13} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => removeNewFile(idx)}
+                                    style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: '#fff',
+                                        color: 'var(--clr-danger)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <X size={13} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                            width: '90px',
+                            height: '90px',
+                            borderRadius: '10px',
+                            border: '1.5px dashed var(--clr-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            background: 'rgba(248, 250, 252, 0.5)',
+                        }}
+                        title="Add photos"
+                    >
+                        <Upload size={20} color="var(--clr-text-muted)" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     function renderFieldByColumn(col) {
         const key = col.field_key;
         const label = col.field_name || key;
-
-        const labelStyle = {
-            display: 'block',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: 'var(--clr-text-main)',
-            marginBottom: '0.5rem'
-        };
-
-        const inputStyle = {
-            width: '100%',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            border: '1px solid var(--clr-border)',
-            background: '#fff',
-            fontSize: '0.95rem',
-            fontFamily: 'inherit',
-            outline: 'none',
-            boxSizing: 'border-box',
-        };
 
         if (key === 'description') {
             return (
@@ -84,7 +271,7 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     </label>
                     <textarea
                         value={description}
-                        onChange={e => setDescription(e.target.value)}
+                        onChange={(e) => setDescription(e.target.value)}
                         rows={4}
                         required
                         autoFocus
@@ -104,7 +291,7 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     </label>
                     <input
                         value={location}
-                        onChange={e => setLocation(e.target.value)}
+                        onChange={(e) => setLocation(e.target.value)}
                         required
                         placeholder="e.g. Floor 3, Zone A"
                         style={inputStyle}
@@ -122,11 +309,13 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     </label>
                     <select
                         value={inspectionType}
-                        onChange={e => setInspectionType(e.target.value)}
+                        onChange={(e) => setInspectionType(e.target.value)}
                         style={inputStyle}
                     >
-                        {INSPECTION_TYPES.map(type => (
-                            <option key={type} value={type}>{type}</option>
+                        {INSPECTION_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                                {type}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -148,10 +337,15 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
             );
         }
 
+        if (key === 'attachments') {
+            return renderAttachmentsField(label, key);
+        }
+
         const field = customFieldByKey[key];
         if (!field) return null;
 
         const value = customFields?.[key] || '';
+
         if (field.field_type === 'select') {
             return (
                 <div key={key}>
@@ -163,7 +357,9 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     >
                         <option value="">- Select -</option>
                         {(field.options || []).map((option) => (
-                            <option key={option} value={option}>{option}</option>
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -198,150 +394,52 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
         );
     }
 
-    function getPreviewUrl(file) {
-        if (typeof file === 'string') return file;
-        return URL.createObjectURL(file);
-    }
-
-    function removeExistingImage(index) {
-        setExistingImages(prev => prev.filter((_, i) => i !== index));
-    }
-
-    function removeNewFile(index) {
-        setNewFiles(prev => prev.filter((_, i) => i !== index));
-    }
-
-    function replaceExistingImage(index, newFile) {
-        setExistingImages(prev => prev.filter((_, i) => i !== index));
-        setNewFiles(prev => [...prev, newFile]);
-    }
-
-    function replaceNewFile(index, newFile) {
-        setNewFiles(prev => prev.map((f, i) => i === index ? newFile : f));
-    }
-
-    const markupImage = markupTarget
-        ? markupTarget.source === 'existing'
-            ? existingImages[markupTarget.index]
-            : newFiles[markupTarget.index]
-        : null;
-
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
-            <div 
-                className="modal-content" 
+            <div
+                className="modal-content"
                 onClick={(e) => e.stopPropagation()}
-                style={{ 
-                    maxWidth: '650px', 
+                style={{
+                    maxWidth: '650px',
                     width: '95%',
                     borderRadius: '16px',
                     display: 'flex',
                     flexDirection: 'column',
                     maxHeight: '90vh',
                     boxShadow: 'var(--shadow-float)',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
                 }}
             >
-                {/* Header - Matching RejectModal/RFIDetailModal style */}
-                <div style={{
-                    padding: '1.25rem 1.5rem',
-                    borderBottom: '1px solid var(--clr-border)',
-                    background: 'linear-gradient(180deg, #ffffff, #f8fafc)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}>
+                <div
+                    style={{
+                        padding: '1.25rem 1.5rem',
+                        borderBottom: '1px solid var(--clr-border)',
+                        background: 'linear-gradient(180deg, #ffffff, #f8fafc)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                    }}
+                >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                            width: '40px', height: '40px', borderRadius: '10px',
-                            background: 'var(--clr-info-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
+                        <div
+                            style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '10px',
+                                background: 'var(--clr-info-bg)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
                             <Pencil size={20} color="var(--clr-info)" />
                         </div>
-
-                        {projectFields.length > 0 && (
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.65rem' }}>
-                                    Additional Fields
-                                </label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    {projectFields.map((field) => {
-                                        const value = customFields?.[field.field_key] || '';
-                                        if (field.field_type === 'select') {
-                                            return (
-                                                <div key={field.id || field.field_key}>
-                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--clr-text-secondary)', marginBottom: '0.35rem' }}>
-                                                        {field.field_name}
-                                                    </label>
-                                                    <select
-                                                        value={value}
-                                                        onChange={(e) => updateCustomFieldValue(field.field_key, e.target.value)}
-                                                        style={{
-                                                            width: '100%', padding: '0.7rem 0.9rem', borderRadius: '10px',
-                                                            border: '1px solid var(--clr-border)', background: '#fff',
-                                                            fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none',
-                                                            boxSizing: 'border-box'
-                                                        }}
-                                                    >
-                                                        <option value="">- Select -</option>
-                                                        {(field.options || []).map((option) => (
-                                                            <option key={option} value={option}>{option}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            );
-                                        }
-
-                                        if (field.field_type === 'textarea') {
-                                            return (
-                                                <div key={field.id || field.field_key} style={{ gridColumn: '1 / -1' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--clr-text-secondary)', marginBottom: '0.35rem' }}>
-                                                        {field.field_name}
-                                                    </label>
-                                                    <textarea
-                                                        rows={3}
-                                                        value={value}
-                                                        onChange={(e) => updateCustomFieldValue(field.field_key, e.target.value)}
-                                                        style={{
-                                                            width: '100%', padding: '0.8rem 0.9rem', borderRadius: '10px',
-                                                            border: '1px solid var(--clr-border)', background: '#fff',
-                                                            fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none',
-                                                            boxSizing: 'border-box', resize: 'vertical'
-                                                        }}
-                                                    />
-                                                </div>
-                                            );
-                                        }
-
-                                        const type = field.field_type === 'number' ? 'number' : field.field_type === 'date' ? 'date' : 'text';
-                                        return (
-                                            <div key={field.id || field.field_key}>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--clr-text-secondary)', marginBottom: '0.35rem' }}>
-                                                    {field.field_name}
-                                                </label>
-                                                <input
-                                                    type={type}
-                                                    value={value}
-                                                    onChange={(e) => updateCustomFieldValue(field.field_key, e.target.value)}
-                                                    style={{
-                                                        width: '100%', padding: '0.7rem 0.9rem', borderRadius: '10px',
-                                                        border: '1px solid var(--clr-border)', background: '#fff',
-                                                        fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none',
-                                                        boxSizing: 'border-box'
-                                                    }}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--clr-text-main)' }}>
                                 Edit Inspection
                             </h3>
                             <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--clr-text-secondary)' }}>
-                                RFI #{rfi.serialNo} &middot; Currently {rfi.status}
+                                RFI #{rfi.serialNo} - Currently {rfi.status}
                             </p>
                         </div>
                     </div>
@@ -350,123 +448,52 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     </button>
                 </div>
 
-                {/* Body */}
-                <div style={{ 
-                    padding: '1.5rem', 
-                    overflowY: 'auto', 
-                    flex: 1,
-                    background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' 
-                }}>
+                <div
+                    style={{
+                        padding: '1.5rem',
+                        overflowY: 'auto',
+                        flex: 1,
+                        background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
+                    }}
+                >
                     <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.5rem' }}>
-                        
-                        {/* Description */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.5rem' }}>
-                                <FileText size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />
-                                Description
-                            </label>
-                            <textarea
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                                rows={4}
-                                required
-                                autoFocus
-                                placeholder="Describe the inspection request..."
-                                style={{
-                                    width: '100%', padding: '1rem', borderRadius: '12px',
-                                    border: '1px solid var(--clr-border)',
-                                    background: '#fff',
-                                    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.5rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                                            {orderedEditable.map((col) => renderFieldByColumn(col)).filter(Boolean)}
-                                        </div>
-                                            }} className="desktop-hover-only" onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-                                                <button type="button" onClick={() => setMarkupTarget({ source: 'new', index: idx })}
-                                                    style={{
-                                                        width: '28px', height: '28px', borderRadius: '6px', border: 'none',
-                                                        background: '#fff', color: 'var(--clr-text-main)', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}>
-                                                    <Brush size={14} />
-                                                </button>
-                                                <button type="button" onClick={() => removeNewFile(idx)}
-                                                    style={{
-                                                        width: '28px', height: '28px', borderRadius: '6px', border: 'none',
-                                                        background: '#fff', color: 'var(--clr-danger)', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                            <div style={{
-                                                position: 'absolute', top: '-2px', right: '-2px',
-                                                background: 'var(--clr-info)', color: 'white',
-                                                fontSize: '8px', padding: '2px 4px', borderRadius: '4px',
-                                                fontWeight: 800, textTransform: 'uppercase'
-                                            }}>New</div>
-                                        </div>
-                                        {/* Mobile Persistent Controls */}
-                                        <div className="mobile-only-flex" style={{ display: 'none', justifyContent: 'center', gap: '12px' }}>
-                                            <button type="button" onClick={() => setMarkupTarget({ source: 'new', index: idx })}
-                                                style={{ background: 'transparent', border: 'none', color: 'var(--clr-info)', padding: '4px' }}>
-                                                <Brush size={18} />
-                                            </button>
-                                            <button type="button" onClick={() => removeNewFile(idx)}
-                                                style={{ background: 'transparent', border: 'none', color: 'var(--clr-danger)', padding: '4px' }}>
-                                                <X size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <div 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    style={{
-                                        width: '90px', height: '90px', borderRadius: '10px',
-                                        border: '1.5px dashed var(--clr-border)', display: 'flex',
-                                        alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                        background: 'rgba(248, 250, 252, 0.5)', transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-text-muted)'; e.currentTarget.style.background = 'var(--clr-bg-hover)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--clr-border)'; e.currentTarget.style.background = 'rgba(248, 250, 252, 0.5)'; }}
-                                >
-                                    <Upload size={20} color="var(--clr-text-muted)" />
-                                </div>
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                            {orderedEditable.map((col) => renderFieldByColumn(col)).filter(Boolean)}
                         </div>
                     </form>
                 </div>
 
-                {/* Footer */}
-                <div style={{
-                    padding: '1.25rem 1.5rem',
-                    borderTop: '1px solid var(--clr-border)',
-                    background: '#fff',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '0.75rem',
-                    borderRadius: '0 0 16px 16px'
-                }}>
-                    <button 
-                        type="button" 
+                <div
+                    style={{
+                        padding: '1.25rem 1.5rem',
+                        borderTop: '1px solid var(--clr-border)',
+                        background: '#fff',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '0.75rem',
+                        borderRadius: '0 0 16px 16px',
+                    }}
+                >
+                    <button
+                        type="button"
                         onClick={onClose}
                         className="btn"
-                        style={{ 
-                            background: 'transparent', 
+                        style={{
+                            background: 'transparent',
                             color: 'var(--clr-text-secondary)',
                             border: '1px solid var(--clr-border)',
-                            fontWeight: 600
+                            fontWeight: 600,
                         }}
                     >
                         Discard Changes
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={handleSubmit}
                         disabled={!description.trim() || !location.trim()}
                         className="btn"
-                        style={{ 
-                            background: 'var(--clr-info)', 
+                        style={{
+                            background: 'var(--clr-info)',
                             color: 'white',
                             border: 'none',
                             fontWeight: 600,
@@ -474,8 +501,8 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            opacity: (!description.trim() || !location.trim()) ? 0.6 : 1,
-                            cursor: (!description.trim() || !location.trim()) ? 'not-allowed' : 'pointer'
+                            opacity: !description.trim() || !location.trim() ? 0.6 : 1,
+                            cursor: !description.trim() || !location.trim() ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <Save size={16} /> Save Changes
@@ -483,7 +510,6 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                 </div>
             </div>
 
-            {/* Image Markup Modal */}
             {markupTarget && markupImage && (
                 <ImageMarkupModal
                     image={markupImage}
