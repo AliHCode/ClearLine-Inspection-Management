@@ -164,6 +164,27 @@ BEFORE UPDATE ON public.push_subscriptions
 FOR EACH ROW
 EXECUTE FUNCTION public.set_push_subscription_updated_at();
 
+-- 6C. PUSH DISPATCH LOG TABLE (Rate limiting / dedupe)
+CREATE TABLE IF NOT EXISTS public.push_dispatch_log (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  sender_user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  recipient_user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  event_key text,
+  status text DEFAULT 'processed' NOT NULL,
+  sent_count integer DEFAULT 0 NOT NULL,
+  removed_count integer DEFAULT 0 NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS push_dispatch_log_sender_created_idx
+  ON public.push_dispatch_log (sender_user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS push_dispatch_log_recipient_created_idx
+  ON public.push_dispatch_log (recipient_user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS push_dispatch_log_event_key_created_idx
+  ON public.push_dispatch_log (recipient_user_id, event_key, created_at DESC);
+
 -- 7. AUDIT LOG TABLE
 CREATE TABLE IF NOT EXISTS public.audit_log (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,

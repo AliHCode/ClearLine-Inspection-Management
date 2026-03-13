@@ -1155,7 +1155,8 @@ export function RFIProvider({ children }) {
                     title,
                     message,
                     rfiId,
-                    url: buildNotificationOpenPath(rfiId)
+                    url: buildNotificationOpenPath(rfiId),
+                    eventKey: `${userId}|${rfiId || 'none'}|${title}`,
                 },
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });

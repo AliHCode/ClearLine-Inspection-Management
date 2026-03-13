@@ -110,3 +110,24 @@ create policy "Users can delete own push subscriptions"
 on public.push_subscriptions
 for delete
 using (auth.uid() = user_id);
+
+-- Push dispatch log for rate limiting and dedupe
+create table if not exists public.push_dispatch_log (
+  id uuid primary key default gen_random_uuid(),
+  sender_user_id uuid references public.profiles(id) on delete set null,
+  recipient_user_id uuid not null references public.profiles(id) on delete cascade,
+  event_key text,
+  status text not null default 'processed',
+  sent_count integer not null default 0,
+  removed_count integer not null default 0,
+  created_at timestamp with time zone not null default timezone('utc'::text, now())
+);
+
+create index if not exists push_dispatch_log_sender_created_idx
+  on public.push_dispatch_log (sender_user_id, created_at desc);
+
+create index if not exists push_dispatch_log_recipient_created_idx
+  on public.push_dispatch_log (recipient_user_id, created_at desc);
+
+create index if not exists push_dispatch_log_event_key_created_idx
+  on public.push_dispatch_log (recipient_user_id, event_key, created_at desc);

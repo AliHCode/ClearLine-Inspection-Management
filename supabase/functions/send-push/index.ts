@@ -28,6 +28,14 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const SENDER_LIMIT_PER_MIN = 30;
+const RECIPIENT_LIMIT_PER_MIN = 10;
+const EVENT_DEDUPE_SECONDS = 60;
+
+function isoNowMinusSeconds(seconds: number) {
+  return new Date(Date.now() - seconds * 1000).toISOString();
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -36,6 +44,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization') ?? '';
     const jwt = authHeader.replace(/^Bearer\s+/i, '');
+    let senderUserId: string | null = null;
     // Optional auth check: if a JWT is present, validate it for diagnostics.
     // Do not hard-fail when missing because some clients do not forward Authorization.
     if (jwt) {
@@ -46,16 +55,72 @@ Deno.serve(async (req: Request) => {
 
       if (authError || !user) {
         console.warn('send-push called with invalid Authorization token; proceeding without user context');
+      } else {
+        senderUserId = user.id;
       }
     }
 
-    const { userId, title, message, rfiId = null, url = '/' } = await req.json();
+    const { userId, title, message, rfiId = null, url = '/', eventKey = null } = await req.json();
 
     if (!userId || !title || !message) {
       return new Response(JSON.stringify({ error: 'userId, title and message are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const oneMinuteAgo = isoNowMinusSeconds(60);
+
+    if (senderUserId) {
+      const { count: senderCount, error: senderCountError } = await supabase
+        .from('push_dispatch_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('sender_user_id', senderUserId)
+        .gte('created_at', oneMinuteAgo);
+
+      if (senderCountError) throw senderCountError;
+
+      if ((senderCount || 0) >= SENDER_LIMIT_PER_MIN) {
+        return new Response(JSON.stringify({ error: 'sender-rate-limit', retryAfterSeconds: 60 }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    const { count: recipientCount, error: recipientCountError } = await supabase
+      .from('push_dispatch_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_user_id', userId)
+      .gte('created_at', oneMinuteAgo);
+
+    if (recipientCountError) throw recipientCountError;
+
+    if ((recipientCount || 0) >= RECIPIENT_LIMIT_PER_MIN) {
+      return new Response(JSON.stringify({ error: 'recipient-rate-limit', retryAfterSeconds: 60 }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (eventKey) {
+      const dedupeAfter = isoNowMinusSeconds(EVENT_DEDUPE_SECONDS);
+      const { data: dedupeRows, error: dedupeError } = await supabase
+        .from('push_dispatch_log')
+        .select('id')
+        .eq('recipient_user_id', userId)
+        .eq('event_key', eventKey)
+        .gte('created_at', dedupeAfter)
+        .limit(1);
+
+      if (dedupeError) throw dedupeError;
+
+      if ((dedupeRows || []).length > 0) {
+        return new Response(JSON.stringify({ sent: 0, removed: 0, deduped: true, eventKey }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const { data: subscriptions, error: subscriptionsError } = await supabase
@@ -80,6 +145,15 @@ Deno.serve(async (req: Request) => {
     const dedupedSubscriptions = Array.from(latestByInstall.values());
 
     if (dedupedSubscriptions.length === 0) {
+      await supabase.from('push_dispatch_log').insert([{
+        sender_user_id: senderUserId,
+        recipient_user_id: userId,
+        event_key: eventKey,
+        status: 'no-subscriptions',
+        sent_count: 0,
+        removed_count: 0,
+      }]);
+
       return new Response(JSON.stringify({ sent: 0, removed: 0, reason: 'no-subscriptions' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -128,6 +202,15 @@ Deno.serve(async (req: Request) => {
         console.error('Failed to clean invalid push subscriptions:', cleanupError);
       }
     }
+
+    await supabase.from('push_dispatch_log').insert([{
+      sender_user_id: senderUserId,
+      recipient_user_id: userId,
+      event_key: eventKey,
+      status: sent > 0 ? 'sent' : 'processed',
+      sent_count: sent,
+      removed_count: invalidIds.length,
+    }]);
 
     return new Response(JSON.stringify({ sent, removed: invalidIds.length }), {
       status: 200,

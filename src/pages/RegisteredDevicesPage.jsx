@@ -134,7 +134,8 @@ export default function RegisteredDevicesPage() {
                     title: 'ProWay Test Push 🔔',
                     message: 'This is a test notification from the Registered Devices admin panel.',
                     rfiId: null,
-                    url: '/notification-open?source=test'
+                    url: '/notification-open?source=test',
+                    eventKey: `test-push|${targetUserId}`,
                 },
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
