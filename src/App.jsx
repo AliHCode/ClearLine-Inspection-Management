@@ -4,6 +4,7 @@ import { ProjectProvider } from './context/ProjectContext';
 import { RFIProvider } from './context/RFIContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
+import AppExperienceEnhancements from './components/AppExperienceEnhancements';
 import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import ContractorDashboard from './pages/ContractorDashboard';
@@ -33,8 +34,15 @@ function ProtectedRoute({ children, allowedRoles }) {
 function AppRoutes() {
     const { user, loading } = useAuth();
     const { projects, loadingProjects } = useProject();
+    const isOffline = !window.navigator.onLine;
 
-    if (loading || (loadingProjects && projects.length === 0)) return <LoadingSpinner message="Setting up your workspace..." />;
+    if (loading || (loadingProjects && projects.length === 0)) {
+        return (
+            <LoadingSpinner
+                message={isOffline ? 'Opening from local cache...' : 'Setting up your workspace...'}
+            />
+        );
+    }
 
     return (
         <Routes>
@@ -149,6 +157,7 @@ export default function App() {
                     <ProjectProvider>
                         <RFIProvider>
                             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+                            <AppExperienceEnhancements />
                             <AppRoutes />
                         </RFIProvider>
                     </ProjectProvider>

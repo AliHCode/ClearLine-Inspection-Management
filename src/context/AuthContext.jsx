@@ -7,6 +7,19 @@ const AuthContext = createContext(null);
 
 // Cache key for offline-resilient profile storage
 const PROFILE_CACHE_KEY = 'saa_user_profile_cache';
+const MANUAL_LOGOUT_KEY = 'saa_manual_logout';
+
+function wasManualLogout() {
+    return localStorage.getItem(MANUAL_LOGOUT_KEY) === '1';
+}
+
+function setManualLogoutFlag(value) {
+    if (value) {
+        localStorage.setItem(MANUAL_LOGOUT_KEY, '1');
+    } else {
+        localStorage.removeItem(MANUAL_LOGOUT_KEY);
+    }
+}
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -21,18 +34,28 @@ export function AuthProvider({ children }) {
         // getSession() reads from localStorage — works offline.
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
+                setManualLogoutFlag(false);
                 fetchProfile(session.user.id);
             } else {
+                const restored = restoreCachedProfile();
+                if (!restored || wasManualLogout()) {
+                    setUser(null);
+                }
                 setLoading(false);
             }
         });
 
         // Listen for changes on auth state (logged in, signed out, etc.)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
+                setManualLogoutFlag(false);
                 fetchProfile(session.user.id);
             } else {
-                setUser(null);
+                if (event === 'SIGNED_OUT' || wasManualLogout()) {
+                    setUser(null);
+                } else if (!restoreCachedProfile()) {
+                    setUser(null);
+                }
                 setLoading(false);
             }
         });
@@ -63,22 +86,29 @@ export function AuthProvider({ children }) {
         if (error) throw error;
     }
 
+    function restoreCachedProfile(expectedUserId = null) {
+        if (wasManualLogout()) return false;
+        try {
+            const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+            if (!cached) return false;
+            const profile = JSON.parse(cached);
+            if (expectedUserId && profile.id !== expectedUserId) return false;
+            setUser(profile);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     async function fetchProfile(userId) {
         // ── Offline guard ────────────────────────────────────────────────────
         // getUser() and DB queries need the network. When offline, serve the
         // last-known profile from localStorage so the user stays logged in.
         if (!navigator.onLine) {
-            try {
-                const cached = localStorage.getItem(PROFILE_CACHE_KEY);
-                if (cached) {
-                    const profile = JSON.parse(cached);
-                    if (profile.id === userId) {
-                        setUser(profile);
-                        setLoading(false);
-                        return;
-                    }
-                }
-            } catch { /* ignore parse errors */ }
+            if (restoreCachedProfile(userId)) {
+                setLoading(false);
+                return;
+            }
             // No valid cache; leave loading=false without logging the user out
             setLoading(false);
             return;
@@ -111,6 +141,7 @@ export function AuthProvider({ children }) {
             if (data) {
                 // Block deactivated accounts
                 if (data.is_active === false) {
+                    setManualLogoutFlag(true);
                     await supabase.auth.signOut();
                     localStorage.removeItem(PROFILE_CACHE_KEY);
                     setUser(null);
@@ -119,6 +150,7 @@ export function AuthProvider({ children }) {
                 }
                 // Block archived accounts (card hidden by admin — treated same as deactivated)
                 if (data.is_archived === true) {
+                    setManualLogoutFlag(true);
                     await supabase.auth.signOut();
                     localStorage.removeItem(PROFILE_CACHE_KEY);
                     setUser(null);
@@ -127,6 +159,7 @@ export function AuthProvider({ children }) {
                 }
                 // Rejected users — keep them signed in so LoginPage shows rejection screen
                 const fullUser = { ...data, email: authUser?.email || '' };
+                setManualLogoutFlag(false);
                 // Cache the profile for offline resilience
                 try {
                     localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(fullUser));
@@ -144,17 +177,10 @@ export function AuthProvider({ children }) {
         } catch (error) {
             console.error('Error fetching profile:', error.message);
             // Network error while online? Fallback to cache so we don't log user out
-            try {
-                const cached = localStorage.getItem(PROFILE_CACHE_KEY);
-                if (cached) {
-                    const profile = JSON.parse(cached);
-                    if (profile.id === userId) {
-                        setUser(profile);
-                        setLoading(false);
-                        return;
-                    }
-                }
-            } catch { /* ignore */ }
+            if (restoreCachedProfile(userId)) {
+                setLoading(false);
+                return;
+            }
         } finally {
             setLoading(false);
         }
@@ -165,6 +191,7 @@ export function AuthProvider({ children }) {
         try {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
+            setManualLogoutFlag(false);
 
             // fetchProfile will be called by the onAuthStateChange listener
             return { success: true };
@@ -227,6 +254,7 @@ export function AuthProvider({ children }) {
             }
 
             // Successfully registered and logged in (if auto-confirm is on)
+            setManualLogoutFlag(false);
             return { success: true };
         } catch (error) {
             console.error('Registration error:', error.message);
@@ -237,6 +265,7 @@ export function AuthProvider({ children }) {
 
     async function logout() {
         setLoading(true);
+        setManualLogoutFlag(true);
         // Clear cached profile so offline mode doesn't keep a stale session
         localStorage.removeItem(PROFILE_CACHE_KEY);
         if (user?.id) {
