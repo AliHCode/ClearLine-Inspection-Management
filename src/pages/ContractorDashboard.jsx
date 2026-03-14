@@ -159,38 +159,40 @@ export default function ContractorDashboard() {
                     <div className="dashboard-section" style={{ flex: '2 1 300px', minWidth: 0, margin: 0, maxWidth: '100%' }}>
                         <div className="section-header">
                             <h2><TrendingUp size={20} /> Recent RFIs</h2>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                {allMyRfis.length > 0 && (
-                                    <div className="export-actions" style={{ display: 'flex', gap: '0.75rem', marginRight: '1rem', alignItems: 'center' }}>
-                                        <button
-                                            className="btn btn-sm"
-                                            style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                            title="Export to PDF"
-                                        >
-                                            <FileDown size={16} /> PDF
-                                        </button>
-                                        <button
-                                            className="btn btn-sm"
-                                            style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                            title="Export to Excel"
-                                        >
-                                            <Table size={16} /> Excel
-                                        </button>
-                                        <button
-                                            className="btn btn-sm"
-                                            style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                            onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                            title="Generate branded daily report"
-                                        >
-                                            <ClipboardList size={16} /> Daily Report
-                                        </button>
-                                    </div>
-                                )}
-                                <button className="btn btn-ghost" onClick={() => navigate('/contractor/rfi-sheet')}>
-                                    View All →
-                                </button>
+                            <div className="recent-rfi-actions-wrap">
+                                <div className="recent-rfi-actions-group">
+                                    {allMyRfis.length > 0 && (
+                                        <>
+                                            <button
+                                                className="btn btn-sm"
+                                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                                onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                                title="Export to PDF"
+                                            >
+                                                <FileDown size={16} /> PDF
+                                            </button>
+                                            <button
+                                                className="btn btn-sm"
+                                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                                onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                                title="Export to Excel"
+                                            >
+                                                <Table size={16} /> Excel
+                                            </button>
+                                            <button
+                                                className="btn btn-sm"
+                                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                                onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                                title="Generate branded daily report"
+                                            >
+                                                <ClipboardList size={16} /> Daily Report
+                                            </button>
+                                        </>
+                                    )}
+                                    <button className="btn btn-ghost recent-rfi-view-all-btn" onClick={() => navigate('/contractor/rfi-sheet')}>
+                                        View All →
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
