@@ -18,7 +18,7 @@ export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
     const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectsResolved } = useProject();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
@@ -46,46 +46,6 @@ export default function ReviewQueue() {
     if (filter === 'rejected') filteredItems = todayRejected;
     if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
 
-    const tableColumnsReady = projectsResolved && !loadingFields && orderedTableColumns.length > 0;
-
-    function renderTableSkeleton() {
-        const skeletonCols = Math.max(orderedTableColumns.length, 8);
-        const rowCount = 5;
-        return (
-            <div className="sheet-section">
-                <div className="rfi-table-wrapper">
-                    <table className="rfi-table editable">
-                        <thead>
-                            <tr>
-                                <th className="col-serial" style={{ width: '40px' }}></th>
-                                {Array.from({ length: skeletonCols }).map((_, idx) => (
-                                    <th key={`skeleton_head_${idx}`}>
-                                        <div className="table-skeleton skeleton-line skeleton-line-sm"></div>
-                                    </th>
-                                ))}
-                                <th className="col-assign"><div className="table-skeleton skeleton-line skeleton-line-sm"></div></th>
-                                <th className="col-status"><div className="table-skeleton skeleton-line skeleton-line-sm"></div></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Array.from({ length: rowCount }).map((_, rowIdx) => (
-                                <tr key={`skeleton_row_${rowIdx}`}>
-                                    <td className="col-serial"><div className="table-skeleton skeleton-dot"></div></td>
-                                    {Array.from({ length: skeletonCols }).map((__, cellIdx) => (
-                                        <td key={`skeleton_cell_${rowIdx}_${cellIdx}`}>
-                                            <div className="table-skeleton skeleton-line"></div>
-                                        </td>
-                                    ))}
-                                    <td className="col-assign"><div className="table-skeleton skeleton-line"></div></td>
-                                    <td className="col-status"><div className="table-skeleton skeleton-line"></div></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        );
-    }
 
     async function handleApprove(rfiId, remarks = '', files = []) {
         await approveRFI(rfiId, user.id, remarks, files);
@@ -427,9 +387,7 @@ export default function ReviewQueue() {
                 )}
 
                 {/* Review Table (Excel-like format) */}
-                {!tableColumnsReady ? (
-                    renderTableSkeleton()
-                ) : filteredItems.length === 0 ? (
+                {filteredItems.length === 0 ? (
                     <div className="empty-state">
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                             <CheckCircle size={24} color="var(--clr-success)" /> All Caught Up!
