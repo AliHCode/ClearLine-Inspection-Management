@@ -128,8 +128,8 @@ export default function ConsultantDashboard() {
                                 )}
                                 {queue.pending.length > 0 && (
                                     <div className="summary-item pending">
-                                        <Clock size={20} />
-                                        <span>{queue.pending.length} new RFI{queue.pending.length > 1 ? 's' : ''} pending first review</span>
+                                        <span className="summary-item-icon"><Clock size={18} /></span>
+                                        <span className="summary-item-text">{queue.pending.length} new RFI{queue.pending.length > 1 ? 's' : ''} pending first review</span>
                                     </div>
                                 )}
                                 <button className="btn btn-primary" onClick={() => navigate('/consultant/review')} style={{ marginTop: '1rem' }}>

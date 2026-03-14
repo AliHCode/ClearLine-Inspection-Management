@@ -17,8 +17,8 @@ import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
-    const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
+    const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi } = useRFI();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectsResolved } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
@@ -45,6 +45,47 @@ export default function ReviewQueue() {
     if (filter === 'approved') filteredItems = todayApproved;
     if (filter === 'rejected') filteredItems = todayRejected;
     if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
+
+    const tableColumnsReady = projectsResolved && !loadingFields && orderedTableColumns.length > 0;
+
+    function renderTableSkeleton() {
+        const skeletonCols = Math.max(orderedTableColumns.length, 8);
+        const rowCount = 5;
+        return (
+            <div className="sheet-section">
+                <div className="rfi-table-wrapper">
+                    <table className="rfi-table editable">
+                        <thead>
+                            <tr>
+                                <th className="col-serial" style={{ width: '40px' }}></th>
+                                {Array.from({ length: skeletonCols }).map((_, idx) => (
+                                    <th key={`skeleton_head_${idx}`}>
+                                        <div className="table-skeleton skeleton-line skeleton-line-sm"></div>
+                                    </th>
+                                ))}
+                                <th className="col-assign"><div className="table-skeleton skeleton-line skeleton-line-sm"></div></th>
+                                <th className="col-status"><div className="table-skeleton skeleton-line skeleton-line-sm"></div></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Array.from({ length: rowCount }).map((_, rowIdx) => (
+                                <tr key={`skeleton_row_${rowIdx}`}>
+                                    <td className="col-serial"><div className="table-skeleton skeleton-dot"></div></td>
+                                    {Array.from({ length: skeletonCols }).map((__, cellIdx) => (
+                                        <td key={`skeleton_cell_${rowIdx}_${cellIdx}`}>
+                                            <div className="table-skeleton skeleton-line"></div>
+                                        </td>
+                                    ))}
+                                    <td className="col-assign"><div className="table-skeleton skeleton-line"></div></td>
+                                    <td className="col-status"><div className="table-skeleton skeleton-line"></div></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
 
     async function handleApprove(rfiId, remarks = '', files = []) {
         await approveRFI(rfiId, user.id, remarks, files);
@@ -165,66 +206,75 @@ export default function ReviewQueue() {
     }
 
     function renderReviewActionCell(rfi) {
+        const canEditThisRfi = canUserEditRfi(rfi);
+        const canChatThisRfi = canUserDiscussRfi(rfi);
+
         if (filter === 'to_review' || filter === 'my_assigned' || filter === 'approved' || filter === 'rejected') {
             return (
                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
-                    <button
-                        onClick={() => {
-                            setApproveTarget(rfi);
-                            setRejectTarget(null);
-                            setDetailTarget(null);
-                        }}
-                        title={filter === 'approved' ? 'Update Approval' : 'Approve'}
-                        style={{
-                            background: 'transparent', border: '1.5px solid #d1d5db',
-                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '3px',
-                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                            fontFamily: 'inherit', transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                        <CheckCircle size={15} />
-                    </button>
-                    <button
-                        onClick={() => {
-                            setRejectTarget(rfi);
-                            setDetailTarget(null);
-                        }}
-                        title={filter === 'approved' ? 'Change to Rejected' : 'Reject'}
-                        style={{
-                            background: 'transparent', border: '1.5px solid #d1d5db',
-                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '3px',
-                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                            fontFamily: 'inherit', transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                        <XCircle size={15} />
-                    </button>
-                    <button
-                        onClick={() => {
-                            setDetailTarget(rfi);
-                            setRejectTarget(null);
-                            setScrollTrigger(prev => prev + 1);
-                            setTimeout(() => scrollToPageBottom(), 80);
-                        }}
-                        title="Chat"
-                        style={{
-                            background: 'transparent', border: '1.5px solid #d1d5db',
-                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '3px',
-                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                            fontFamily: 'inherit', transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                        <MessageSquare size={15} />
-                    </button>
+                    {canEditThisRfi && (
+                        <>
+                            <button
+                                onClick={() => {
+                                    setApproveTarget(rfi);
+                                    setRejectTarget(null);
+                                    setDetailTarget(null);
+                                }}
+                                title={filter === 'approved' ? 'Update Approval' : 'Approve'}
+                                style={{
+                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                <CheckCircle size={15} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setRejectTarget(rfi);
+                                    setDetailTarget(null);
+                                }}
+                                title={filter === 'approved' ? 'Change to Rejected' : 'Reject'}
+                                style={{
+                                    background: 'transparent', border: '1.5px solid #d1d5db',
+                                    borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                    color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                <XCircle size={15} />
+                            </button>
+                        </>
+                    )}
+                    {canChatThisRfi && (
+                        <button
+                            onClick={() => {
+                                setDetailTarget(rfi);
+                                setRejectTarget(null);
+                                setScrollTrigger(prev => prev + 1);
+                                setTimeout(() => scrollToPageBottom(), 80);
+                            }}
+                            title="Chat"
+                            style={{
+                                background: 'transparent', border: '1.5px solid #d1d5db',
+                                borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '3px',
+                                color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                fontFamily: 'inherit', transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                        >
+                            <MessageSquare size={15} />
+                        </button>
+                    )}
                 </div>
             );
         }
@@ -377,7 +427,9 @@ export default function ReviewQueue() {
                 )}
 
                 {/* Review Table (Excel-like format) */}
-                {filteredItems.length === 0 ? (
+                {!tableColumnsReady ? (
+                    renderTableSkeleton()
+                ) : filteredItems.length === 0 ? (
                     <div className="empty-state">
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                             <CheckCircle size={24} color="var(--clr-success)" /> All Caught Up!

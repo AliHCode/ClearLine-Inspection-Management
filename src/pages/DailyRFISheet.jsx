@@ -19,7 +19,7 @@ export default function DailyRFISheet() {
     const { user } = useAuth();
     const { activeProject, projectFields, orderedTableColumns, getTableColumnStyle, columnWidthMap } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
-    const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants, rfis, pendingSyncCount } = useRFI();
+    const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants, rfis, pendingSyncCount, canUserEditRfi } = useRFI();
     const [currentDate, setCurrentDate] = useState(getToday());
     const [detailTarget, setDetailTarget] = useState(null);
     const [editTarget, setEditTarget] = useState(null);
@@ -339,6 +339,7 @@ export default function DailyRFISheet() {
                     </td>
                 );
             case 'actions':
+                const canEditThisRfi = canUserEditRfi(rfi);
                 if (isCarryover) {
                     return (
                         <td key={col.field_key} style={style}>
@@ -370,7 +371,7 @@ export default function DailyRFISheet() {
                                     <Plus size={14} /> Revision
                                 </button>
                             )}
-                            {rfi.status === RFI_STATUS.PENDING && (
+                            {rfi.status === RFI_STATUS.PENDING && canEditThisRfi && (
                                 <>
                                     <button className="btn btn-sm btn-ghost" onClick={() => { setEditTarget(rfi); setDetailTarget(null); }} title="Edit RFI">
                                         <Pencil size={14} />
@@ -590,8 +591,8 @@ export default function DailyRFISheet() {
                     <div className="new-entry-launcher">
                         <div className="new-entry-launcher-copy">
                             <span className="new-entry-kicker">RFI Workspace</span>
-                            <h2 className="new-entry-title">Create New RFIs</h2>
-                            <p className="new-entry-subtitle">Open the entry grid only when you are ready to file fresh requests.</p>
+                            <h2 className="new-entry-title">New RFIs</h2>
+                            <p className="new-entry-subtitle">Use grid mode to file requests.</p>
                         </div>
                         <button
                             className="btn btn-primary"
@@ -604,7 +605,7 @@ export default function DailyRFISheet() {
 
                     {!showNewRfiEntry && (
                         <div className="new-entry-placeholder">
-                            Entry grid is hidden to keep this page clean. Click <strong>Open Entry Grid</strong> to start filing.
+                            Grid hidden. Click <strong>Open Entry Grid</strong>.
                         </div>
                     )}
 

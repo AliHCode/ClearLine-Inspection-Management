@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import UserAvatar from './UserAvatar';
@@ -6,7 +7,7 @@ import { Send, Loader2, Paperclip, Brush, X, RotateCcw, Move, Pencil, Trash2 } f
 
 export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger }) {
     const { user } = useAuth();
-    const { fetchComments, addComment, updateComment, deleteComment, uploadImages } = useRFI();
+    const { fetchComments, addComment, updateComment, deleteComment, uploadImages, rfis, canUserDiscussRfi } = useRFI();
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -28,6 +29,8 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [composerMode, setComposerMode] = useState('create');
     const [composerEditCommentId, setComposerEditCommentId] = useState(null);
+    const [deleteConfirmCommentId, setDeleteConfirmCommentId] = useState(null);
+    const [discussionLocked, setDiscussionLocked] = useState(false);
     const prevCommentsLength = useRef(0);
     const messagesEndRef = useRef(null);
     const attachInputRef = useRef(null);
@@ -111,7 +114,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         // Set up polling (5s)
         const interval = setInterval(loadComments, 5000);
         return () => clearInterval(interval);
-    }, [rfiId]);
+    }, [rfiId, rfis, canUserDiscussRfi]);
 
     useEffect(() => {
         // SCROLL ON TRIGGER (Button Click)
@@ -131,6 +134,16 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     }, [comments]);
 
     const loadComments = async () => {
+        const targetRfi = rfis.find((r) => r.id === rfiId);
+        const canDiscuss = targetRfi ? canUserDiscussRfi(targetRfi) : true;
+        setDiscussionLocked(!canDiscuss);
+
+        if (!canDiscuss) {
+            setComments([]);
+            setLoading(false);
+            return;
+        }
+
         const data = await fetchComments(rfiId);
         setComments(data);
         setLoading(false);
@@ -156,6 +169,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
             if (onCommentAdded) onCommentAdded();
         } catch (error) {
             console.error(error);
+            toast.error(error?.message || 'Unable to send message.');
         } finally {
             setSubmitting(false);
         }
@@ -501,16 +515,16 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     };
 
     const handleDeleteComment = async (commentId) => {
-        if (submitting) return;
-        const confirmed = window.confirm('Delete this message?');
-        if (!confirmed) return;
-
+        if (submitting || !commentId) return;
         setSubmitting(true);
         try {
             await deleteComment(commentId);
             await loadComments();
+            toast.success('Message deleted');
+            setDeleteConfirmCommentId(null);
         } catch (error) {
             console.error(error);
+            toast.error(error?.message || 'Could not delete message.');
         } finally {
             setSubmitting(false);
         }
@@ -600,7 +614,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-ghost comment-action-icon danger"
-                                                        onClick={() => handleDeleteComment(c.id)}
+                                                        onClick={() => setDeleteConfirmCommentId(c.id)}
                                                         title="Delete message"
                                                         disabled={submitting}
                                                     >
@@ -625,7 +639,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Type a message..."
                     className="comment-input"
-                    disabled={submitting}
+                    disabled={submitting || discussionLocked}
                 />
                 <input
                     ref={attachInputRef}
@@ -639,7 +653,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                     type="button"
                     className="btn btn-ghost comment-attach-btn"
                     onClick={openFilePicker}
-                    disabled={submitting}
+                    disabled={submitting || discussionLocked}
                     title="Attach image"
                 >
                     <Paperclip size={16} />
@@ -647,12 +661,18 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                 <button
                     type="submit"
                     className="btn btn-action comment-submit-btn"
-                    disabled={!newComment.trim() || submitting}
+                    disabled={!newComment.trim() || submitting || discussionLocked}
                     style={{ padding: '0.5rem', borderRadius: 'var(--radius-full)' }}
                 >
                     {submitting ? <Loader2 className="spinner" size={18} /> : <Send size={18} />}
                 </button>
             </form>
+
+            {discussionLocked && (
+                <div className="comment-chat-lock-notice">
+                    Chat is restricted. Only the filing contractor and assigned consultant can message on this RFI.
+                </div>
+            )}
 
             {composerOpen && composerImages.length > 0 && (
                 <div className="modal-overlay" onClick={closeComposer} style={{ zIndex: 1150 }}>
@@ -807,6 +827,33 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                             >
                                 {submitting ? <Loader2 className="spinner" size={18} /> : <Send size={16} />}
                                 <span>Send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {deleteConfirmCommentId && (
+                <div className="modal-overlay" style={{ zIndex: 1160 }} onClick={() => !submitting && setDeleteConfirmCommentId(null)}>
+                    <div className="delete-comment-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Delete message?</h3>
+                        <p>This action cannot be undone.</p>
+                        <div className="delete-comment-modal-actions">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={() => setDeleteConfirmCommentId(null)}
+                                disabled={submitting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={() => handleDeleteComment(deleteConfirmCommentId)}
+                                disabled={submitting}
+                            >
+                                {submitting ? <Loader2 className="spinner" size={16} /> : 'Delete'}
                             </button>
                         </div>
                     </div>

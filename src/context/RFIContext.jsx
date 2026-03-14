@@ -58,6 +58,24 @@ function normalizeMentionKey(value = '') {
     return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function canUserEditRfiRecord(rfi, currentUser) {
+    if (!rfi || !currentUser?.id) return false;
+    if (currentUser.role === 'admin') return true;
+
+    if (rfi.assignedTo) {
+        return rfi.assignedTo === currentUser.id;
+    }
+
+    if (currentUser.role === 'consultant') return true;
+    return rfi.filedBy === currentUser.id;
+}
+
+function canUserDiscussRfiRecord(rfi, userId) {
+    if (!rfi || !userId) return false;
+    if (!rfi.assignedTo) return true;
+    return rfi.filedBy === userId || rfi.assignedTo === userId;
+}
+
 export function RFIProvider({ children }) {
     const { activeProject } = useProject();
     const { user } = useAuth();
@@ -851,6 +869,11 @@ export function RFIProvider({ children }) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
+        if (!canUserEditRfiRecord(targetRfi, user)) {
+            toast.error('This RFI is assigned to another reviewer. You can only view it.');
+            return;
+        }
+
         if (!navigator.onLine) {
             const queuedAttachments = await serializeImagesForQueue(consultantAttachments || []);
             await enqueuePendingAction({
@@ -936,6 +959,11 @@ export function RFIProvider({ children }) {
     async function rejectRFI(rfiId, reviewedBy, remarks, consultantAttachments = []) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
+
+        if (!canUserEditRfiRecord(targetRfi, user)) {
+            toast.error('This RFI is assigned to another reviewer. You can only view it.');
+            return;
+        }
 
         if (!navigator.onLine) {
             const queuedAttachments = await serializeImagesForQueue(consultantAttachments || []);
@@ -1124,6 +1152,11 @@ export function RFIProvider({ children }) {
      *  ------------------------- */
     async function fetchComments(rfiId) {
         try {
+            const targetRfi = rfis.find((r) => r.id === rfiId);
+            if (targetRfi && !canUserDiscussRfiRecord(targetRfi, user?.id)) {
+                return [];
+            }
+
             const { data, error } = await supabase
                 .from('comments')
                 .select(`
@@ -1158,6 +1191,10 @@ export function RFIProvider({ children }) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
+        if (!canUserDiscussRfiRecord(targetRfi, user.id)) {
+            throw new Error('Chat is limited to the assigned consultant and filing contractor.');
+        }
+
         try {
             const attachments = Array.isArray(options.attachments) ? options.attachments : [];
             const uploadedAttachmentUrls = attachments.length > 0 ? await uploadImages(attachments) : [];
@@ -1179,10 +1216,16 @@ export function RFIProvider({ children }) {
             const isFiler = user.id === targetRfi.filedBy;
             const targetUserId = isFiler ? targetRfi.reviewedBy : targetRfi.filedBy;
 
-            const notificationRecipients = new Set();
-            if (targetUserId && targetUserId !== user.id) {
-                notificationRecipients.add(targetUserId);
+            const allowedRecipients = new Set();
+            if (targetRfi.assignedTo) {
+                [targetRfi.filedBy, targetRfi.assignedTo].forEach((uid) => {
+                    if (uid && uid !== user.id) allowedRecipients.add(uid);
+                });
+            } else if (targetUserId && targetUserId !== user.id) {
+                allowedRecipients.add(targetUserId);
             }
+
+            const notificationRecipients = new Set(allowedRecipients);
 
             const mentionMatches = content.match(/@([a-z0-9._-]+)/gi) || [];
             const mentionKeys = new Set(mentionMatches.map((m) => normalizeMentionKey(m.slice(1))));
@@ -1190,6 +1233,7 @@ export function RFIProvider({ children }) {
 
             mentionCandidates.forEach((member) => {
                 if (!member?.id || member.id === user.id) return;
+                if (!allowedRecipients.has(member.id)) return;
                 const memberKey = normalizeMentionKey(member.name || '');
                 if (memberKey && mentionKeys.has(memberKey)) {
                     notificationRecipients.add(member.id);
@@ -1226,6 +1270,22 @@ export function RFIProvider({ children }) {
         if (!trimmed) return;
 
         try {
+            const { data: commentRow, error: commentFetchError } = await supabase
+                .from('comments')
+                .select('id, rfi_id, user_id')
+                .eq('id', commentId)
+                .maybeSingle();
+
+            if (commentFetchError) throw commentFetchError;
+            if (!commentRow?.id || commentRow.user_id !== user.id) {
+                throw new Error('You can only edit your own messages.');
+            }
+
+            const targetRfi = rfis.find((r) => r.id === commentRow.rfi_id);
+            if (targetRfi && !canUserDiscussRfiRecord(targetRfi, user.id)) {
+                throw new Error('Chat is limited to the assigned consultant and filing contractor.');
+            }
+
             const { error } = await supabase
                 .from('comments')
                 .update({ content: trimmed })
@@ -1244,14 +1304,36 @@ export function RFIProvider({ children }) {
         if (!user) return;
 
         try {
-            const { error } = await supabase
+            const { data: commentRow, error: commentFetchError } = await supabase
+                .from('comments')
+                .select('id, rfi_id, user_id')
+                .eq('id', commentId)
+                .maybeSingle();
+
+            if (commentFetchError) throw commentFetchError;
+            if (!commentRow?.id || commentRow.user_id !== user.id) {
+                throw new Error('You can only delete your own messages.');
+            }
+
+            const targetRfi = rfis.find((r) => r.id === commentRow.rfi_id);
+            if (targetRfi && !canUserDiscussRfiRecord(targetRfi, user.id)) {
+                throw new Error('Chat is limited to the assigned consultant and filing contractor.');
+            }
+
+            const { data, error } = await supabase
                 .from('comments')
                 .delete()
                 .eq('id', commentId)
-                .eq('user_id', user.id);
+                .eq('user_id', user.id)
+                .select('id, rfi_id')
+                .maybeSingle();
 
             if (error) throw error;
-            await logAuditEvent(null, 'comment_deleted', { commentId });
+            if (!data?.id) {
+                throw new Error('Delete was blocked by permissions. Please apply comment delete policy in Supabase.');
+            }
+
+            await logAuditEvent(data.rfi_id || null, 'comment_deleted', { commentId });
         } catch (error) {
             console.error('Error deleting comment:', error);
             throw error;
@@ -1273,6 +1355,12 @@ export function RFIProvider({ children }) {
     /** Update an RFI's details */
     async function updateRFI(rfiId, updates) {
         try {
+            const current = rfis.find((r) => r.id === rfiId);
+            if (current && !canUserEditRfiRecord(current, user)) {
+                toast.error('This RFI is assigned to another user. You can view it only.');
+                return;
+            }
+
             // Need to convert keys to snake case for db
             const dbUpdates = {};
             if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -1329,7 +1417,6 @@ export function RFIProvider({ children }) {
 
             if (appendFiles.length > 0) {
                 const uploaded = await normalizeImagesForSubmission(appendFiles);
-                const current = rfis.find((r) => r.id === rfiId);
                 dbUpdates.images = [
                     ...(updates.images !== undefined ? updates.images : (current?.images || [])),
                     ...uploaded,
@@ -1462,17 +1549,19 @@ export function RFIProvider({ children }) {
     }
 
     // --- Helper to trigger notifications (Used internally by approve/reject/comment) ---
-    async function createNotification(userId, title, message, rfiId = null) {
+    async function createNotification(userId, title, message, rfiId = null, options = {}) {
         try {
-            await supabase.from('notifications').insert([{
+            const { error: notificationError } = await supabase.from('notifications').insert([{
                 user_id: userId,
                 title,
                 message,
                 rfi_id: rfiId
             }]);
+            if (notificationError) throw notificationError;
 
             const { data: sessionData } = await supabase.auth.getSession();
             const accessToken = sessionData?.session?.access_token;
+            const eventKey = options.eventKey || `${userId}|${rfiId || 'none'}|${title}|${message}`;
 
             const { error: pushError } = await supabase.functions.invoke('send-push', {
                 body: {
@@ -1481,7 +1570,7 @@ export function RFIProvider({ children }) {
                     message,
                     rfiId,
                     url: buildNotificationOpenPath(rfiId),
-                    eventKey: `${userId}|${rfiId || 'none'}|${title}`,
+                    eventKey,
                 },
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
@@ -1536,6 +1625,8 @@ export function RFIProvider({ children }) {
                 addComment,
                 updateComment,
                 deleteComment,
+                canUserEditRfi: (rfi) => canUserEditRfiRecord(rfi, user),
+                canUserDiscussRfi: (rfi) => canUserDiscussRfiRecord(rfi, user?.id),
                 markNotificationRead,
                 markAllNotificationsRead,
                 createNotification

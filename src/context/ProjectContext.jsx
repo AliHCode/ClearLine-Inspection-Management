@@ -20,6 +20,7 @@ export function ProjectProvider({ children }) {
     const [projects, setProjects] = useState([]);
     const [activeProject, setActiveProject] = useState(null);
     const [loadingProjects, setLoadingProjects] = useState(true);
+    const [projectsResolved, setProjectsResolved] = useState(false);
 
     // Custom fields for active project
     const [projectFields, setProjectFields] = useState([]);
@@ -71,6 +72,7 @@ export function ProjectProvider({ children }) {
     // ─── Fetch Projects ───
     const fetchProjects = useCallback(async () => {
         if (!user) return;
+        setProjectsResolved(false);
         
         // Only show global loader if we have no projects yet
         setProjects(prev => {
@@ -119,6 +121,7 @@ export function ProjectProvider({ children }) {
             }
         } finally {
             setLoadingProjects(false);
+            setProjectsResolved(true);
         }
     }, [user, persistProjectCache, restoreProjectCache]);
 
@@ -127,6 +130,7 @@ export function ProjectProvider({ children }) {
             setProjects([]);
             setActiveProject(null);
             setLoadingProjects(false);
+            setProjectsResolved(true);
             return;
         }
 
@@ -413,7 +417,7 @@ export function ProjectProvider({ children }) {
 
     return (
         <ProjectContext.Provider value={{
-            projects, activeProject, loadingProjects, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectMembers,
+            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectMembers,
             fetchProjects, changeActiveProject, createProject, deleteProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,
