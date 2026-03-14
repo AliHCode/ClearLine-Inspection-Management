@@ -66,7 +66,7 @@ export default function LoginPage() {
                 <div className="auth-wrapper">
                     <div className="auth-hero" style={{ textAlign: 'center' }}>
                         <div className="auth-logo-img">
-                            <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '50px', marginBottom: '0.5rem' }} />
+                            <img src="/dashboardlogo.png" alt="ClearLine Logo" />
                         </div>
                         <h2 className="hero-title">Approval <span className="text-accent">Pending.</span></h2>
                         <p className="hero-subtitle">
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 <div className="auth-wrapper">
                     <div className="auth-hero" style={{ textAlign: 'center' }}>
                         <div className="auth-logo-img">
-                            <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '50px', marginBottom: '0.5rem' }} />
+                            <img src="/dashboardlogo.png" alt="ClearLine Logo" />
                         </div>
                         <h2 className="hero-title">Request <span className="text-accent" style={{ color: 'var(--clr-danger)' }}>Declined.</span></h2>
                         <p className="hero-subtitle">
@@ -120,7 +120,7 @@ export default function LoginPage() {
                 {/* Branding Hero */}
                 <div className="auth-hero">
                     <div className="auth-logo-img">
-                        <img src="/dashboardlogo.png" alt="ClearLine Logo" style={{ height: '90px', marginBottom: '0.5rem' }} />
+                        <img src="/dashboardlogo.png" alt="ClearLine Logo" />
                     </div>
                     {/* Build with Confidence removed per user request */}
                     <p className="hero-subtitle">

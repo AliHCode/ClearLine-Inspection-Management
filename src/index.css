@@ -2026,8 +2026,33 @@ h6 {
 /* Hero Section */
 .auth-hero {
   text-align: center;
-  margin-bottom: 3.5rem;
+  margin-bottom: 2rem; /* Reduced from 3.5rem for tighter styling */
   max-width: 600px;
+}
+
+.auth-logo-img {
+  margin-bottom: 1.5rem;
+}
+
+.auth-logo-img img {
+  height: 48px; /* Desktop size */
+  width: auto;
+  object-fit: contain;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .auth-hero {
+    margin-bottom: 1.5rem;
+  }
+  
+  .auth-logo-img img {
+    height: 38px; /* Further reduced for mobile */
+  }
+  
+  .hero-title {
+    font-size: 2.25rem;
+  }
 }
 
 .auth-logo-text {
