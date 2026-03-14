@@ -1152,17 +1152,23 @@ export function RFIProvider({ children }) {
         }
     }
 
-    async function addComment(rfiId, content) {
+    async function addComment(rfiId, content, options = {}) {
         if (!user) return;
 
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
         try {
+            const attachments = Array.isArray(options.attachments) ? options.attachments : [];
+            const uploadedAttachmentUrls = attachments.length > 0 ? await uploadImages(attachments) : [];
+
+            const attachmentTokens = uploadedAttachmentUrls.map((url) => `[img]${url}[/img]`);
+            const finalContent = [content, ...attachmentTokens].filter(Boolean).join('\n').trim();
+
             const { error } = await supabase.from('comments').insert([{
                 rfi_id: rfiId,
                 user_id: user.id,
-                content: content
+                content: finalContent
             }]);
 
             if (error) throw error;
@@ -1204,7 +1210,10 @@ export function RFIProvider({ children }) {
                 );
             }
 
-            await logAuditEvent(rfiId, 'commented', { content });
+            await logAuditEvent(rfiId, 'commented', {
+                content,
+                attachmentsAdded: uploadedAttachmentUrls.length,
+            });
         } catch (error) {
             console.error("Error adding comment:", error);
             throw error;

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import UserAvatar from './UserAvatar';
-import { Send, Loader2 } from 'lucide-react';
+import ImageMarkupModal from './ImageMarkupModal';
+import { Send, Loader2, Paperclip, Brush, X } from 'lucide-react';
 
 export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger }) {
     const { user } = useAuth();
@@ -13,8 +14,11 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     const [newComment, setNewComment] = useState('');
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingValue, setEditingValue] = useState('');
+    const [pendingImages, setPendingImages] = useState([]);
+    const [markupIndex, setMarkupIndex] = useState(null);
     const prevCommentsLength = useRef(0);
     const messagesEndRef = useRef(null);
+    const attachInputRef = useRef(null);
 
     useEffect(() => {
         loadComments();
@@ -54,12 +58,14 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || submitting) return;
+        const trimmed = newComment.trim();
+        if ((!trimmed && pendingImages.length === 0) || submitting) return;
 
         setSubmitting(true);
         try {
-            await addComment(rfiId, newComment.trim());
+            await addComment(rfiId, trimmed, { attachments: pendingImages });
             setNewComment('');
+            setPendingImages([]);
             await loadComments();
             scrollToBottom(); // Manually scroll when the user themselves sends a message
             if (onCommentAdded) onCommentAdded();
@@ -96,6 +102,48 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         }
     };
 
+    const openFilePicker = () => {
+        attachInputRef.current?.click();
+    };
+
+    const handleSelectAttachments = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setPendingImages((prev) => {
+            const next = [...prev, ...files];
+            if (markupIndex === null) {
+                setMarkupIndex(prev.length);
+            }
+            return next;
+        });
+
+        e.target.value = '';
+    };
+
+    const replacePendingImage = (index, file) => {
+        setPendingImages((prev) => prev.map((img, i) => (i === index ? file : img)));
+    };
+
+    const removePendingImage = (index) => {
+        setPendingImages((prev) => prev.filter((_, i) => i !== index));
+        setMarkupIndex((current) => {
+            if (current === null) return null;
+            if (current === index) return null;
+            if (current > index) return current - 1;
+            return current;
+        });
+    };
+
+    const parseCommentContent = (rawContent = '') => {
+        const images = [];
+        const text = rawContent.replace(/\[img\](.*?)\[\/img\]/gi, (_, url) => {
+            if (url) images.push(url.trim());
+            return '';
+        }).trim();
+        return { text, images };
+    };
+
     if (loading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
@@ -114,6 +162,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                 ) : (
                     comments.map(c => {
                         const isMe = c.userId === user.id;
+                        const parsed = parseCommentContent(c.content);
                         return (
                             <div key={c.id} className={`comment-bubble-wrapper ${isMe ? 'is-me' : ''}`}>
                                 {!isMe && <UserAvatar name={c.userName} size={32} />}
@@ -155,7 +204,16 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="comment-content">{c.content}</div>
+                                            {parsed.text ? <div className="comment-content">{parsed.text}</div> : null}
+                                            {parsed.images.length > 0 && (
+                                                <div className="chat-image-grid">
+                                                    {parsed.images.map((imgUrl, idx) => (
+                                                        <a key={`${c.id}_img_${idx}`} href={imgUrl} target="_blank" rel="noopener noreferrer" className="chat-image-thumb">
+                                                            <img src={imgUrl} alt={`Comment attachment ${idx + 1}`} />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                             {isMe && (
                                                 <div style={{ marginTop: '0.35rem', display: 'flex', justifyContent: 'flex-end' }}>
                                                     <button
@@ -187,15 +245,64 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                     className="comment-input"
                     disabled={submitting}
                 />
+                <input
+                    ref={attachInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleSelectAttachments}
+                />
+                <button
+                    type="button"
+                    className="btn btn-ghost comment-attach-btn"
+                    onClick={openFilePicker}
+                    disabled={submitting}
+                    title="Attach image"
+                >
+                    <Paperclip size={16} />
+                </button>
                 <button
                     type="submit"
                     className="btn btn-action comment-submit-btn"
-                    disabled={!newComment.trim() || submitting}
+                    disabled={(!newComment.trim() && pendingImages.length === 0) || submitting}
                     style={{ padding: '0.5rem', borderRadius: 'var(--radius-full)' }}
                 >
                     {submitting ? <Loader2 className="spinner" size={18} /> : <Send size={18} />}
                 </button>
             </form>
+
+            {pendingImages.length > 0 && (
+                <div className="chat-pending-attachments">
+                    {pendingImages.map((file, idx) => {
+                        const src = URL.createObjectURL(file);
+                        return (
+                            <div key={`pending_${idx}`} className="chat-pending-thumb-wrap">
+                                <img src={src} alt={`Pending attachment ${idx + 1}`} className="chat-pending-thumb" />
+                                <div className="chat-pending-thumb-actions">
+                                    <button type="button" onClick={() => setMarkupIndex(idx)}>
+                                        <Brush size={12} />
+                                    </button>
+                                    <button type="button" onClick={() => removePendingImage(idx)}>
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {markupIndex !== null && pendingImages[markupIndex] && (
+                <ImageMarkupModal
+                    image={pendingImages[markupIndex]}
+                    onClose={() => setMarkupIndex(null)}
+                    onSave={(annotatedFile) => {
+                        replacePendingImage(markupIndex, annotatedFile);
+                        setMarkupIndex(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
