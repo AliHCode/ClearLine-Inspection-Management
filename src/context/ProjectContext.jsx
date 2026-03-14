@@ -4,6 +4,16 @@ import { useAuth } from './AuthContext';
 import { buildColumnWidthMap, getColumnWidthStyle } from '../utils/tableLayout';
 
 const ProjectContext = createContext(null);
+const PROJECT_CACHE_PREFIX = 'saa_project_cache_v1';
+const PROJECT_FIELDS_CACHE_PREFIX = 'saa_project_fields_cache_v1';
+
+function projectCacheKey(userId) {
+    return `${PROJECT_CACHE_PREFIX}:${userId}`;
+}
+
+function projectFieldsCacheKey(projectId) {
+    return `${PROJECT_FIELDS_CACHE_PREFIX}:${projectId}`;
+}
 
 export function ProjectProvider({ children }) {
     const { user } = useAuth();
@@ -19,6 +29,44 @@ export function ProjectProvider({ children }) {
 
     // Project members
     const [projectMembers, setProjectMembers] = useState([]);
+
+    const restoreProjectCache = useCallback((userId) => {
+        if (!userId) return false;
+        try {
+            const raw = localStorage.getItem(projectCacheKey(userId));
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            const cachedProjects = Array.isArray(parsed.projects) ? parsed.projects : [];
+            setProjects(cachedProjects);
+
+            if (cachedProjects.length > 0) {
+                const preferredId = parsed.activeProjectId || null;
+                const nextActive = cachedProjects.find((p) => p.id === preferredId)
+                    || cachedProjects.find((p) => p.id === user.current_project_id)
+                    || cachedProjects[0];
+                setActiveProject(nextActive || null);
+            } else {
+                setActiveProject(null);
+            }
+
+            return true;
+        } catch {
+            return false;
+        }
+    }, [user?.current_project_id]);
+
+    const persistProjectCache = useCallback((userId, fetchedProjects, activeProjectId = null) => {
+        if (!userId) return;
+        try {
+            localStorage.setItem(projectCacheKey(userId), JSON.stringify({
+                projects: fetchedProjects || [],
+                activeProjectId,
+                cachedAt: new Date().toISOString(),
+            }));
+        } catch {
+            // Ignore storage quota/private mode issues.
+        }
+    }, []);
 
     // ─── Fetch Projects ───
     const fetchProjects = useCallback(async () => {
@@ -51,19 +99,28 @@ export function ProjectProvider({ children }) {
             }
             setProjects(fetchedProjects);
 
+            let nextActive = null;
             if (user.current_project_id) {
                 const saved = fetchedProjects.find(p => p.id === user.current_project_id);
-                if (saved) setActiveProject(saved);
-                else if (fetchedProjects.length > 0) setActiveProject(fetchedProjects[0]);
+                if (saved) nextActive = saved;
+                else if (fetchedProjects.length > 0) nextActive = fetchedProjects[0];
             } else if (fetchedProjects.length > 0) {
-                setActiveProject(fetchedProjects[0]);
+                nextActive = fetchedProjects[0];
             }
+
+            setActiveProject(nextActive || null);
+            persistProjectCache(user.id, fetchedProjects, nextActive?.id || null);
         } catch (err) {
             console.error("Error loading projects:", err);
+            const restored = restoreProjectCache(user.id);
+            if (restored) {
+                setLoadingProjects(false);
+                return;
+            }
         } finally {
             setLoadingProjects(false);
         }
-    }, [user]);
+    }, [user, persistProjectCache, restoreProjectCache]);
 
     useEffect(() => {
         if (!user) {
@@ -72,8 +129,13 @@ export function ProjectProvider({ children }) {
             setLoadingProjects(false);
             return;
         }
+
+        const restored = restoreProjectCache(user.id);
+        if (restored) {
+            setLoadingProjects(false);
+        }
         fetchProjects();
-    }, [user, fetchProjects]);
+    }, [user, fetchProjects, restoreProjectCache]);
 
     // ─── Fetch project fields when active project changes ───
     const fetchProjectFields = useCallback(async (projectId) => {
@@ -89,10 +151,25 @@ export function ProjectProvider({ children }) {
                 .eq('project_id', projectId)
                 .order('sort_order');
             if (error) throw error;
-            setProjectFields((data || []).filter(f => !BUILTIN_KEYS.has(f.field_key)));
+            const cleaned = (data || []).filter(f => !BUILTIN_KEYS.has(f.field_key));
+            setProjectFields(cleaned);
+            try {
+                localStorage.setItem(projectFieldsCacheKey(projectId), JSON.stringify(cleaned));
+            } catch {
+                // Ignore storage failures.
+            }
         } catch (err) {
             console.error("Error loading project fields:", err);
-            setProjectFields([]);
+            try {
+                const cached = localStorage.getItem(projectFieldsCacheKey(projectId));
+                if (cached) {
+                    setProjectFields(JSON.parse(cached));
+                } else {
+                    setProjectFields([]);
+                }
+            } catch {
+                setProjectFields([]);
+            }
         } finally {
             setLoadingFields(false);
         }

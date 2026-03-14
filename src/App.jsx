@@ -22,7 +22,7 @@ import { useProject } from './context/ProjectContext';
 
 function ProtectedRoute({ children, allowedRoles }) {
     const { user, loading } = useAuth();
-    if (loading) return <LoadingSpinner message="Authenticating..." />;
+    if (loading) return <LoadingSpinner message="Setting up your workspace..." />;
     if (!user) return <Navigate to="/" replace />;
     if (allowedRoles && !allowedRoles.includes(user.role)) {
         const home = user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : user.role === 'consultant' ? '/consultant' : '/';
@@ -34,13 +34,10 @@ function ProtectedRoute({ children, allowedRoles }) {
 function AppRoutes() {
     const { user, loading } = useAuth();
     const { projects, loadingProjects } = useProject();
-    const isOffline = !window.navigator.onLine;
 
     if (loading || (loadingProjects && projects.length === 0)) {
         return (
-            <LoadingSpinner
-                message={isOffline ? 'Opening from local cache...' : 'Setting up your workspace...'}
-            />
+            <LoadingSpinner message="Setting up your workspace..." />
         );
     }
 

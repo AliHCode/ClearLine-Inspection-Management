@@ -1,6 +1,7 @@
 const DB_NAME = 'saa-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_PENDING_RFIS = 'pending-rfis';
+const STORE_PENDING_ACTIONS = 'pending-actions';
 
 function openDb() {
     return new Promise((resolve, reject) => {
@@ -17,6 +18,16 @@ function openDb() {
                     autoIncrement: true,
                 });
                 store.createIndex('by_project', 'projectId', { unique: false });
+                store.createIndex('by_created_at', 'createdAt', { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains(STORE_PENDING_ACTIONS)) {
+                const store = db.createObjectStore(STORE_PENDING_ACTIONS, {
+                    keyPath: 'id',
+                    autoIncrement: true,
+                });
+                store.createIndex('by_project', 'projectId', { unique: false });
+                store.createIndex('by_type', 'type', { unique: false });
                 store.createIndex('by_created_at', 'createdAt', { unique: false });
             }
         };
@@ -75,6 +86,61 @@ export async function removePendingRFI(id) {
 
 export async function countPendingRFIs(projectId = null) {
     const all = await listPendingRFIs(projectId);
+    return all.length;
+}
+
+async function withActionStore(mode, fn) {
+    const db = await openDb();
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_PENDING_ACTIONS, mode);
+        const store = tx.objectStore(STORE_PENDING_ACTIONS);
+
+        let requestResult;
+        try {
+            requestResult = fn(store);
+        } catch (error) {
+            reject(error);
+            return;
+        }
+
+        tx.oncomplete = () => resolve(requestResult?.result);
+        tx.onerror = () => reject(tx.error || requestResult?.error);
+        tx.onabort = () => reject(tx.error || requestResult?.error);
+    });
+}
+
+export async function enqueuePendingAction(payload) {
+    const entry = {
+        ...payload,
+        createdAt: payload.createdAt || new Date().toISOString(),
+    };
+    return withActionStore('readwrite', (store) => store.add(entry));
+}
+
+export async function listPendingActions(projectId = null) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_PENDING_ACTIONS, 'readonly');
+        const store = tx.objectStore(STORE_PENDING_ACTIONS);
+        const req = store.getAll();
+
+        req.onsuccess = () => {
+            const all = req.result || [];
+            const filtered = projectId ? all.filter((item) => item.projectId === projectId) : all;
+            filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            resolve(filtered);
+        };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+export async function removePendingAction(id) {
+    return withActionStore('readwrite', (store) => store.delete(id));
+}
+
+export async function countPendingActions(projectId = null) {
+    const all = await listPendingActions(projectId);
     return all.length;
 }
 

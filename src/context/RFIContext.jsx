@@ -3,13 +3,15 @@ import { supabase } from '../utils/supabaseClient';
 import toast from 'react-hot-toast';
 import { useProject } from './ProjectContext';
 import { useAuth } from './AuthContext';
-import { getToday, getNextDay } from '../utils/rfiLogic';
 import { RFI_STATUS } from '../utils/constants';
 import {
     enqueuePendingRFI,
     listPendingRFIs,
     removePendingRFI,
     countPendingRFIs,
+    enqueuePendingAction,
+    listPendingActions,
+    removePendingAction,
     serializeImagesForQueue,
     deserializeQueuedImages,
 } from '../utils/offlineQueue';
@@ -18,6 +20,11 @@ import { buildNotificationOpenPath } from '../utils/notificationLinks';
 
 const RFIContext = createContext(null);
 const NOTIFICATION_PROMPT_SEEN_KEY = 'proway_notification_prompt_seen_v1';
+const RFI_CACHE_PREFIX = 'saa_rfis_cache_v1';
+
+function rfiCacheKey(userId, projectId) {
+    return `${RFI_CACHE_PREFIX}:${userId || 'anon'}:${projectId || 'none'}`;
+}
 
 function normalizeMentionKey(value = '') {
     return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -39,6 +46,32 @@ export function RFIProvider({ children }) {
     // Notifications State
     const [notifications, setNotifications] = useState([]);
     const unreadCount = notifications.filter(n => !n.is_read).length;
+
+    const restoreRfiCache = useCallback((projectId) => {
+        if (!projectId || !user?.id) return false;
+        try {
+            const raw = localStorage.getItem(rfiCacheKey(user.id, projectId));
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed.rfis)) return false;
+            setRfis(parsed.rfis);
+            return true;
+        } catch {
+            return false;
+        }
+    }, [user?.id]);
+
+    const persistRfiCache = useCallback((projectId, nextRfis) => {
+        if (!projectId || !user?.id) return;
+        try {
+            localStorage.setItem(rfiCacheKey(user.id, projectId), JSON.stringify({
+                rfis: nextRfis || [],
+                cachedAt: new Date().toISOString(),
+            }));
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [user?.id]);
 
     const refreshPendingSyncCount = useCallback(async () => {
         try {
@@ -81,7 +114,14 @@ export function RFIProvider({ children }) {
             return;
         }
 
-        setLoadingRfis(true);
+        const restored = restoreRfiCache(activeProject.id);
+        setLoadingRfis(!restored);
+
+        if (!navigator.onLine && restored) {
+            setLoadingRfis(false);
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('rfis')
@@ -140,12 +180,16 @@ export function RFIProvider({ children }) {
                 customFields: r.custom_fields || {},
             }));
             setRfis(formatted || []);
+            persistRfiCache(activeProject.id, formatted || []);
         } catch (error) {
             console.error('Error fetching RFIs:', error);
+            if (!restored) {
+                setRfis([]);
+            }
         } finally {
             setLoadingRfis(false);
         }
-    }, [activeProject]);
+    }, [activeProject, persistRfiCache, restoreRfiCache]);
 
     const fetchNotifications = useCallback(async () => {
         if (!user) {
@@ -324,6 +368,7 @@ export function RFIProvider({ children }) {
 
         if (navigator.onLine) {
             syncPendingRFIs();
+            syncPendingConsultantActions();
         }
 
         // Subscribe to real-time changes for RFIs — scoped to active project
@@ -382,12 +427,16 @@ export function RFIProvider({ children }) {
         const refreshInterval = setInterval(() => {
             fetchAllRFIs();
             if (user) fetchNotifications();
-            if (navigator.onLine) syncPendingRFIs();
+            if (navigator.onLine) {
+                syncPendingRFIs();
+                syncPendingConsultantActions();
+            }
         }, 15000);
 
         const handleOnline = () => {
-            toast('Back online. Syncing pending RFIs...', { icon: '🌐' });
+            toast('Back online. Syncing pending work...', { icon: '🌐' });
             syncPendingRFIs();
+            syncPendingConsultantActions();
         };
         window.addEventListener('online', handleOnline);
 
@@ -403,6 +452,7 @@ export function RFIProvider({ children }) {
         fetchContractors,
         fetchNotifications,
         refreshPendingSyncCount,
+        syncPendingConsultantActions,
         user,
     ]);
 
@@ -680,15 +730,131 @@ export function RFIProvider({ children }) {
         }
     }, [activeProject, fetchAllRFIs, getNextSerialNoForDate, normalizeImagesForSubmission, notifyConsultantsAboutFiledRFI, refreshPendingSyncCount]);
 
+    const syncPendingConsultantActions = useCallback(async () => {
+        if (!navigator.onLine || !activeProject?.id || isSyncingOfflineRef.current) return;
+
+        try {
+            const queued = await listPendingActions(activeProject.id);
+            if (queued.length === 0) return;
+
+            for (const item of queued) {
+                try {
+                    const payload = item.payload || {};
+
+                    if (item.type === 'update_rfi') {
+                        const dbUpdates = { ...(payload.dbUpdates || {}) };
+                        const appendImagesSerialized = payload.appendImages || [];
+
+                        if (appendImagesSerialized.length > 0) {
+                            const reconstructed = deserializeQueuedImages(appendImagesSerialized);
+                            const uploadedUrls = await normalizeImagesForSubmission(reconstructed);
+
+                            const { data: existingRow } = await supabase
+                                .from('rfis')
+                                .select('images')
+                                .eq('id', payload.rfiId)
+                                .maybeSingle();
+
+                            dbUpdates.images = [
+                                ...(existingRow?.images || []),
+                                ...uploadedUrls,
+                            ];
+                        }
+
+                        const { error } = await supabase.from('rfis').update(dbUpdates).eq('id', payload.rfiId);
+                        if (error) throw error;
+                    }
+
+                    if (item.type === 'approve_rfi') {
+                        const targetRfi = rfis.find((r) => r.id === payload.rfiId);
+                        const queuedAttachments = deserializeQueuedImages(payload.consultantAttachments || []);
+                        const uploadedUrls = await normalizeImagesForSubmission(queuedAttachments);
+                        const mergedImages = [
+                            ...(targetRfi?.images || []),
+                            ...uploadedUrls,
+                        ];
+
+                        const { error } = await supabase.from('rfis').update({
+                            status: RFI_STATUS.APPROVED,
+                            reviewed_by: payload.reviewedBy,
+                            reviewed_at: new Date().toISOString(),
+                            remarks: payload.remarks?.trim() ? payload.remarks.trim() : null,
+                            carryover_to: null,
+                            images: mergedImages,
+                        }).eq('id', payload.rfiId);
+                        if (error) throw error;
+                    }
+
+                    if (item.type === 'reject_rfi') {
+                        const targetRfi = rfis.find((r) => r.id === payload.rfiId);
+                        const queuedAttachments = deserializeQueuedImages(payload.consultantAttachments || []);
+                        const uploadedUrls = await normalizeImagesForSubmission(queuedAttachments);
+                        const mergedImages = [
+                            ...(targetRfi?.images || []),
+                            ...uploadedUrls,
+                        ];
+
+                        const { error } = await supabase.from('rfis').update({
+                            status: RFI_STATUS.REJECTED,
+                            reviewed_by: payload.reviewedBy,
+                            reviewed_at: new Date().toISOString(),
+                            remarks: payload.remarks || null,
+                            images: mergedImages,
+                        }).eq('id', payload.rfiId);
+                        if (error) throw error;
+                    }
+
+                    await removePendingAction(item.id);
+                } catch (itemError) {
+                    console.error('Error syncing queued consultant action:', itemError);
+                }
+            }
+
+            await fetchAllRFIs();
+            toast.success('Offline consultant updates synced.');
+        } catch (error) {
+            console.error('Error syncing consultant queue:', error);
+        }
+    }, [activeProject, fetchAllRFIs, normalizeImagesForSubmission, rfis]);
+
     /** Approve an RFI */
     async function approveRFI(rfiId, reviewedBy, remarks = '', consultantAttachments = []) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
+        if (!navigator.onLine) {
+            const queuedAttachments = await serializeImagesForQueue(consultantAttachments || []);
+            await enqueuePendingAction({
+                projectId: activeProject?.id,
+                type: 'approve_rfi',
+                payload: {
+                    rfiId,
+                    reviewedBy,
+                    remarks,
+                    consultantAttachments: queuedAttachments,
+                },
+            });
+
+            setRfis((prev) => prev.map((r) => (
+                r.id === rfiId
+                    ? {
+                        ...r,
+                        status: RFI_STATUS.APPROVED,
+                        reviewedBy,
+                        reviewedAt: new Date().toISOString(),
+                        remarks: remarks?.trim() ? remarks.trim() : null,
+                      }
+                    : r
+            )));
+            toast('Saved offline. Approval will sync when online.', { icon: '📡' });
+            return;
+        }
+
         try {
+            const normalizedAttachments = await normalizeImagesForSubmission(consultantAttachments || []);
             const mergedImages = [
                 ...(targetRfi.images || []),
-                ...(consultantAttachments || []),
+                ...normalizedAttachments,
             ];
             const { error } = await supabase.from('rfis').update({
                 status: RFI_STATUS.APPROVED,
@@ -739,16 +905,42 @@ export function RFIProvider({ children }) {
 
     /** Reject an RFI with remarks, and set carryover to next day */
     async function rejectRFI(rfiId, reviewedBy, remarks, consultantAttachments = []) {
-        const today = getToday();
-        const nextDay = getNextDay(today);
-
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
+        if (!navigator.onLine) {
+            const queuedAttachments = await serializeImagesForQueue(consultantAttachments || []);
+            await enqueuePendingAction({
+                projectId: activeProject?.id,
+                type: 'reject_rfi',
+                payload: {
+                    rfiId,
+                    reviewedBy,
+                    remarks,
+                    consultantAttachments: queuedAttachments,
+                },
+            });
+
+            setRfis((prev) => prev.map((r) => (
+                r.id === rfiId
+                    ? {
+                        ...r,
+                        status: RFI_STATUS.REJECTED,
+                        reviewedBy,
+                        reviewedAt: new Date().toISOString(),
+                        remarks: remarks || null,
+                      }
+                    : r
+            )));
+            toast('Saved offline. Rejection will sync when online.', { icon: '📡' });
+            return;
+        }
+
         try {
+            const normalizedAttachments = await normalizeImagesForSubmission(consultantAttachments || []);
             const mergedImages = [
                 ...(targetRfi.images || []),
-                ...(consultantAttachments || []),
+                ...normalizedAttachments,
             ];
             const { error } = await supabase.from('rfis').update({
                 status: RFI_STATUS.REJECTED,
@@ -1031,8 +1223,64 @@ export function RFIProvider({ children }) {
             if (updates.location !== undefined) dbUpdates.location = updates.location;
             if (updates.inspectionType !== undefined) dbUpdates.inspection_type = updates.inspectionType;
             if (updates.remarks !== undefined) dbUpdates.remarks = updates.remarks;
-            if (updates.images !== undefined) dbUpdates.images = updates.images;
             if (updates.customFields !== undefined) dbUpdates.custom_fields = updates.customFields;
+
+            const appendFiles = updates.appendFiles || [];
+
+            if (!navigator.onLine) {
+                const serializedAppend = await serializeImagesForQueue(appendFiles);
+                if (updates.images !== undefined) dbUpdates.images = updates.images;
+
+                await enqueuePendingAction({
+                    projectId: activeProject?.id,
+                    type: 'update_rfi',
+                    payload: {
+                        rfiId,
+                        dbUpdates,
+                        appendImages: serializedAppend,
+                    },
+                });
+
+                setRfis((prev) => prev.map((r) => {
+                    if (r.id !== rfiId) return r;
+
+                    const appendedPreviewUrls = appendFiles
+                        .map((file) => {
+                            try {
+                                return URL.createObjectURL(file);
+                            } catch {
+                                return null;
+                            }
+                        })
+                        .filter(Boolean);
+
+                    return {
+                        ...r,
+                        description: updates.description !== undefined ? updates.description : r.description,
+                        location: updates.location !== undefined ? updates.location : r.location,
+                        inspectionType: updates.inspectionType !== undefined ? updates.inspectionType : r.inspectionType,
+                        remarks: updates.remarks !== undefined ? updates.remarks : r.remarks,
+                        images: updates.images !== undefined
+                            ? updates.images
+                            : [...(r.images || []), ...appendedPreviewUrls],
+                        customFields: updates.customFields !== undefined ? updates.customFields : r.customFields,
+                    };
+                }));
+
+                toast('Saved offline. Changes will sync when online.', { icon: '📡' });
+                return;
+            }
+
+            if (appendFiles.length > 0) {
+                const uploaded = await normalizeImagesForSubmission(appendFiles);
+                const current = rfis.find((r) => r.id === rfiId);
+                dbUpdates.images = [
+                    ...(updates.images !== undefined ? updates.images : (current?.images || [])),
+                    ...uploaded,
+                ];
+            } else if (updates.images !== undefined) {
+                dbUpdates.images = updates.images;
+            }
 
             const { error } = await supabase.from('rfis').update(dbUpdates).eq('id', rfiId);
             if (error) throw error;

@@ -35,7 +35,11 @@ export function AuthProvider({ children }) {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
                 setManualLogoutFlag(false);
-                fetchProfile(session.user.id);
+                const restored = restoreCachedProfile(session.user.id);
+                if (restored) {
+                    setLoading(false);
+                }
+                fetchProfile(session.user.id, { allowRetry: true });
             } else {
                 const restored = restoreCachedProfile();
                 if (!restored || wasManualLogout()) {
@@ -49,7 +53,11 @@ export function AuthProvider({ children }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setManualLogoutFlag(false);
-                fetchProfile(session.user.id);
+                const restored = restoreCachedProfile(session.user.id);
+                if (restored) {
+                    setLoading(false);
+                }
+                fetchProfile(session.user.id, { allowRetry: true });
             } else {
                 if (event === 'SIGNED_OUT' || wasManualLogout()) {
                     setUser(null);
@@ -100,7 +108,7 @@ export function AuthProvider({ children }) {
         }
     }
 
-    async function fetchProfile(userId) {
+    async function fetchProfile(userId, { allowRetry = true } = {}) {
         // ── Offline guard ────────────────────────────────────────────────────
         // getUser() and DB queries need the network. When offline, serve the
         // last-known profile from localStorage so the user stays logged in.
@@ -118,11 +126,22 @@ export function AuthProvider({ children }) {
             const { data: authData } = await supabase.auth.getUser();
             const authUser = authData?.user;
 
-            let { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .maybeSingle();
+            async function loadProfile() {
+                return supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .maybeSingle();
+            }
+
+            let { data, error } = await loadProfile();
+
+            if ((!data || error) && allowRetry && navigator.onLine) {
+                await new Promise((resolve) => setTimeout(resolve, 650));
+                const retry = await loadProfile();
+                data = retry.data;
+                error = retry.error;
+            }
 
             if (error) throw error;
             if (!data && authUser?.id === userId) {
@@ -172,7 +191,9 @@ export function AuthProvider({ children }) {
                 // Ensure auth.user structure is combined with profile for easy usage
                 setUser(fullUser);
             } else {
-                setUser(null);
+                if (!restoreCachedProfile(userId)) {
+                    setUser(null);
+                }
             }
         } catch (error) {
             console.error('Error fetching profile:', error.message);

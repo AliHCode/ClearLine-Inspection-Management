@@ -17,7 +17,7 @@ import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
-    const { approveRFI, rejectRFI, updateRFI, getReviewQueue, rfis, uploadImages, contractors } = useRFI();
+    const { approveRFI, rejectRFI, updateRFI, getReviewQueue, rfis, contractors } = useRFI();
     const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
@@ -50,15 +50,13 @@ export default function ReviewQueue() {
     if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
 
     async function handleApprove(rfiId, remarks = '', files = []) {
-        const uploaded = files.length > 0 ? await uploadImages(files) : [];
-        await approveRFI(rfiId, user.id, remarks, uploaded);
+        await approveRFI(rfiId, user.id, remarks, files);
         setActionMessage('✅ Inspection Approved Successfully');
         setTimeout(() => setActionMessage(''), 2000);
     }
 
     async function handleReject(rfiId, remarks, files = []) {
-        const uploaded = files.length > 0 ? await uploadImages(files) : [];
-        rejectRFI(rfiId, user.id, remarks, uploaded);
+        await rejectRFI(rfiId, user.id, remarks, files);
         setActionMessage('❌ Inspection Rejected & Returned');
         setTimeout(() => setActionMessage(''), 3000);
     }
@@ -86,9 +84,8 @@ export default function ReviewQueue() {
 
         setUploadingAttachmentsById((prev) => ({ ...prev, [rfi.id]: true }));
         try {
-            const uploaded = await uploadImages(files);
             await updateRFI(rfi.id, {
-                images: [...(rfi.images || []), ...uploaded],
+                appendFiles: files,
             });
             setActionMessage('📎 Attachments added');
             setTimeout(() => setActionMessage(''), 2000);
