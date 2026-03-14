@@ -2975,6 +2975,39 @@ h6 {
   }
 }
 
+.connectivity-banner {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  width: 100%;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.connectivity-banner.offline {
+  background: var(--clr-warning-bg);
+  color: var(--clr-warning);
+}
+
+.connectivity-banner.online {
+  background: var(--clr-success-bg);
+  color: var(--clr-success);
+}
+
+.install-app-prompt {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  width: min(94vw, 360px);
+  z-index: 450;
+}
+
+.install-app-content {
+  background: var(--clr-bg-secondary);
+  border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 0.95rem;
