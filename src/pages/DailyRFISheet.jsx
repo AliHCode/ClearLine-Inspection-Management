@@ -82,6 +82,7 @@ export default function DailyRFISheet() {
             assignedTo: rfi.assignedTo || '',
             images: [],
             parentId: rfi.id,
+            isLocked: true,
         };
         
         // Remove the empty default row if it's untouched
@@ -337,13 +338,13 @@ export default function DailyRFISheet() {
                 if (isCarryover) {
                     return (
                         <td key={col.field_key} style={style}>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button className="btn btn-sm btn-action btn-resubmit" onClick={() => handleResubmit(rfi.id)} title="Re-submit for inspection" style={{ flex: 1 }}>
-                                    <RefreshCw size={14} /> Re-submit
+                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                                <button className="btn btn-sm btn-action btn-resubmit" onClick={() => handleResubmit(rfi.id)} title="Re-submit for inspection">
+                                    <RefreshCw size={14} />
                                 </button>
                                 {rfi.status === RFI_STATUS.REJECTED && (
-                                    <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ flex: 1, backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
-                                        <Plus size={14} /> Revision
+                                    <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
+                                        <Plus size={14} />
                                     </button>
                                 )}
                                 <button className="btn btn-sm btn-ghost" onClick={() => { setDetailTarget(rfi); setEditTarget(null); setMarkupTarget(null); scrollToPageBottom(); }} title="Open Discussion">
@@ -361,8 +362,8 @@ export default function DailyRFISheet() {
                                 <MessageSquare size={14} />
                             </button>
                             {rfi.status === RFI_STATUS.REJECTED && (
-                                <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ flex: 1, backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
-                                    <Plus size={14} /> Revision
+                                <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
+                                    <Plus size={14} />
                                 </button>
                             )}
                             {rfi.status === RFI_STATUS.PENDING && canEditThisRfi && (
@@ -391,19 +392,19 @@ export default function DailyRFISheet() {
             case 'description':
                 return (
                     <td key={col.field_key} style={style}>
-                        <input type="text" className="cell-input" value={row.description} onChange={(e) => updateRow(row.tempId, 'description', e.target.value)} placeholder="e.g. Concrete pouring Zone B" />
+                        <input type="text" className="cell-input" value={row.description} onChange={(e) => updateRow(row.tempId, 'description', e.target.value)} placeholder="e.g. Concrete pouring Zone B" disabled={row.isLocked} />
                     </td>
                 );
             case 'location':
                 return (
                     <td key={col.field_key} style={style}>
-                        <input type="text" className="cell-input" value={row.location} onChange={(e) => updateRow(row.tempId, 'location', e.target.value)} placeholder="e.g. Floor 3, Zone A" />
+                        <input type="text" className="cell-input" value={row.location} onChange={(e) => updateRow(row.tempId, 'location', e.target.value)} placeholder="e.g. Floor 3, Zone A" disabled={row.isLocked} />
                     </td>
                 );
             case 'inspection_type':
                 return (
                     <td key={col.field_key} style={style}>
-                        <select className="cell-select" value={row.inspectionType} onChange={(e) => updateRow(row.tempId, 'inspectionType', e.target.value)}>
+                        <select className="cell-select" value={row.inspectionType} onChange={(e) => updateRow(row.tempId, 'inspectionType', e.target.value)} disabled={row.isLocked}>
                             {INSPECTION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
                         </select>
                     </td>
@@ -477,7 +478,7 @@ export default function DailyRFISheet() {
                     }
                     return (
                         <td key={col.field_key} style={style}>
-                            <input type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'} className="cell-input" value={row.customFields?.[f.field_key] || ''} onChange={e => { const updated = { ...row.customFields, [f.field_key]: e.target.value }; updateRow(row.tempId, 'customFields', updated); }} placeholder={f.field_name} />
+                            <input type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'} className="cell-input" value={row.customFields?.[f.field_key] || ''} onChange={e => { const updated = { ...row.customFields, [f.field_key]: e.target.value }; updateRow(row.tempId, 'customFields', updated); }} placeholder={f.field_name} disabled={row.isLocked} />
                         </td>
                     );
                 }
