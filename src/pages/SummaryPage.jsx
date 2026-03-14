@@ -241,6 +241,7 @@ export default function SummaryPage() {
 
     const [fromDate, setFromDate] = useState(today);
     const [toDate, setToDate] = useState(today);
+    const [statusFilter, setStatusFilter] = useState('all');
     const [exporting, setExporting] = useState(false);
 
     function handleChange(from, to) {
@@ -248,20 +249,25 @@ export default function SummaryPage() {
         setToDate(to);
     }
 
-    const filtered = useMemo(() =>
+    const dateFiltered = useMemo(() =>
         rfis
             .filter(r => r.filedDate >= fromDate && r.filedDate <= toDate)
             .sort((a, b) => a.filedDate.localeCompare(b.filedDate) || (a.serialNo - b.serialNo)),
         [rfis, fromDate, toDate]
     );
 
+    const filtered = useMemo(() =>
+        dateFiltered.filter(r => statusFilter === 'all' || r.status === statusFilter),
+        [dateFiltered, statusFilter]
+    );
+
     const stats = useMemo(() => ({
-        total:    filtered.length,
-        approved: filtered.filter(r => r.status === 'approved').length,
-        rejected: filtered.filter(r => r.status === 'rejected').length,
-        pending:  filtered.filter(r => r.status === 'pending').length,
-        info:     filtered.filter(r => r.status === 'info_requested').length,
-    }), [filtered]);
+        total:    dateFiltered.length,
+        approved: dateFiltered.filter(r => r.status === 'approved').length,
+        rejected: dateFiltered.filter(r => r.status === 'rejected').length,
+        pending:  dateFiltered.filter(r => r.status === 'pending').length,
+        info:     dateFiltered.filter(r => r.status === 'info_requested').length,
+    }), [dateFiltered]);
 
     const defaultCols = [
         { field_key: 'serial',          field_name: '#' },
@@ -334,20 +340,36 @@ export default function SummaryPage() {
                         </span>
                     </div>
 
-                    <div className="summ-stat-pills">
-                        <span className="summ-pill approved">
+                    <div className="summ-stat-pills" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button 
+                            className={`summ-pill approved ${statusFilter === 'approved' ? 'active-pill' : ''}`}
+                            onClick={() => setStatusFilter(prev => prev === 'approved' ? 'all' : 'approved')}
+                            style={{ cursor: 'pointer', border: 'none', transition: 'transform 0.1s' }}
+                        >
                             <CheckCircle size={13} /> {stats.approved} Approved
-                        </span>
-                        <span className="summ-pill rejected">
+                        </button>
+                        <button 
+                            className={`summ-pill rejected ${statusFilter === 'rejected' ? 'active-pill' : ''}`}
+                            onClick={() => setStatusFilter(prev => prev === 'rejected' ? 'all' : 'rejected')}
+                            style={{ cursor: 'pointer', border: 'none', transition: 'transform 0.1s' }}
+                        >
                             <XCircle size={13} /> {stats.rejected} Rejected
-                        </span>
-                        <span className="summ-pill pending">
+                        </button>
+                        <button 
+                            className={`summ-pill pending ${statusFilter === 'pending' ? 'active-pill' : ''}`}
+                            onClick={() => setStatusFilter(prev => prev === 'pending' ? 'all' : 'pending')}
+                            style={{ cursor: 'pointer', border: 'none', transition: 'transform 0.1s' }}
+                        >
                             <Clock size={13} /> {stats.pending} Pending
-                        </span>
+                        </button>
                         {stats.info > 0 && (
-                            <span className="summ-pill info">
+                            <button 
+                                className={`summ-pill info ${statusFilter === 'info_requested' ? 'active-pill' : ''}`}
+                                onClick={() => setStatusFilter(prev => prev === 'info_requested' ? 'all' : 'info_requested')}
+                                style={{ cursor: 'pointer', border: 'none', transition: 'transform 0.11s' }}
+                            >
                                 <AlertTriangle size={13} /> {stats.info} Info Req.
-                            </span>
+                            </button>
                         )}
                     </div>
 

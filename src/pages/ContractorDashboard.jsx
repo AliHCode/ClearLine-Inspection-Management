@@ -89,142 +89,107 @@ export default function ContractorDashboard() {
     }
 
     return (
-        <div className="page-wrapper">
+        <div className="page-wrapper premium-dashboard">
             <Header />
             <main className="dashboard-page">
-                <div className="dashboard-header">
-                    <div>
+                <header className="premium-header">
+                    <div className="premium-welcome">
                         <h1>Welcome, {user?.name || 'Contractor'}</h1>
-                        <p className="subtitle">{user?.company || 'ProWay'} — Contractor Dashboard</p>
+                        <p>{user?.company || 'ProWay'} — Contractor Workspace</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => navigate('/contractor/rfi-sheet')}>
-                        <Plus size={18} /> File RFIs
+                    <button className="btn-command" onClick={() => navigate('/contractor/rfi-sheet')}>
+                        <Plus size={18} strokeWidth={2.5} /> File RFIs
                     </button>
-                </div>
+                </header>
 
-                {carryoverCount > 0 && (
-                    <div className="carryover-alert">
-                        <AlertTriangle size={20} />
-                        <span>
-                            <strong>{carryoverCount} rejected RFI{carryoverCount > 1 ? 's' : ''}</strong> carried over from previous days — please re-submit today.
-                        </span>
-                        <button className="btn btn-sm btn-warning" onClick={() => navigate('/contractor/rfi-sheet')}>
-                            View Sheet
-                        </button>
+                <div className="bento-grid">
+                    {/* Stats Section */}
+                    <div className="bento-span-3">
+                        <StatsCard
+                            icon={<FileText size={20} />}
+                            label="Total Filed"
+                            value={stats.todayTotal}
+                            subtitle="Today"
+                            trend="up"
+                            trendValue="+12%"
+                            color="#3b82f6"
+                        />
                     </div>
-                )}
+                    <div className="bento-span-3">
+                        <StatsCard
+                            icon={<Clock size={20} />}
+                            label="Awaiting"
+                            value={stats.todayPending}
+                            subtitle="Review queue"
+                            trend="down"
+                            trendValue="-5%"
+                            color="#f59e0b"
+                        />
+                    </div>
+                    <div className="bento-span-3">
+                        <StatsCard
+                            icon={<CheckCircle size={20} />}
+                            label="Approved"
+                            value={stats.todayApproved}
+                            subtitle="Daily Verified"
+                            trend="up"
+                            trendValue="+8%"
+                            color="#10b981"
+                        />
+                    </div>
+                    <div className="bento-span-3">
+                        <StatsCard
+                            icon={<XCircle size={20} />}
+                            label="Rejected"
+                            value={stats.todayRejected}
+                            subtitle="Action required"
+                            trend="up"
+                            trendValue="+2%"
+                            color="#ef4444"
+                        />
+                    </div>
 
-                <div className="stats-grid">
-                    <StatsCard
-                        icon={<FileText size={24} />}
-                        label="Total Filed"
-                        value={stats.todayTotal}
-                        color="#6366f1"
-                        subtitle="Today"
-                    />
-                    <StatsCard
-                        icon={<Clock size={24} />}
-                        label="Pending"
-                        value={stats.todayPending}
-                        color="#f59e0b"
-                        subtitle="Awaiting review"
-                    />
-                    <StatsCard
-                        icon={<CheckCircle size={24} />}
-                        label="Approved"
-                        value={stats.todayApproved}
-                        color="#10b981"
-                        subtitle="Daily"
-                    />
-                    <StatsCard
-                        icon={<XCircle size={24} />}
-                        label="Rejected"
-                        value={stats.todayRejected}
-                        color="#ef4444"
-                        subtitle="Needs attention"
-                    />
-                </div>
-
-                {/* --- ANALYTICS CHARTS SECTION --- */}
-                <div className="dashboard-section charts-section" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.25rem', background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                    <div className="chart-card" style={{ flex: '1 1 300px', minWidth: 0, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                    {/* Chart Section */}
+                    <div className="bento-span-8 bento-row-2">
                         <RfiTrendChart data={trendData} />
                     </div>
-                    <div className="chart-card" style={{ flex: '1 1 300px', minWidth: 0, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
+                    <div className="bento-span-4 bento-row-2">
                         <RfiStatusPieChart data={pieData} />
                     </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
-                    <div className="dashboard-section" style={{ flex: '2 1 300px', minWidth: 0, margin: 0, maxWidth: '100%' }}>
-                        <div className="section-header">
-                            <h2><TrendingUp size={20} /> Recent RFIs</h2>
-                            <div className="recent-rfi-actions-wrap">
-                                <div className="recent-rfi-actions-group">
-                                    {allMyRfis.length > 0 && (
-                                        <>
-                                            <button
-                                                className="btn btn-sm"
-                                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                                onClick={() => exportToPDF(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                                title="Export to PDF"
-                                            >
-                                                <FileDown size={16} /> PDF
-                                            </button>
-                                            <button
-                                                className="btn btn-sm"
-                                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                                onClick={() => exportToExcel(allMyRfis, `ProWay_Contractor_Report`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                                title="Export to Excel"
-                                            >
-                                                <Table size={16} /> Excel
-                                            </button>
-                                            <button
-                                                className="btn btn-sm"
-                                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                                onClick={() => generateDailyReport(reportRfis, today, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                                title="Generate branded daily report"
-                                            >
-                                                <ClipboardList size={16} /> Daily Report
-                                            </button>
-                                        </>
-                                    )}
-                                    <button className="btn btn-ghost recent-rfi-view-all-btn" onClick={() => navigate('/contractor/rfi-sheet')}>
-                                        View All →
-                                    </button>
-                                </div>
-                            </div>
+                    {/* Secondary Section */}
+                    <div className="bento-span-8 premium-card">
+                        <div className="section-header" style={{ border: 'none', padding: 0, marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1rem', fontWeight: 600 }}><TrendingUp size={18} style={{ marginRight: '0.5rem' }} /> Recent Activity</h2>
+                            <button className="btn btn-ghost" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-brand-secondary)' }} onClick={() => navigate('/contractor/summary')}>
+                                View All History →
+                            </button>
                         </div>
-
+                        
                         {myRfis.length === 0 ? (
-                            <div className="empty-state">
-                                <FileText size={48} />
-                                <h3>No RFIs Filed Yet</h3>
-                                <p>Start by filing your first Request for Inspection</p>
-                                <button className="btn btn-primary" onClick={() => navigate('/contractor/rfi-sheet')}>
-                                    <Plus size={18} /> File RFIs
-                                </button>
+                            <div className="empty-state" style={{ padding: '2rem' }}>
+                                <p>No recent activity detected.</p>
                             </div>
                         ) : (
-                            <div className="rfi-table-wrapper">
-                                <table className="rfi-table editable">
+                            <div className="rfi-table-wrapper" style={{ border: 'none' }}>
+                                <table className="rfi-table">
                                     <thead>
                                         <tr>
-                                            {contractorVisibleColumns.map((col) => (
-                                                <th key={col.id || col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
+                                            {contractorVisibleColumns.slice(0, 4).map((col) => (
+                                                <th key={col.field_key} style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{col.field_name}</th>
                                             ))}
-                                            <th>Date</th>
+                                            <th style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Date</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {myRfis.map((rfi) => (
-                                            <tr key={rfi.id} className={rfi.carryoverCount > 0 ? 'carryover-row' : ''}>
-                                                {contractorVisibleColumns.map((col) => (
-                                                    <td key={`${rfi.id}_${col.field_key}`} data-label={col.field_name} style={getTableColumnStyle(col.field_key)}>
+                                        {myRfis.slice(0, 5).map((rfi) => (
+                                            <tr key={rfi.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                {contractorVisibleColumns.slice(0, 4).map((col) => (
+                                                    <td key={`${rfi.id}_${col.field_key}`} style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem' }}>
                                                         {renderContractorCell(rfi, col)}
                                                     </td>
                                                 ))}
-                                                <td data-label="Date">{rfi.filedDate}</td>
+                                                <td style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem', color: '#64748b' }}>{rfi.filedDate}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -233,13 +198,11 @@ export default function ContractorDashboard() {
                         )}
                     </div>
 
-                    <div className="dashboard-section" style={{ flex: '1 1 300px', minWidth: 0, margin: 0, maxWidth: '100%' }}>
-                        <div className="section-header">
-                            <h2><Clock size={20} /> Your Activity</h2>
+                    <div className="bento-span-4 premium-card">
+                        <div className="section-header" style={{ border: 'none', padding: 0, marginBottom: '1rem' }}>
+                            <h2 style={{ fontSize: '1rem', fontWeight: 600 }}><Clock size={18} style={{ marginRight: '0.5rem' }} /> Event Log</h2>
                         </div>
-                        <div style={{ padding: '1.5rem' }}>
-                            <ActivityTimeline rfis={allMyRfis.filter(r => r.filedDate === today)} limit={5} />
-                        </div>
+                        <ActivityTimeline rfis={allMyRfis.filter(r => r.filedDate === today)} limit={4} />
                     </div>
                 </div>
             </main>

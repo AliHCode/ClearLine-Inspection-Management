@@ -59,7 +59,7 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                     <div className="modal-title rfi-detail-title">
                         <div>
                             <div className="rfi-title-row">
-                                <h2>RFI #{rfi.serialNo}</h2>
+                                <h2>RFI #{rfi.customFields?.rfi_no || rfi.serialNo}</h2>
                                 <StatusBadge status={rfi.status} />
                             </div>
                             <p>{rfi.description}</p>
@@ -114,7 +114,9 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                             <div style={{ marginTop: '1rem' }}>
                                 <h4 className="rfi-pane-heading">Additional Fields</h4>
                                 <div className="rfi-detail-list">
-                                    {Object.entries(rfi.customFields).map(([key, value]) => (
+                                    {Object.entries(rfi.customFields)
+                                        .filter(([key]) => key !== 'rfi_no' && key !== 'parentId')
+                                        .map(([key, value]) => (
                                         <div className="rfi-detail-item" key={key}>
                                             <List size={18} color="var(--clr-text-muted)" />
                                             <div>
@@ -190,7 +192,7 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                                             </div>
                                             <div className="revision-card">
                                                 <div className="revision-card-header">
-                                                    <span className="revision-version">V{idx + 1} - RFI #{item.serialNo}</span>
+                                                    <span className="revision-version">V{idx + 1} - RFI #{item.customFields?.rfi_no || item.serialNo}</span>
                                                     <StatusBadge status={item.status} />
                                                 </div>
                                                 <div className="revision-card-meta">

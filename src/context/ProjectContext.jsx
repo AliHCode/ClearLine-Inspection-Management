@@ -212,13 +212,14 @@ export function ProjectProvider({ children }) {
     // Build the ordered table columns anytime fields or active project changes
     useEffect(() => {
         const order = activeProject?.column_order || [
-            'serial', 'description', 'location', 'inspection_type',
+            'serial', 'rfi_no', 'description', 'location', 'inspection_type',
             ...(projectFields || []).map(f => f.field_key),
             'status', 'remarks', 'attachments', 'actions'
         ];
         
         const BUILT_IN_COLUMNS = [
             { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', is_builtin: true },
+            { id: 'builtin_rfi_no', field_key: 'rfi_no', field_name: 'RFI #', is_builtin: true },
             { id: 'builtin_description', field_key: 'description', field_name: 'Description', is_builtin: true },
             { id: 'builtin_location', field_key: 'location', field_name: 'Location', is_builtin: true },
             { id: 'builtin_type', field_key: 'inspection_type', field_name: 'Type', is_builtin: true },
@@ -265,9 +266,9 @@ export function ProjectProvider({ children }) {
     }
 
     // ─── Create project (admin) ───
-    async function createProject(name, description = '') {
+    async function createProject(name, code = '', description = '') {
         try {
-            const { data, error } = await supabase.from('projects').insert([{ name, description }]).select();
+            const { data, error } = await supabase.from('projects').insert([{ name, code, description }]).select();
             if (error) throw error;
             if (data && data[0]) {
                 setProjects(prev => [...prev, data[0]]);
@@ -276,6 +277,26 @@ export function ProjectProvider({ children }) {
             }
         } catch (error) {
             console.error("Error creating project:", error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ─── Update project (admin) ───
+    async function updateProject(projectId, updates) {
+        try {
+            const { data, error } = await supabase
+                .from('projects')
+                .update(updates)
+                .eq('id', projectId)
+                .select();
+            if (error) throw error;
+            if (data?.[0]) {
+                setProjects(prev => prev.map(p => p.id === projectId ? data[0] : p));
+                if (activeProject?.id === projectId) setActiveProject(data[0]);
+                return { success: true, project: data[0] };
+            }
+        } catch (error) {
+            console.error("Error updating project:", error);
             return { success: false, error: error.message };
         }
     }
@@ -425,7 +446,7 @@ export function ProjectProvider({ children }) {
     return (
         <ProjectContext.Provider value={{
             projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers,
-            fetchProjects, changeActiveProject, createProject, deleteProject,
+            fetchProjects, changeActiveProject, createProject, deleteProject, updateProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,
             saveProjectExportTemplate,

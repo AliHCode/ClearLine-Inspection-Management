@@ -47,7 +47,11 @@ export default function AdminDashboard() {
     // Project creation form
     const [showNewProject, setShowNewProject] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
+    const [newProjectCode, setNewProjectCode] = useState('');
     const [newProjectDesc, setNewProjectDesc] = useState('');
+    
+    const [editingProject, setEditingProject] = useState(null); // { id, name, code, description }
+    const [editCode, setEditCode] = useState('');
 
     // Field creation form
     const [showNewField, setShowNewField] = useState(false);
@@ -249,15 +253,28 @@ export default function AdminDashboard() {
     async function handleCreateProject(e) {
         e.preventDefault();
         if (!newProjectName.trim()) return;
-        const result = await createProject(newProjectName.trim(), newProjectDesc.trim());
+        const result = await createProject(newProjectName.trim(), newProjectCode.trim(), newProjectDesc.trim());
         if (result?.success) {
             showMsg('Project created');
             setNewProjectName('');
+            setNewProjectCode('');
             setNewProjectDesc('');
             setShowNewProject(false);
             fetchProjects();
         } else {
             showMsg('Error: ' + (result?.error || 'Failed to create project'));
+        }
+    }
+
+    async function handleUpdateProjectCode(projectId) {
+        if (!editCode.trim()) return;
+        const result = await useProject().updateProject(projectId, { code: editCode.trim() });
+        if (result?.success) {
+            showMsg('Project code updated');
+            setEditingProject(null);
+            setEditCode('');
+        } else {
+            showMsg('Error: ' + (result?.error || 'Update failed'));
         }
     }
 
@@ -441,9 +458,11 @@ export default function AdminDashboard() {
                         </div>
 
                         {showNewProject && (
-                            <form className="admin-inline-form" onSubmit={handleCreateProject}>
+                            <form className="admin-inline-form" onSubmit={handleCreateProject} style={{ gridTemplateColumns: '1fr 120px 1fr auto auto', gap: '0.5rem' }}>
                                 <input type="text" placeholder="Project name *" value={newProjectName}
                                     onChange={e => setNewProjectName(e.target.value)} required />
+                                <input type="text" placeholder="Code (e.g. RR007)" value={newProjectCode}
+                                    onChange={e => setNewProjectCode(e.target.value)} />
                                 <input type="text" placeholder="Description (optional)" value={newProjectDesc}
                                     onChange={e => setNewProjectDesc(e.target.value)} />
                                 <button type="submit" className="btn btn-sm" style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}>
@@ -458,9 +477,36 @@ export default function AdminDashboard() {
                                 <div key={p.id} className={`admin-project-card ${activeProject?.id === p.id ? 'active' : ''}`}
                                     onClick={() => changeActiveProject(p.id)}>
                                     <div className="admin-project-card-header">
-                                        <div>
-                                            <h3>{p.name}</h3>
-                                            {p.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{p.description}</p>}
+                                        <div style={{ flexGrow: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                <h3 style={{ margin: 0 }}>{p.name}</h3>
+                                                {editingProject === p.id ? (
+                                                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                                                        <input 
+                                                            autoFocus
+                                                            className="cell-input" 
+                                                            style={{ width: '80px', height: '24px', fontSize: '0.75rem' }} 
+                                                            value={editCode} 
+                                                            onChange={e => setEditCode(e.target.value)}
+                                                            onClick={e => e.stopPropagation()}
+                                                            onKeyDown={e => { if (e.key === 'Enter') handleUpdateProjectCode(p.id); }}
+                                                            placeholder="Code..."
+                                                        />
+                                                        <button className="btn-sm" style={{ padding: '0 4px', height: '24px' }} onClick={(e) => { e.stopPropagation(); handleUpdateProjectCode(p.id); }}><Save size={12} /></button>
+                                                        <button className="btn-sm btn-ghost" style={{ padding: '0 4px', height: '24px' }} onClick={(e) => { e.stopPropagation(); setEditingProject(null); }}><X size={12} /></button>
+                                                    </div>
+                                                ) : (
+                                                    <span 
+                                                        className="ustat-pill ustat-info" 
+                                                        style={{ cursor: 'pointer' }}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingProject(p.id); setEditCode(p.code || ''); }}
+                                                        title="Click to change project code"
+                                                    >
+                                                        {p.code || 'No Code'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {p.description && <p className="text-muted" style={{ fontSize: '0.8rem' }}>{p.description}</p>}
                                         </div>
                                         {p.id !== '00000000-0000-0000-0000-000000000000' && (
                                             <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}

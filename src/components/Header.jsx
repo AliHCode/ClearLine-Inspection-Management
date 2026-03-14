@@ -228,14 +228,7 @@ export default function Header() {
                             <FileText size={16} /> Daily RFI Sheet
                         </button>
                     )}
-                    {isContractor && (
-                        <button
-                            onClick={() => { navigate('/contractor/rfi-status-tracker'); setMenuOpen(false); }}
-                            className={`header-dropdown-item ${location.pathname.includes('/contractor/rfi-status-tracker') ? 'active' : ''}`}
-                        >
-                            <ListChecks size={16} /> RFI Status Tracker
-                        </button>
-                    )}
+
                         {isContractor && (
                             <button
                                 onClick={() => { navigate('/contractor/summary'); setMenuOpen(false); }}

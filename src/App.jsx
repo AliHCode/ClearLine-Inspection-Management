@@ -9,7 +9,7 @@ import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import ContractorDashboard from './pages/ContractorDashboard';
 import DailyRFISheet from './pages/DailyRFISheet';
-import RFIStatusTracker from './pages/RFIStatusTracker';
+
 import ConsultantDashboard from './pages/ConsultantDashboard';
 import ReviewQueue from './pages/ReviewQueue';
 import RejectionJourneyBoard from './pages/RejectionJourneyBoard';
@@ -78,14 +78,7 @@ function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
-            <Route
-                path="/contractor/rfi-status-tracker"
-                element={
-                    <ProtectedRoute allowedRoles={['contractor']}>
-                        <RFIStatusTracker />
-                    </ProtectedRoute>
-                }
-            />
+
                 <Route
                     path="/contractor/summary"
                     element={

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
@@ -10,6 +11,7 @@ import StatusBadge from '../components/StatusBadge';
 import RFIDetailModal from '../components/RFIDetailModal';
 import EditRFIModal from '../components/EditRFIModal';
 import ImageMarkupModal from '../components/ImageMarkupModal';
+import CreateRevisionModal from '../components/CreateRevisionModal';
 import { Plus, Trash2, Send, RefreshCw, X, MessageSquare, Pencil, FileDown, Table, ClipboardList, Brush } from 'lucide-react';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
 import { useProject } from '../context/ProjectContext';
@@ -30,11 +32,27 @@ export default function DailyRFISheet() {
     const [markupTarget, setMarkupTarget] = useState(null);
     const [focusedRfiId, setFocusedRfiId] = useState(null);
     const [showNewRfiEntry, setShowNewRfiEntry] = useState(false);
+    const [scrollNonce, setScrollNonce] = useState(0);
+
+    const [activeTab, setActiveTab] = useState('daily');
+    const [revisionTarget, setRevisionTarget] = useState(null);
 
     const { newRfis } = getRFIsForDate(currentDate);
 
-    // Filter to only show this contractor's RFIs
-    const myNewRfis = newRfis.filter((r) => r.filedBy === user.id);
+    // Gather all actionable rejected RFIs (rejected and no child revision)
+    const allRejectedRfis = (rfis || []).filter(r => r.filedBy === user.id && r.status === RFI_STATUS.REJECTED);
+    const activeRejectedRfis = allRejectedRfis.filter(
+        rejected => !rfis.some(r => r.parentId === rejected.id)
+    ).sort((a, b) => new Date(a.filedDate) - new Date(b.filedDate)); // Oldest first
+
+    // Current date's new RFIs (excluding any already in the active rejected list to prevent duplicates)
+    const activeRejectedIds = new Set(activeRejectedRfis.map(r => r.id));
+    const dailyRfis = newRfis.filter(r => 
+        r.filedBy === user.id && !activeRejectedIds.has(r.id)
+    ).sort((a,b) => a.serialNo - b.serialNo);
+
+    // Determines what to show in the table
+    const currentRfis = activeTab === 'daily' ? dailyRfis : activeRejectedRfis;
 
     const reportRfis = rfis ? rfis.filter(r =>
         r.filedBy === user.id &&
@@ -73,26 +91,12 @@ export default function DailyRFISheet() {
         );
     }
 
-    function handleCreateRevision(rfi) {
-        const newRev = {
-            tempId: Date.now() + Math.random(),
-            description: rfi.description,
-            location: rfi.location,
-            inspectionType: rfi.inspectionType,
-            assignedTo: rfi.assignedTo || '',
-            images: [],
-            parentId: rfi.id,
-            isLocked: true,
-        };
-        
-        // Remove the empty default row if it's untouched
-        setNewRows((prev) => {
-            const list = prev.filter(r => r.description || r.location || r.images.length > 0);
-            return [...list, newRev];
-        });
-        
-        toast.success(`Started revision for RFI #${rfi.serialNo}`);
-        scrollToPageBottom();
+    function handleCreateRevision(rfi, e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        setRevisionTarget(rfi);
     }
 
     function removeImage(tempId, imgIndex) {
@@ -275,25 +279,30 @@ export default function DailyRFISheet() {
         return () => document.body.classList.remove('no-scroll');
     }, [detailTarget, editTarget, markupTarget, selectedImages]);
 
+    // Scroll logic using a nonce to ensure it fires even if the grid was already open
+    useEffect(() => {
+        if (scrollNonce > 0) {
+            const performScroll = () => {
+                const grid = document.getElementById('new-rfi-entry-grid');
+                if (grid) {
+                    grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    window.scrollTo({ 
+                        top: document.documentElement.scrollHeight || document.body.scrollHeight, 
+                        behavior: 'smooth' 
+                    });
+                }
+            };
+
+            // Short timeout to allow React to render the grid
+            const timer = setTimeout(performScroll, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [scrollNonce]);
+
     function scrollToPageBottom() {
-        const scrollNow = () => {
-            const scroller = document.scrollingElement || document.documentElement || document.body;
-            const pageHeight = Math.max(
-                document.body?.scrollHeight || 0,
-                document.documentElement?.scrollHeight || 0,
-                document.body?.offsetHeight || 0,
-                document.documentElement?.offsetHeight || 0
-            );
-
-            scroller.scrollTo({ top: pageHeight, behavior: 'smooth' });
-            window.scrollTo({ top: pageHeight, behavior: 'smooth' });
-        };
-
-        // Run immediately, then once after render settles so we always hit true bottom.
-        scrollNow();
-        requestAnimationFrame(() => {
-            setTimeout(scrollNow, 120);
-        });
+        setShowNewRfiEntry(true);
+        setScrollNonce(n => n + 1);
     }
 
     // ─── Ordered column rendering helpers ───
@@ -304,7 +313,19 @@ export default function DailyRFISheet() {
         const style = getTableColumnStyle(col.field_key);
         switch (col.field_key) {
             case 'serial':
-                return <td key={col.field_key} style={style} data-label="#">{isCarryover ? idx + 1 : rfi.serialNo}</td>;
+                return (
+                    <td key={col.field_key} style={style} data-label="#">
+                        <div style={{ fontWeight: 'bold' }}>{idx + 1}</div>
+                    </td>
+                );
+            case 'rfi_no':
+                return (
+                    <td key={col.field_key} style={style} data-label="RFI #">
+                        <div style={{ color: 'var(--clr-primary)', fontWeight: '500' }}>
+                            {rfi.customFields?.rfi_no || '—'}
+                        </div>
+                    </td>
+                );
             case 'description':
                 return <td key={col.field_key} style={style} data-label="Description">{rfi.description}</td>;
             case 'location':
@@ -343,7 +364,7 @@ export default function DailyRFISheet() {
                                     <RefreshCw size={14} />
                                 </button>
                                 {rfi.status === RFI_STATUS.REJECTED && (
-                                    <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
+                                    <button className="btn btn-sm btn-action" onClick={(e) => handleCreateRevision(rfi, e)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
                                         <Plus size={14} />
                                     </button>
                                 )}
@@ -362,7 +383,7 @@ export default function DailyRFISheet() {
                                 <MessageSquare size={14} />
                             </button>
                             {rfi.status === RFI_STATUS.REJECTED && (
-                                <button className="btn btn-sm btn-action" onClick={() => handleCreateRevision(rfi)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
+                                <button className="btn btn-sm btn-action" onClick={(e) => handleCreateRevision(rfi, e)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>
                                     <Plus size={14} />
                                 </button>
                             )}
@@ -388,7 +409,28 @@ export default function DailyRFISheet() {
         const style = getTableColumnStyle(col.field_key);
         switch (col.field_key) {
             case 'serial':
-                return <td key={col.field_key} style={style}>{myNewRfis.length + idx + 1}</td>;
+                return <td key={col.field_key} style={style}>{dailyRfis.length + idx + 1}</td>;
+            case 'rfi_no':
+                // Predict the RFI #
+                let predictedNo = '—';
+                if (!row.parentId) {
+                    const prefix = activeProject?.code || 'RR007';
+                    let maxB = 0;
+                    rfis.forEach(r => {
+                        const c = r.customFields?.rfi_no;
+                        if (c && c.startsWith(prefix)) {
+                            const pts = c.split('-');
+                            if (pts.length >= 2) {
+                                const n = parseInt(pts[1], 10);
+                                if (!isNaN(n)) maxB = Math.max(maxB, n);
+                            }
+                        }
+                    });
+                    predictedNo = `${prefix}-${(maxB + idx + 1).toString().padStart(3, '0')}`;
+                } else {
+                    predictedNo = row.customFields?.rfi_no || '—';
+                }
+                return <td key={col.field_key} style={style}>{predictedNo}</td>;
             case 'description':
                 return (
                     <td key={col.field_key} style={style}>
@@ -491,21 +533,33 @@ export default function DailyRFISheet() {
             <Header />
             <main className="rfi-sheet-page">
                 <div className="sheet-header">
-                    <div>
-                        <h1>📋 Daily RFI Sheet</h1>
-                        {pendingSyncCount > 0 && (
-                            <p className="subtitle" style={{ marginTop: '0.2rem' }}>
-                                {pendingSyncCount} offline RFI{pendingSyncCount > 1 ? 's' : ''} queued for auto-sync.
-                            </p>
-                        )}
+                    <div className="sheet-tabs-container">
+                        <div 
+                            className={`sheet-tab ${activeTab === 'daily' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('daily')}
+                        >
+                            <h2>Daily RFI Sheet</h2>
+                        </div>
+                        <div 
+                            className={`sheet-tab ${activeTab === 'rejected' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('rejected')}
+                        >
+                            <h2>Rejected RFI</h2>
+                        </div>
                     </div>
-                    <div className="review-header-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        {myNewRfis.length > 0 && (
+                    
+                    <div className="review-header-controls">
+                        {pendingSyncCount > 0 && (
+                            <span className="ustat-pill ustat-warning" style={{ fontSize: '0.8rem' }}>
+                                {pendingSyncCount} offline
+                            </span>
+                        )}
+                        {currentRfis.length > 0 && (
                             <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToPDF(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                    onClick={() => exportToPDF(currentRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                     title="Export to PDF"
                                 >
                                     <FileDown size={16} /> PDF
@@ -513,19 +567,21 @@ export default function DailyRFISheet() {
                                 <button
                                     className="btn btn-sm"
                                     style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => exportToExcel(myNewRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                    onClick={() => exportToExcel(currentRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                     title="Export to Excel"
                                 >
                                     <Table size={16} /> Excel
                                 </button>
-                                <button
-                                    className="btn btn-sm"
-                                    style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                    onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                    title="Generate branded daily report"
-                                >
-                                    <ClipboardList size={16} /> Daily Report
-                                </button>
+                                {activeTab === 'daily' && (
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                        onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                        title="Generate branded daily report"
+                                    >
+                                        Daily Report
+                                    </button>
+                                )}
                             </div>
                         )}
                         <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} />
@@ -534,10 +590,12 @@ export default function DailyRFISheet() {
 
                 {/* Filed RFIs for selected date only */}
                 <div className="sheet-section filed-section">
-                    <h2 className="section-title">📝 Filed RFIs</h2>
-                    {myNewRfis.length === 0 ? (
+                    <h2 className="section-title">
+                        {activeTab === 'daily' ? 'Filed RFIs' : 'Rejected RFIs'}
+                    </h2>
+                    {currentRfis.length === 0 ? (
                         <div className="empty-state" style={{ padding: '1rem 1.25rem' }}>
-                            <p style={{ margin: 0 }}>No filed RFIs to show for this date.</p>
+                            <p style={{ margin: 0 }}>No {activeTab} RFIs to show.</p>
                         </div>
                     ) : (
                         <div className="rfi-table-wrapper">
@@ -550,11 +608,11 @@ export default function DailyRFISheet() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {myNewRfis.map((rfi, idx) => (
+                                    {currentRfis.map((rfi, idx) => (
                                         <tr
                                             key={rfi.id}
                                             data-rfi-id={rfi.id}
-                                            className={focusedRfiId === rfi.id ? 'notification-focus-row' : ''}
+                                            className={`${activeTab === 'rejected' ? 'rejected-priority-row' : ''} ${focusedRfiId === rfi.id ? 'notification-focus-row' : ''}`}
                                         >
                                             {orderedTableColumns.map(col => renderDisplayCell(rfi, col, idx, false))}
                                         </tr>
@@ -565,8 +623,9 @@ export default function DailyRFISheet() {
                     )}
                 </div>
 
-                {/* New RFI Entry (Spreadsheet-like) */}
-                <div className="sheet-section new-entry-section">
+                {/* New RFI Entry (Spreadsheet-like) - Only in Daily Tab */}
+                {activeTab === 'daily' && (
+                    <div className="sheet-section new-entry-section">
                     <div className="new-entry-launcher">
                         <div className="new-entry-launcher-copy">
                             <span className="new-entry-kicker">RFI Workspace</span>
@@ -590,7 +649,7 @@ export default function DailyRFISheet() {
 
                     {showNewRfiEntry && (
                         <>
-                            <div className="rfi-table-wrapper" style={{ marginTop: '1rem' }}>
+                            <div id="new-rfi-entry-grid" className="rfi-table-wrapper" style={{ marginTop: '1rem' }}>
                                 <table className="rfi-table editable">
                                     <thead>
                                         <tr>
@@ -644,6 +703,7 @@ export default function DailyRFISheet() {
                         </>
                     )}
                 </div>
+                )}
 
                 {/* Lightbox for Contractor Uploads */}
                 {selectedImages && (
@@ -700,6 +760,14 @@ export default function DailyRFISheet() {
                         orderedColumns={orderedTableColumns}
                         onSave={handleSaveEdit}
                         onClose={() => setEditTarget(null)}
+                    />
+                )}
+
+                {revisionTarget && (
+                    <CreateRevisionModal
+                        parentRfi={revisionTarget}
+                        onClose={() => setRevisionTarget(null)}
+                        onSuccess={() => setActiveTab('daily')}
                     />
                 )}
             </main>
