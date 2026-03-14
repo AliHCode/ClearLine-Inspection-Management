@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import UserAvatar from './UserAvatar';
-import { Send, Loader2, Paperclip, Brush, X, RotateCcw, Move } from 'lucide-react';
+import { Send, Loader2, Paperclip, Brush, X, RotateCcw, Move, Pencil, Trash2 } from 'lucide-react';
 
 export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger }) {
     const { user } = useAuth();
-    const { fetchComments, addComment, updateComment } = useRFI();
+    const { fetchComments, addComment, updateComment, deleteComment, uploadImages } = useRFI();
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -26,6 +26,8 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     const [interactionMode, setInteractionMode] = useState('draw');
     const [isPanning, setIsPanning] = useState(false);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    const [composerMode, setComposerMode] = useState('create');
+    const [composerEditCommentId, setComposerEditCommentId] = useState(null);
     const prevCommentsLength = useRef(0);
     const messagesEndRef = useRef(null);
     const attachInputRef = useRef(null);
@@ -193,6 +195,8 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
+        setComposerMode('create');
+        setComposerEditCommentId(null);
         setComposerImages(files);
         setActiveComposerIndex(0);
         setComposerCaption(newComment.trim());
@@ -216,6 +220,8 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         setInteractionMode('draw');
         setIsPanning(false);
         setPanOffset({ x: 0, y: 0 });
+        setComposerMode('create');
+        setComposerEditCommentId(null);
         setCanvasReady(false);
         setCanvasDirty(false);
         drawHistoryRef.current = [];
@@ -431,7 +437,16 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         setSubmitting(true);
         try {
             const imagesToSend = await commitActiveMarkup(composerImages);
-            await addComment(rfiId, trimmed, { attachments: imagesToSend });
+            if (composerMode === 'edit' && composerEditCommentId) {
+                const fileAttachments = imagesToSend.filter((item) => item instanceof File);
+                const existingUrls = imagesToSend.filter((item) => typeof item === 'string');
+                const uploadedUrls = fileAttachments.length > 0 ? await uploadImages(fileAttachments) : [];
+                const attachmentTokens = [...existingUrls, ...uploadedUrls].map((url) => `[img]${url}[/img]`);
+                const finalContent = [trimmed, ...attachmentTokens].filter(Boolean).join('\n').trim();
+                await updateComment(composerEditCommentId, finalContent);
+            } else {
+                await addComment(rfiId, trimmed, { attachments: imagesToSend });
+            }
             closeComposer();
             await loadComments();
             scrollToBottom();
@@ -450,6 +465,55 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
             return '';
         }).trim();
         return { text, images };
+    };
+
+    const urlToFile = async (url, index = 0) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+        const blob = await response.blob();
+        const ext = blob.type?.split('/')[1] || 'png';
+        return new File([blob], `comment-image-${Date.now()}-${index}.${ext}`, { type: blob.type || 'image/png' });
+    };
+
+    const handleOpenEdit = async (comment, parsed) => {
+        if (!parsed.images.length) {
+            startEdit(comment);
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const imageFiles = await Promise.all(parsed.images.map((url, index) => urlToFile(url, index)));
+            setComposerMode('edit');
+            setComposerEditCommentId(comment.id);
+            setComposerImages(imageFiles);
+            setComposerCaption(parsed.text || '');
+            setActiveComposerIndex(0);
+            setZoomLevel(1);
+            setPanOffset({ x: 0, y: 0 });
+            setInteractionMode('draw');
+            setComposerOpen(true);
+        } catch (error) {
+            console.error('Error preparing comment edit:', error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        if (submitting) return;
+        const confirmed = window.confirm('Delete this message?');
+        if (!confirmed) return;
+
+        setSubmitting(true);
+        try {
+            await deleteComment(commentId);
+            await loadComments();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (loading) {
@@ -523,14 +587,24 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                                                 </div>
                                             )}
                                             {isMe && (
-                                                <div style={{ marginTop: '0.35rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                                <div className="comment-action-icons">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-ghost"
-                                                        onClick={() => startEdit(c)}
-                                                        style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}
+                                                        className="btn btn-sm btn-ghost comment-action-icon"
+                                                        onClick={() => handleOpenEdit(c, parsed)}
+                                                        title="Edit message"
+                                                        disabled={submitting}
                                                     >
-                                                        Edit
+                                                        <Pencil size={13} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-ghost comment-action-icon danger"
+                                                        onClick={() => handleDeleteComment(c.id)}
+                                                        title="Delete message"
+                                                        disabled={submitting}
+                                                    >
+                                                        <Trash2 size={13} />
                                                     </button>
                                                 </div>
                                             )}
@@ -584,7 +658,7 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                 <div className="modal-overlay" onClick={closeComposer} style={{ zIndex: 1150 }}>
                     <div className="chat-attachment-composer" onClick={(e) => e.stopPropagation()}>
                         <div className="chat-attachment-header">
-                            <h3>Send attachment</h3>
+                            <h3>{composerMode === 'edit' ? 'Edit message' : 'Send attachment'}</h3>
                             <button className="btn-close" onClick={closeComposer} disabled={submitting}>
                                 <X size={18} color="var(--clr-text-secondary)" />
                             </button>

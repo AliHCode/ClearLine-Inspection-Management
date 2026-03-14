@@ -2599,6 +2599,29 @@ h6 {
   word-break: break-word;
 }
 
+.comment-action-icons {
+  margin-top: 0.35rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.comment-action-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-action-icon.danger:hover {
+  color: var(--clr-danger) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
 .chat-image-grid {
   display: flex;
   flex-wrap: wrap;

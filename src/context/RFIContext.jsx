@@ -1240,6 +1240,24 @@ export function RFIProvider({ children }) {
         }
     }
 
+    async function deleteComment(commentId) {
+        if (!user) return;
+
+        try {
+            const { error } = await supabase
+                .from('comments')
+                .delete()
+                .eq('id', commentId)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+            await logAuditEvent(null, 'comment_deleted', { commentId });
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            throw error;
+        }
+    }
+
 
     /** Delete an RFI */
     async function deleteRFI(rfiId) {
@@ -1517,6 +1535,7 @@ export function RFIProvider({ children }) {
                 fetchComments,
                 addComment,
                 updateComment,
+                deleteComment,
                 markNotificationRead,
                 markAllNotificationsRead,
                 createNotification
