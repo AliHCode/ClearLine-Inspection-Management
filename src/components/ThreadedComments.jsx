@@ -14,11 +14,27 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     const [newComment, setNewComment] = useState('');
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingValue, setEditingValue] = useState('');
-    const [pendingImages, setPendingImages] = useState([]);
+    const [composerOpen, setComposerOpen] = useState(false);
+    const [composerImages, setComposerImages] = useState([]);
+    const [composerCaption, setComposerCaption] = useState('');
+    const [composerPreviewUrls, setComposerPreviewUrls] = useState([]);
+    const [activeComposerIndex, setActiveComposerIndex] = useState(0);
     const [markupIndex, setMarkupIndex] = useState(null);
     const prevCommentsLength = useRef(0);
     const messagesEndRef = useRef(null);
     const attachInputRef = useRef(null);
+
+    useEffect(() => {
+        if (composerImages.length === 0) {
+            setComposerPreviewUrls([]);
+            return;
+        }
+
+        const nextUrls = composerImages.map((file) => URL.createObjectURL(file));
+        setComposerPreviewUrls(nextUrls);
+
+        return () => nextUrls.forEach((url) => URL.revokeObjectURL(url));
+    }, [composerImages]);
 
     useEffect(() => {
         loadComments();
@@ -59,13 +75,12 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
     const handleSubmit = async (e) => {
         e.preventDefault();
         const trimmed = newComment.trim();
-        if ((!trimmed && pendingImages.length === 0) || submitting) return;
+        if (!trimmed || submitting) return;
 
         setSubmitting(true);
         try {
-            await addComment(rfiId, trimmed, { attachments: pendingImages });
+            await addComment(rfiId, trimmed);
             setNewComment('');
-            setPendingImages([]);
             await loadComments();
             scrollToBottom(); // Manually scroll when the user themselves sends a message
             if (onCommentAdded) onCommentAdded();
@@ -110,19 +125,45 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        setPendingImages((prev) => {
-            const next = [...prev, ...files];
-            if (markupIndex === null) {
-                setMarkupIndex(prev.length);
-            }
-            return next;
-        });
+        setComposerImages(files);
+        setActiveComposerIndex(0);
+        setComposerCaption(newComment.trim());
+        if (newComment.trim()) {
+            setNewComment('');
+        }
+        setComposerOpen(true);
 
         e.target.value = '';
     };
 
-    const replacePendingImage = (index, file) => {
-        setPendingImages((prev) => prev.map((img, i) => (i === index ? file : img)));
+    const closeComposer = () => {
+        setComposerOpen(false);
+        setComposerImages([]);
+        setComposerCaption('');
+        setActiveComposerIndex(0);
+        setMarkupIndex(null);
+    };
+
+    const replaceComposerImage = (index, file) => {
+        setComposerImages((prev) => prev.map((img, i) => (i === index ? file : img)));
+    };
+
+    const handleComposerSend = async () => {
+        const trimmed = composerCaption.trim();
+        if (composerImages.length === 0 || submitting) return;
+
+        setSubmitting(true);
+        try {
+            await addComment(rfiId, trimmed, { attachments: composerImages });
+            closeComposer();
+            await loadComments();
+            scrollToBottom();
+            if (onCommentAdded) onCommentAdded();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const parseCommentContent = (rawContent = '') => {
@@ -235,22 +276,6 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                     className="comment-input"
                     disabled={submitting}
                 />
-                {pendingImages.length > 0 && (
-                    <div className="comment-inline-preview" title={`${pendingImages.length} image${pendingImages.length > 1 ? 's' : ''} attached`}>
-                        <img src={URL.createObjectURL(pendingImages[0])} alt="Pending attachment" />
-                        <div className="comment-inline-preview-actions">
-                            <button type="button" onClick={() => setMarkupIndex(0)} title="Edit image">
-                                <Brush size={11} />
-                            </button>
-                            <button type="button" onClick={() => setPendingImages([])} title="Remove attachment">
-                                <X size={11} />
-                            </button>
-                        </div>
-                        {pendingImages.length > 1 && (
-                            <div className="comment-inline-preview-count">+{pendingImages.length - 1}</div>
-                        )}
-                    </div>
-                )}
                 <input
                     ref={attachInputRef}
                     type="file"
@@ -271,19 +296,84 @@ export default function ThreadedComments({ rfiId, onCommentAdded, scrollTrigger 
                 <button
                     type="submit"
                     className="btn btn-action comment-submit-btn"
-                    disabled={(!newComment.trim() && pendingImages.length === 0) || submitting}
+                    disabled={!newComment.trim() || submitting}
                     style={{ padding: '0.5rem', borderRadius: 'var(--radius-full)' }}
                 >
                     {submitting ? <Loader2 className="spinner" size={18} /> : <Send size={18} />}
                 </button>
             </form>
 
-            {markupIndex !== null && pendingImages[markupIndex] && (
+            {composerOpen && composerImages.length > 0 && (
+                <div className="modal-overlay" onClick={closeComposer} style={{ zIndex: 1150 }}>
+                    <div className="chat-attachment-composer" onClick={(e) => e.stopPropagation()}>
+                        <div className="chat-attachment-header">
+                            <h3>Send attachment</h3>
+                            <button className="btn-close" onClick={closeComposer} disabled={submitting}>
+                                <X size={18} color="var(--clr-text-secondary)" />
+                            </button>
+                        </div>
+
+                        <div className="chat-attachment-preview-wrap">
+                            <img
+                                src={composerPreviewUrls[activeComposerIndex]}
+                                alt={`Attachment preview ${activeComposerIndex + 1}`}
+                                className="chat-attachment-preview"
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-ghost chat-attachment-markup"
+                                onClick={() => setMarkupIndex(activeComposerIndex)}
+                                disabled={submitting}
+                            >
+                                <Brush size={14} /> Markup
+                            </button>
+                        </div>
+
+                        {composerImages.length > 1 && (
+                            <div className="chat-attachment-thumbs">
+                                {composerPreviewUrls.map((previewUrl, index) => (
+                                    <button
+                                        key={`${previewUrl}_${index}`}
+                                        type="button"
+                                        className={`chat-attachment-thumb ${index === activeComposerIndex ? 'active' : ''}`}
+                                        onClick={() => setActiveComposerIndex(index)}
+                                        disabled={submitting}
+                                    >
+                                        <img src={previewUrl} alt={`Attachment ${index + 1}`} />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="chat-attachment-footer">
+                            <textarea
+                                value={composerCaption}
+                                onChange={(e) => setComposerCaption(e.target.value)}
+                                placeholder="Add a caption (optional)"
+                                className="chat-attachment-caption"
+                                rows={2}
+                                disabled={submitting}
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-action chat-attachment-send"
+                                onClick={handleComposerSend}
+                                disabled={composerImages.length === 0 || submitting}
+                            >
+                                {submitting ? <Loader2 className="spinner" size={18} /> : <Send size={16} />}
+                                <span>Send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {markupIndex !== null && composerImages[markupIndex] && (
                 <ImageMarkupModal
-                    image={pendingImages[markupIndex]}
+                    image={composerImages[markupIndex]}
                     onClose={() => setMarkupIndex(null)}
                     onSave={(annotatedFile) => {
-                        replacePendingImage(markupIndex, annotatedFile);
+                        replaceComposerImage(markupIndex, annotatedFile);
                         setMarkupIndex(null);
                     }}
                 />
