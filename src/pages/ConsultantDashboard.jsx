@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
@@ -14,8 +15,7 @@ import {
     Clock,
     ClipboardCheck,
     AlertTriangle,
-    Users,
-    Download,
+    GitBranch,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
@@ -25,17 +25,24 @@ export default function ConsultantDashboard() {
     const { rfis, getStats, getReviewQueue } = useRFI();
     const navigate = useNavigate();
     const today = getToday();
-    const stats = getStats(today);
     const queue = getReviewQueue(today);
 
-    // --- Chart Data Preparation ---
-    const pieData = [
-        { name: 'Approved', value: stats.todayApproved, color: 'var(--clr-success)' },
-        { name: 'Pending', value: stats.todayPending, color: 'var(--clr-warning)' },
-        { name: 'Rejected', value: stats.todayRejected, color: 'var(--clr-danger)' },
-        { name: 'Info Req.', value: stats.todayInfoRequested || 0, color: 'var(--clr-brand-secondary)' },
-    ];
+    const statusBreakdown = useMemo(() => {
+        const reviewedToday = rfis.filter((r) => r.reviewedAt && r.reviewedAt.startsWith(today));
+        const approvedToday = reviewedToday.filter((r) => r.status === 'approved').length;
+        const rejectedToday = reviewedToday.filter((r) => r.status === 'rejected').length;
+        const infoRequestedToday = reviewedToday.filter((r) => r.status === 'info_requested').length;
+        const pendingQueue = queue.all.length;
 
+        return [
+            { name: 'Approved', value: approvedToday, color: 'var(--clr-success)' },
+            { name: 'Pending', value: pendingQueue, color: 'var(--clr-warning)' },
+            { name: 'Rejected', value: rejectedToday, color: 'var(--clr-danger)' },
+            { name: 'Info Req.', value: infoRequestedToday, color: 'var(--clr-brand-secondary)' },
+        ];
+    }, [rfis, today, queue.all.length]);
+
+    // --- Chart Data Preparation ---
     // Group all RFIs by date for the area chart (last 7 days of activity)
     const trendMap = {};
     rfis.forEach(r => {
@@ -65,6 +72,9 @@ export default function ConsultantDashboard() {
                         <button className="btn btn-primary" onClick={() => navigate('/consultant/review')}>
                             <FileSearch size={18} /> Review RFIs
                         </button>
+                        <button className="btn btn-sm" onClick={() => navigate('/consultant/rejection-journey')}>
+                            <GitBranch size={16} /> Rejection Journey
+                        </button>
                     </div>
                 </div>
 
@@ -89,7 +99,7 @@ export default function ConsultantDashboard() {
                         <RfiTrendChart data={trendData} />
                     </div>
                     <div className="chart-card" style={{ flex: '1 1 300px', minWidth: 0, background: 'var(--clr-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
-                        <RfiStatusPieChart data={pieData} />
+                        <RfiStatusPieChart data={statusBreakdown} />
                     </div>
                 </div>
 

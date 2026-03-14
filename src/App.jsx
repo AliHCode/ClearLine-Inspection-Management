@@ -11,6 +11,7 @@ import ContractorDashboard from './pages/ContractorDashboard';
 import DailyRFISheet from './pages/DailyRFISheet';
 import ConsultantDashboard from './pages/ConsultantDashboard';
 import ReviewQueue from './pages/ReviewQueue';
+import RejectionJourneyBoard from './pages/RejectionJourneyBoard';
 import AdminDashboard from './pages/AdminDashboard';
 import UsersPage from './pages/UsersPage';
 import AdminFormatDesigner from './pages/AdminFormatDesigner';
@@ -97,6 +98,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['consultant']}>
                         <ReviewQueue />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/consultant/rejection-journey"
+                element={
+                    <ProtectedRoute allowedRoles={['consultant']}>
+                        <RejectionJourneyBoard />
                     </ProtectedRoute>
                 }
             />

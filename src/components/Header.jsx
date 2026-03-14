@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
-import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone } from 'lucide-react';
+import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch } from 'lucide-react';
 import { BarChart2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -236,6 +236,12 @@ export default function Header() {
                                 className={`header-dropdown-item ${location.pathname.includes('review') ? 'active' : ''}`}
                             >
                                 <ClipboardList size={16} /> Review Queue
+                            </button>
+                            <button
+                                onClick={() => { navigate('/consultant/rejection-journey'); setMenuOpen(false); }}
+                                className={`header-dropdown-item ${location.pathname.includes('/consultant/rejection-journey') ? 'active' : ''}`}
+                            >
+                                <GitBranch size={16} /> Rejection Journey
                             </button>
                                 <button
                                     onClick={() => { navigate('/consultant/summary'); setMenuOpen(false); }}

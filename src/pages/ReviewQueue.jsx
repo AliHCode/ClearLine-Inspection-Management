@@ -149,6 +149,27 @@ export default function ReviewQueue() {
         setSelectedRfiIds((prev) => prev.filter((id) => visibleIds.has(id)));
     }, [filteredItems]);
 
+    useEffect(() => {
+        if (!filterPopoverOpen) return;
+
+        const closeOnOutsidePointer = (event) => {
+            if (event.target.closest('.review-filter-wrap')) return;
+            setFilterPopoverOpen(false);
+        };
+
+        const closeOnScroll = () => {
+            setFilterPopoverOpen(false);
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsidePointer);
+        window.addEventListener('scroll', closeOnScroll, true);
+
+        return () => {
+            document.removeEventListener('pointerdown', closeOnOutsidePointer);
+            window.removeEventListener('scroll', closeOnScroll, true);
+        };
+    }, [filterPopoverOpen]);
+
     const shouldShowTable = Boolean(activeProject?.id && readyTableProjectId === activeProject.id);
 
 
@@ -251,6 +272,12 @@ export default function ReviewQueue() {
         }
         return () => document.body.classList.remove('no-scroll');
     }, [detailTarget, approveTarget, rejectTarget, selectedImages]);
+
+    useEffect(() => {
+        return () => {
+            document.body.classList.remove('no-scroll');
+        };
+    }, []);
 
     function scrollToPageBottom() {
         const scrollNow = () => {
@@ -468,14 +495,41 @@ export default function ReviewQueue() {
                     </div>
                     <div className="review-header-controls">
                         <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <button
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                title="Export to PDF"
+                                aria-label="Export to PDF"
+                            >
+                                <FileDown size={16} /> PDF
+                            </button>
+                            <button
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                title="Export to Excel"
+                                aria-label="Export to Excel"
+                            >
+                                <Table size={16} /> Excel
+                            </button>
+                            <button
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
+                                title="Generate branded daily report"
+                            >
+                                <ClipboardList size={16} /> Daily Report
+                            </button>
                             <div className="review-filter-wrap">
                                 <button
                                     type="button"
-                                    className="btn btn-sm btn-ghost review-filter-btn"
+                                    className="btn btn-sm review-filter-btn"
+                                    style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}
                                     onClick={() => setFilterPopoverOpen((prev) => !prev)}
                                     title="Filter table"
                                 >
-                                    <Filter size={15} /> Filters
+                                    <Filter size={15} color="#0f172a" /> Filters
                                     {activeFilterEntries.length > 0 && <span className="review-filter-count">{activeFilterEntries.length}</span>}
                                 </button>
                                 {filterPopoverOpen && (
@@ -532,32 +586,6 @@ export default function ReviewQueue() {
                                     </div>
                                 )}
                             </div>
-                            <button
-                                className="btn btn-sm"
-                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToPDF(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                title="Export to PDF"
-                                aria-label="Export to PDF"
-                            >
-                                <FileDown size={16} /> PDF
-                            </button>
-                            <button
-                                className="btn btn-sm"
-                                style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => exportToExcel(filteredItems, `ProWay_Inspections_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                title="Export to Excel"
-                                aria-label="Export to Excel"
-                            >
-                                <Table size={16} /> Excel
-                            </button>
-                            <button
-                                className="btn btn-sm"
-                                style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                onClick={() => generateDailyReport([...todayApproved, ...todayRejected], currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                title="Generate branded daily report"
-                            >
-                                <ClipboardList size={16} /> Daily Report
-                            </button>
                         </div>
                         <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} />
                     </div>
@@ -628,7 +656,7 @@ export default function ReviewQueue() {
                     </div>
                 ) : (
                     <div className="sheet-section">
-                        <div className="rfi-table-wrapper">
+                        <div className="rfi-table-wrapper" onTouchStart={() => setFilterPopoverOpen(false)} onMouseDown={() => setFilterPopoverOpen(false)}>
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
