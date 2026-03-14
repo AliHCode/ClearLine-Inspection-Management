@@ -2405,7 +2405,10 @@ h6 {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-x;
   scroll-behavior: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .review-filter {

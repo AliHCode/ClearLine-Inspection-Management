@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import { useProject } from '../context/ProjectContext';
@@ -16,6 +16,7 @@ import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList,
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
     const { user } = useAuth();
     const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi } = useRFI();
     const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId } = useProject();
@@ -52,7 +53,10 @@ export default function ReviewQueue() {
     if (filter === 'my_assigned') baseItems = queue.all.filter(r => r.assignedTo === user.id);
 
     const FILTER_EXCLUDED_COLUMNS = new Set(['serial', 'actions', 'attachments']);
-    const filterableColumns = orderedTableColumns.filter((col) => !FILTER_EXCLUDED_COLUMNS.has(col.field_key));
+    const filterableColumns = useMemo(
+        () => orderedTableColumns.filter((col) => !FILTER_EXCLUDED_COLUMNS.has(col.field_key)),
+        [orderedTableColumns]
+    );
 
     const getColumnRawValue = (rfi, fieldKey) => {
         if (fieldKey === 'description') return rfi.description;
@@ -136,6 +140,18 @@ export default function ReviewQueue() {
                     next[key] = values;
                 }
             });
+
+            const prevKeys = Object.keys(prev);
+            const nextKeys = Object.keys(next);
+            if (prevKeys.length === nextKeys.length) {
+                const unchanged = prevKeys.every((key) => {
+                    const prevVals = prev[key] || [];
+                    const nextVals = next[key] || [];
+                    return prevVals.length === nextVals.length
+                        && prevVals.every((val, idx) => val === nextVals[idx]);
+                });
+                if (unchanged) return prev;
+            }
             return next;
         });
 
@@ -146,29 +162,48 @@ export default function ReviewQueue() {
 
     useEffect(() => {
         const visibleIds = new Set(filteredItems.map((rfi) => rfi.id));
-        setSelectedRfiIds((prev) => prev.filter((id) => visibleIds.has(id)));
+        setSelectedRfiIds((prev) => {
+            const next = prev.filter((id) => visibleIds.has(id));
+            if (next.length === prev.length && next.every((id, idx) => id === prev[idx])) {
+                return prev;
+            }
+            return next;
+        });
     }, [filteredItems]);
 
     useEffect(() => {
         if (!filterPopoverOpen) return;
 
         const closeOnOutsidePointer = (event) => {
-            if (event.target.closest('.review-filter-wrap')) return;
+            const target = event.target;
+            if (target instanceof Element && target.closest('.review-filter-wrap')) return;
             setFilterPopoverOpen(false);
         };
 
-        const closeOnScroll = () => {
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') {
+                setFilterPopoverOpen(false);
+            }
+        };
+
+        const closeOnResize = () => {
             setFilterPopoverOpen(false);
         };
 
         document.addEventListener('pointerdown', closeOnOutsidePointer);
-        window.addEventListener('scroll', closeOnScroll, true);
+        document.addEventListener('keydown', closeOnEscape);
+        window.addEventListener('resize', closeOnResize);
 
         return () => {
             document.removeEventListener('pointerdown', closeOnOutsidePointer);
-            window.removeEventListener('scroll', closeOnScroll, true);
+            document.removeEventListener('keydown', closeOnEscape);
+            window.removeEventListener('resize', closeOnResize);
         };
     }, [filterPopoverOpen]);
+
+    useEffect(() => {
+        setFilterPopoverOpen(false);
+    }, [location.pathname]);
 
     const shouldShowTable = Boolean(activeProject?.id && readyTableProjectId === activeProject.id);
 
@@ -656,7 +691,7 @@ export default function ReviewQueue() {
                     </div>
                 ) : (
                     <div className="sheet-section">
-                        <div className="rfi-table-wrapper" onTouchStart={() => setFilterPopoverOpen(false)} onMouseDown={() => setFilterPopoverOpen(false)}>
+                        <div className="rfi-table-wrapper">
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>

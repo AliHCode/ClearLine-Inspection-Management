@@ -85,6 +85,11 @@ export default function Header() {
         };
     }, [user?.id, refreshPushBadge]);
 
+    useEffect(() => {
+        // Defensive reset in case a modal/page left the body scroll lock behind.
+        document.body.classList.remove('no-scroll');
+    }, [location.pathname]);
+
     const handleEnableNotifications = async () => {
         if (typeof Notification === 'undefined') {
             setNotifPermission('unsupported');
