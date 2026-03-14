@@ -2047,7 +2047,7 @@ h6 {
   }
   
   .auth-logo-img img {
-    height: 38px; /* Further reduced for mobile */
+    height: 40px; /* Adjusted for mobile per user request */
   }
   
   .hero-title {
