@@ -18,7 +18,7 @@ export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
     const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
@@ -45,6 +45,13 @@ export default function ReviewQueue() {
     if (filter === 'approved') filteredItems = todayApproved;
     if (filter === 'rejected') filteredItems = todayRejected;
     if (filter === 'my_assigned') filteredItems = queue.all.filter(r => r.assignedTo === user.id);
+
+    const tableLayoutReady = Boolean(
+        activeProject?.id
+        && fieldsResolvedProjectId === activeProject.id
+        && !loadingFields
+        && orderedTableColumns.length > 0
+    );
 
 
     async function handleApprove(rfiId, remarks = '', files = []) {
@@ -387,7 +394,14 @@ export default function ReviewQueue() {
                 )}
 
                 {/* Review Table (Excel-like format) */}
-                {filteredItems.length === 0 ? (
+                {!tableLayoutReady ? (
+                    <div className="sheet-section">
+                        <div style={{ padding: '1.2rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', color: 'var(--clr-text-secondary)' }}>
+                            <div className="loading-spinner" style={{ width: '16px', height: '16px' }}></div>
+                            <span>Loading review table layout...</span>
+                        </div>
+                    </div>
+                ) : filteredItems.length === 0 ? (
                     <div className="empty-state">
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                             <CheckCircle size={24} color="var(--clr-success)" /> All Caught Up!

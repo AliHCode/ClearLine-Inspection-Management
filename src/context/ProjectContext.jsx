@@ -27,6 +27,7 @@ export function ProjectProvider({ children }) {
     const [orderedTableColumns, setOrderedTableColumns] = useState([]);
     const [columnWidthMap, setColumnWidthMap] = useState({});
     const [loadingFields, setLoadingFields] = useState(false);
+    const [fieldsResolvedProjectId, setFieldsResolvedProjectId] = useState(null);
 
     // Project members
     const [projectMembers, setProjectMembers] = useState([]);
@@ -143,11 +144,16 @@ export function ProjectProvider({ children }) {
 
     // ─── Fetch project fields when active project changes ───
     const fetchProjectFields = useCallback(async (projectId) => {
-        if (!projectId) { setProjectFields([]); return; }
+        if (!projectId) {
+            setProjectFields([]);
+            setFieldsResolvedProjectId(null);
+            return;
+        }
         // These keys are already rendered as hardcoded table columns everywhere —
         // keep them out of projectFields so they don't appear twice.
         const BUILTIN_KEYS = new Set(['description', 'location', 'inspection_type']);
         setLoadingFields(true);
+        setFieldsResolvedProjectId(null);
         try {
             const { data, error } = await supabase
                 .from('project_fields')
@@ -176,6 +182,7 @@ export function ProjectProvider({ children }) {
             }
         } finally {
             setLoadingFields(false);
+            setFieldsResolvedProjectId(projectId);
         }
     }, []);
 
@@ -417,7 +424,7 @@ export function ProjectProvider({ children }) {
 
     return (
         <ProjectContext.Provider value={{
-            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, projectMembers,
+            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers,
             fetchProjects, changeActiveProject, createProject, deleteProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,
