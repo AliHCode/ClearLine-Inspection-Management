@@ -2864,7 +2864,7 @@ h6 {
 
 .connectivity-banner {
   position: sticky;
-  top: 64px;
+  top: 0;
   z-index: 120;
   width: 100%;
   text-align: center;
@@ -3698,7 +3698,7 @@ h6 {
 
 @media (max-width: 1280px) {
   .format-studio-layout {
-    grid-template-columns: 340px 1fr;
+    top: 0;
   }
 }
 

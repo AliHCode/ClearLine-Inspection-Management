@@ -17,7 +17,7 @@ import { CheckCircle, XCircle, MessageSquare, X, FileDown, Table, ClipboardList 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
-    const { approveRFI, rejectRFI, updateRFI, getReviewQueue, rfis, contractors } = useRFI();
+    const { approveRFI, rejectRFI, getReviewQueue, rfis, contractors } = useRFI();
     const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
@@ -30,9 +30,6 @@ export default function ReviewQueue() {
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [selectedRfiIds, setSelectedRfiIds] = useState([]);
     const [focusedRfiId, setFocusedRfiId] = useState(null);
-    const [remarksDrafts, setRemarksDrafts] = useState({});
-    const [savingRemarksById, setSavingRemarksById] = useState({});
-    const [uploadingAttachmentsById, setUploadingAttachmentsById] = useState({});
 
     const queue = getReviewQueue(currentDate);
 
@@ -59,39 +56,6 @@ export default function ReviewQueue() {
         await rejectRFI(rfiId, user.id, remarks, files);
         setActionMessage('❌ Inspection Rejected & Returned');
         setTimeout(() => setActionMessage(''), 3000);
-    }
-
-    function getDraftRemark(rfi) {
-        return remarksDrafts[rfi.id] ?? (rfi.remarks || '');
-    }
-
-    async function handleSaveRemark(rfi) {
-        const nextRemarks = (remarksDrafts[rfi.id] ?? rfi.remarks ?? '').trim();
-        if (nextRemarks === (rfi.remarks || '')) return;
-
-        setSavingRemarksById((prev) => ({ ...prev, [rfi.id]: true }));
-        try {
-            await updateRFI(rfi.id, { remarks: nextRemarks });
-            setActionMessage('📝 Remarks updated');
-            setTimeout(() => setActionMessage(''), 2000);
-        } finally {
-            setSavingRemarksById((prev) => ({ ...prev, [rfi.id]: false }));
-        }
-    }
-
-    async function handleAddAttachments(rfi, files) {
-        if (!files || files.length === 0) return;
-
-        setUploadingAttachmentsById((prev) => ({ ...prev, [rfi.id]: true }));
-        try {
-            await updateRFI(rfi.id, {
-                appendFiles: files,
-            });
-            setActionMessage('📎 Attachments added');
-            setTimeout(() => setActionMessage(''), 2000);
-        } finally {
-            setUploadingAttachmentsById((prev) => ({ ...prev, [rfi.id]: false }));
-        }
     }
 
     const { bulkApproveRFI } = useRFI();
@@ -316,72 +280,28 @@ export default function ReviewQueue() {
         if (col.field_key === 'location') return rfi.location;
         if (col.field_key === 'inspection_type') return rfi.inspectionType;
         if (col.field_key === 'status') return <StatusBadge status={rfi.status} />;
-        if (col.field_key === 'remarks') {
-            const draftValue = getDraftRemark(rfi);
-            const isSaving = !!savingRemarksById[rfi.id];
-            const hasChanged = draftValue !== (rfi.remarks || '');
-
-            return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: '220px' }}>
-                    <input
-                        type="text"
-                        value={draftValue}
-                        onChange={(e) => setRemarksDrafts((prev) => ({ ...prev, [rfi.id]: e.target.value }))}
-                        placeholder="Add consultant remarks"
-                        style={{ width: '100%', minWidth: 0, height: '30px', padding: '0.35rem 0.45rem' }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && hasChanged && !isSaving) {
-                                e.preventDefault();
-                                handleSaveRemark(rfi);
-                            }
-                        }}
-                    />
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                        disabled={!hasChanged || isSaving}
-                        onClick={() => handleSaveRemark(rfi)}
-                    >
-                        {isSaving ? '...' : 'Save'}
-                    </button>
-                </div>
-            );
-        }
+        if (col.field_key === 'remarks') return rfi.remarks || '';
 
         if (col.field_key === 'attachments') {
-            const isUploading = !!uploadingAttachmentsById[rfi.id];
-            return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: '180px' }}>
-                    {rfi.images && rfi.images.length > 0 && (
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-ghost"
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                            onClick={() => setSelectedImages(rfi.images)}
-                            title="View attachments"
-                        >
-                            View ({rfi.images.length})
-                        </button>
-                    )}
-
-                    <label className="btn btn-sm btn-ghost" style={{ width: 'fit-content', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.65 : 1, padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}>
-                        {isUploading ? '...' : 'Add'}
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            disabled={isUploading}
-                            onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                handleAddAttachments(rfi, files);
-                                e.target.value = '';
-                            }}
-                        />
-                    </label>
-                </div>
-            );
+            if (rfi.images && rfi.images.length > 0) {
+                return (
+                    <div
+                        className="image-preview-grid consultant-grid"
+                        onClick={() => setSelectedImages(rfi.images)}
+                        title="Click to view full size"
+                    >
+                        {rfi.images.slice(0, 3).map((url, idx) => (
+                            <img key={idx} src={url} alt="attachment" className="thumbnail" />
+                        ))}
+                        {rfi.images.length > 3 && (
+                            <div className="thumbnail-more">
+                                +{rfi.images.length - 3}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            return '';
         }
 
         if (col.field_key === 'actions') return renderReviewActionCell(rfi);
