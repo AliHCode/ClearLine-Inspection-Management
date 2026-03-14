@@ -322,24 +322,29 @@ export default function ReviewQueue() {
             const hasChanged = draftValue !== (rfi.remarks || '');
 
             return (
-                <div style={{ display: 'grid', gap: '0.35rem' }}>
-                    <textarea
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: '220px' }}>
+                    <input
+                        type="text"
                         value={draftValue}
                         onChange={(e) => setRemarksDrafts((prev) => ({ ...prev, [rfi.id]: e.target.value }))}
-                        rows={2}
                         placeholder="Add consultant remarks"
-                        style={{ width: '100%', minWidth: '180px' }}
+                        style={{ width: '100%', minWidth: 0, height: '30px', padding: '0.35rem 0.45rem' }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && hasChanged && !isSaving) {
+                                e.preventDefault();
+                                handleSaveRemark(rfi);
+                            }
+                        }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-ghost"
-                            disabled={!hasChanged || isSaving}
-                            onClick={() => handleSaveRemark(rfi)}
-                        >
-                            {isSaving ? 'Saving...' : 'Save'}
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                        disabled={!hasChanged || isSaving}
+                        onClick={() => handleSaveRemark(rfi)}
+                    >
+                        {isSaving ? '...' : 'Save'}
+                    </button>
                 </div>
             );
         }
@@ -347,28 +352,21 @@ export default function ReviewQueue() {
         if (col.field_key === 'attachments') {
             const isUploading = !!uploadingAttachmentsById[rfi.id];
             return (
-                <div style={{ display: 'grid', gap: '0.45rem' }}>
-                    {rfi.images && rfi.images.length > 0 ? (
-                        <div
-                            className="image-preview-grid consultant-grid"
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: '180px' }}>
+                    {rfi.images && rfi.images.length > 0 && (
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
                             onClick={() => setSelectedImages(rfi.images)}
-                            title="Click to view full size"
+                            title="View attachments"
                         >
-                            {rfi.images.slice(0, 3).map((url, idx) => (
-                                <img key={idx} src={url} alt="attachment" className="thumbnail" />
-                            ))}
-                            {rfi.images.length > 3 && (
-                                <div className="thumbnail-more">
-                                    +{rfi.images.length - 3}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <span className="text-muted">No files yet</span>
+                            View ({rfi.images.length})
+                        </button>
                     )}
 
-                    <label className="btn btn-sm btn-ghost" style={{ width: 'fit-content', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.65 : 1 }}>
-                        {isUploading ? 'Uploading...' : 'Add Attachment'}
+                    <label className="btn btn-sm btn-ghost" style={{ width: 'fit-content', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.65 : 1, padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}>
+                        {isUploading ? '...' : 'Add'}
                         <input
                             type="file"
                             multiple
