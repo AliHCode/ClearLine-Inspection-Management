@@ -36,6 +36,7 @@ export default function ReviewQueue() {
     const [selectedFilterColumn, setSelectedFilterColumn] = useState('');
     const [columnFilterValues, setColumnFilterValues] = useState({});
     const [filterValueSearch, setFilterValueSearch] = useState('');
+    const [showAllToday, setShowAllToday] = useState(false);
 
     const queue = getReviewQueue(currentDate);
 
@@ -48,9 +49,16 @@ export default function ReviewQueue() {
     );
 
     let baseItems = queue.all;
-    if (filter === 'approved') baseItems = todayApproved;
-    if (filter === 'rejected') baseItems = todayRejected;
-    if (filter === 'my_assigned') baseItems = queue.all.filter(r => r.assignedTo === user.id);
+    if (showAllToday) {
+        // Collect everything for today without duplicates
+        const allSet = new Map();
+        [...queue.all, ...todayApproved, ...todayRejected].forEach(r => allSet.set(r.id, r));
+        baseItems = Array.from(allSet.values());
+    } else {
+        if (filter === 'approved') baseItems = todayApproved;
+        if (filter === 'rejected') baseItems = todayRejected;
+        if (filter === 'my_assigned') baseItems = queue.all.filter(r => r.assignedTo === user.id);
+    }
 
     const FILTER_EXCLUDED_COLUMNS = new Set(['serial', 'actions', 'attachments']);
     const filterableColumns = useMemo(
@@ -550,7 +558,15 @@ export default function ReviewQueue() {
                             >
                                 <Table size={17} /> Excel
                             </button>
-                            <div className="review-filter-wrap">
+                            <div className="review-filter-wrap" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm rq-all-btn ${showAllToday ? 'active' : ''}`}
+                                    onClick={() => setShowAllToday(prev => !prev)}
+                                    title={showAllToday ? 'Return to category filter' : 'Show all RFIs for today'}
+                                >
+                                    All RFIs Today
+                                </button>
                                 <button
                                     type="button"
                                     className="btn btn-sm review-filter-btn"
@@ -621,20 +637,20 @@ export default function ReviewQueue() {
                 </div>
 
                 {/* Mini Stats (Acts as filters) */}
-                <div className="review-mini-stats">
-                    <div className="mini-stat pending" onClick={() => setFilter('to_review')} style={{ cursor: 'pointer', border: filter === 'to_review' ? '2px solid var(--clr-brand-secondary)' : '' }}>
+                <div className="review-mini-stats" style={{ opacity: showAllToday ? 0.5 : 1, pointerEvents: showAllToday ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
+                    <div className="mini-stat pending" onClick={() => setFilter('to_review')} style={{ cursor: 'pointer', border: filter === 'to_review' && !showAllToday ? '2px solid var(--clr-brand-secondary)' : '' }}>
                         <span className="mini-stat-label">To Review</span>
                         <span className="mini-stat-value">{queue.all.length}</span>
                     </div>
-                    <div className="mini-stat approved" onClick={() => setFilter('approved')} style={{ cursor: 'pointer', border: filter === 'approved' ? '2px solid var(--clr-success)' : '' }}>
+                    <div className="mini-stat approved" onClick={() => setFilter('approved')} style={{ cursor: 'pointer', border: filter === 'approved' && !showAllToday ? '2px solid var(--clr-success)' : '' }}>
                         <span className="mini-stat-label">Approved Today</span>
                         <span className="mini-stat-value">{todayApproved.length}</span>
                     </div>
-                    <div className="mini-stat rejected" onClick={() => setFilter('rejected')} style={{ cursor: 'pointer', border: filter === 'rejected' ? '2px solid var(--clr-danger)' : '' }}>
+                    <div className="mini-stat rejected" onClick={() => setFilter('rejected')} style={{ cursor: 'pointer', border: filter === 'rejected' && !showAllToday ? '2px solid var(--clr-danger)' : '' }}>
                         <span className="mini-stat-label">Rejected Today</span>
                         <span className="mini-stat-value">{todayRejected.length}</span>
                     </div>
-                    <div className="mini-stat assigned" onClick={() => setFilter('my_assigned')} style={{ cursor: 'pointer', border: filter === 'my_assigned' ? '2px solid var(--clr-brand-primary)' : '' }}>
+                    <div className="mini-stat assigned" onClick={() => setFilter('my_assigned')} style={{ cursor: 'pointer', border: filter === 'my_assigned' && !showAllToday ? '2px solid var(--clr-brand-primary)' : '' }}>
                         <span className="mini-stat-label">Assigned to Me</span>
                         <span className="mini-stat-value">{queue.all.filter(r => r.assignedTo === user.id).length}</span>
                     </div>
@@ -681,7 +697,7 @@ export default function ReviewQueue() {
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                             <CheckCircle size={24} color="var(--clr-success)" /> All Caught Up!
                         </h3>
-                        <p>{filter === 'to_review' ? 'All RFIs have been reviewed for this date.' : 'No items match this filter.'}</p>
+                        <p>{showAllToday ? 'No RFIs found for this date.' : (filter === 'to_review' ? 'All RFIs have been reviewed for this date.' : 'No items match this filter.')}</p>
                     </div>
                 ) : (
                     <div className="sheet-section">
@@ -830,12 +846,61 @@ export default function ReviewQueue() {
                 }
 
                 /* Mobile Fixes */
-                .btn, .review-filter-btn, .mini-stat, .rj-all-btn, .rj-card {
+                .btn, .review-filter-btn, .mini-stat, .rq-all-btn, .rj-all-btn, .rj-card {
                     -webkit-tap-highlight-color: transparent;
                     outline: none !important;
                 }
                 .btn:focus, .review-filter-btn:focus {
                     outline: none !important;
+                }
+
+                .rq-all-btn {
+                    background: #f8fafc;
+                    color: #1e293b;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 0.6rem;
+                    font-weight: 600;
+                    font-size: 0.85rem;
+                    padding: 0.4rem 0.75rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    line-height: 1.5;
+                    white-space: nowrap;
+                }
+                .rq-all-btn.active {
+                    background: var(--clr-brand-primary, #6366f1);
+                    color: #fff;
+                    border-color: var(--clr-brand-primary, #6366f1);
+                }
+
+                @media (max-width: 768px) {
+                    .review-header-controls {
+                        flex-direction: column;
+                        align-items: stretch !important;
+                    }
+                    .review-export-actions {
+                        flex-wrap: wrap;
+                        justify-content: flex-start;
+                        width: 100%;
+                    }
+                    .review-filter-wrap {
+                        display: flex;
+                        width: 100%;
+                        gap: 0.5rem;
+                        justify-content: space-between;
+                    }
+                    .rq-all-btn {
+                        flex: 1;
+                        text-align: center;
+                    }
+                    .review-filter-btn {
+                        flex: 1;
+                        justify-content: center;
+                    }
+                    .date-navigator {
+                        width: 100%;
+                        justify-content: space-between;
+                    }
                 }
 
                 .batch-action-bar {

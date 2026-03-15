@@ -114,7 +114,7 @@ function JourneyCard({ chain, resolveName }) {
     const clr = statusColor(latest.status);
 
     return (
-        <div className="rj-card" onClick={() => setExpanded(!expanded)}>
+        <div className="rj-card">
             {/* Top Row */}
             <div className="rj-card-top">
                 <div className="rj-badge">
@@ -162,7 +162,7 @@ function JourneyCard({ chain, resolveName }) {
             )}
 
             {/* Expand Hint */}
-            <div className="rj-expand-hint">
+            <div className={`rj-expand-hint ${expanded ? 'expanded' : ''}`} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
                 <ChevronRight size={14} className={expanded ? 'rotated' : ''} />
                 <span>{expanded ? 'Collapse' : 'View Journey'}</span>
             </div>
@@ -178,6 +178,7 @@ export default function RejectionJourneyBoard() {
     const [currentDate, setCurrentDate] = useState(getToday());
     const [searchQuery, setSearchQuery] = useState('');
     const [showAll, setShowAll] = useState(false);
+    const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
 
     const resolveName = (id) => {
         if (!id) return 'Consultant';
@@ -216,12 +217,17 @@ export default function RejectionJourneyBoard() {
         });
 
         chains.sort((a, b) => (b.rejectedDate || '').localeCompare(a.rejectedDate || ''));
-        return chains;
+        return {
+            active: chains.filter(c => c.chainItems[c.chainItems.length - 1].status !== RFI_STATUS.APPROVED),
+            history: chains.filter(c => c.chainItems[c.chainItems.length - 1].status === RFI_STATUS.APPROVED)
+        };
     }, [rfis]);
+
+    const currentJourneys = activeTab === 'active' ? journeys.active : journeys.history;
 
     // Filter by selected date + search
     const filteredJourneys = useMemo(() => {
-        let result = showAll ? journeys : journeys.filter(j => j.rejectedDate === currentDate);
+        let result = showAll ? currentJourneys : currentJourneys.filter(j => j.rejectedDate === currentDate);
         if (searchQuery.trim()) {
             const q = searchQuery.trim().toLowerCase();
             result = result.filter(j => {
@@ -233,7 +239,7 @@ export default function RejectionJourneyBoard() {
             });
         }
         return result;
-    }, [journeys, currentDate, showAll, searchQuery]);
+    }, [currentJourneys, currentDate, showAll, searchQuery]);
 
     // For export: flatten the rejected RFIs for the visible list
     const exportRfis = useMemo(() => {
@@ -247,8 +253,19 @@ export default function RejectionJourneyBoard() {
                 {/* Header */}
                 <div className="sheet-header rj-page-header">
                     <div className="sheet-tabs-container">
-                        <div className="sheet-tab active">
-                            <h2>Rejection Journey</h2>
+                        <div 
+                            className={`sheet-tab ${activeTab === 'active' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('active'); setShowAll(false); setSearchQuery(''); }}
+                        >
+                            <h2>Active Journeys</h2>
+                            <span className="tab-count">{journeys.active.length}</span>
+                        </div>
+                        <div 
+                            className={`sheet-tab ${activeTab === 'history' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('history'); setShowAll(false); setSearchQuery(''); }}
+                        >
+                            <h2>History</h2>
+                            <span className="tab-count" style={{ background: '#f1f5f9', color: '#64748b' }}>{journeys.history.length}</span>
                         </div>
                     </div>
                     <div className="rj-controls">
@@ -292,7 +309,7 @@ export default function RejectionJourneyBoard() {
                         {!showAll && <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} showArrows={true} />}
                     </div>
                 </div>
-                <p className="rj-subtitle">{filteredJourneys.length} of {journeys.length} journeys{showAll ? '' : ` on this date`}</p>
+                <p className="rj-subtitle">{filteredJourneys.length} of {currentJourneys.length} journeys{showAll ? '' : ` on this date`}</p>
 
                 {/* Cards List */}
                 <div className="rj-list">
@@ -390,10 +407,13 @@ export default function RejectionJourneyBoard() {
 
                 /* Card List */
                 .rj-list {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 1rem;
+                    columns: 4;
+                    column-gap: 1rem;
+                    display: block;
                 }
+                @media (max-width: 1200px) { .rj-list { columns: 3; } }
+                @media (max-width: 900px) { .rj-list { columns: 2; } }
+                @media (max-width: 600px) { .rj-list { columns: 1; } }
 
                 /* Card */
                 .rj-card {
@@ -401,9 +421,12 @@ export default function RejectionJourneyBoard() {
                     border: 1px solid #e8ecf1;
                     border-radius: 16px;
                     padding: 1.25rem 1.5rem;
-                    cursor: pointer;
                     transition: all 0.2s ease;
                     position: relative;
+                    break-inside: avoid;
+                    margin-bottom: 1rem;
+                    display: inline-block;
+                    width: 100%;
                 }
                 .rj-card:hover {
                     border-color: #c7d2fe;
@@ -522,14 +545,30 @@ export default function RejectionJourneyBoard() {
                 .rj-expand-hint {
                     display: flex;
                     align-items: center;
-                    gap: 0.3rem;
-                    font-size: 0.7rem;
+                    gap: 0.35rem;
+                    color: #6366f1;
+                    font-size: 0.8rem;
                     font-weight: 700;
-                    color: #94a3b8;
-                    margin-top: 0.5rem;
-                    transition: color 0.2s;
+                    margin-top: 1rem;
+                    cursor: pointer;
+                    width: fit-content;
+                    padding: 0.3rem 0.6rem;
+                    border-radius: 8px;
+                    background: #6366f108;
+                    transition: all 0.2s;
                 }
-                .rj-card:hover .rj-expand-hint { color: #6366f1; }
+                .rj-expand-hint:hover {
+                    background: #6366f115;
+                    color: #4f46e5;
+                }
+                .rj-expand-hint.expanded {
+                    color: #64748b;
+                    background: #f1f5f9;
+                }
+                .rj-expand-hint.expanded:hover {
+                    background: #e2e8f0;
+                    color: #475569;
+                }
                 .rj-expand-hint svg { transition: transform 0.2s; }
                 .rj-expand-hint svg.rotated { transform: rotate(90deg); }
 
@@ -632,15 +671,8 @@ export default function RejectionJourneyBoard() {
                 .rj-empty p { font-size: 0.85rem; }
 
                 /* Responsive */
-                @media (max-width: 1200px) {
-                    .rj-list { grid-template-columns: repeat(3, 1fr); }
-                }
-                @media (max-width: 900px) {
-                    .rj-list { grid-template-columns: repeat(2, 1fr); }
-                }
                 @media (max-width: 768px) {
                     .rj-workspace { padding: 1rem; }
-                    .rj-list { grid-template-columns: 1fr; }
                     .rj-card { padding: 1rem; }
                     .rj-card, .btn, .rj-all-btn {
                         -webkit-tap-highlight-color: transparent;

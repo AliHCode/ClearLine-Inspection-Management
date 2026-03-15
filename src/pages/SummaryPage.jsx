@@ -249,12 +249,22 @@ export default function SummaryPage() {
         setToDate(to);
     }
 
-    const dateFiltered = useMemo(() =>
-        rfis
-            .filter(r => r.filedDate >= fromDate && r.filedDate <= toDate)
-            .sort((a, b) => a.filedDate.localeCompare(b.filedDate) || (a.serialNo - b.serialNo)),
-        [rfis, fromDate, toDate]
-    );
+    const dateFiltered = useMemo(() => {
+        return rfis.filter(r => {
+            const fDate = r.filedDate;
+            const rDate = r.reviewedAt ? r.reviewedAt.split('T')[0] : null;
+            
+            const filedInRange = fDate >= fromDate && fDate <= toDate;
+            const reviewedInRange = rDate && (rDate >= fromDate && rDate <= toDate);
+            
+            return filedInRange || reviewedInRange;
+        }).sort((a, b) => {
+            // Sort by the most relevant date for the period (reviewedAt if it matches, else filedDate)
+            const aDate = (a.reviewedAt && a.reviewedAt.split('T')[0] >= fromDate) ? a.reviewedAt.split('T')[0] : a.filedDate;
+            const bDate = (b.reviewedAt && b.reviewedAt.split('T')[0] >= fromDate) ? b.reviewedAt.split('T')[0] : b.filedDate;
+            return bDate.localeCompare(aDate) || (b.serialNo - a.serialNo);
+        });
+    }, [rfis, fromDate, toDate]);
 
     const filtered = useMemo(() =>
         dateFiltered.filter(r => statusFilter === 'all' || r.status === statusFilter),
