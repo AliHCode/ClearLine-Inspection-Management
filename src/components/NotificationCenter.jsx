@@ -30,17 +30,17 @@ export default function NotificationCenter() {
     return (
         <div className="notification-center" ref={dropdownRef}>
             <button
-                className={`notification-bell-btn ${unreadCount > 0 ? 'has-unread' : ''}`}
+                className={`notification-trigger ${unreadCount > 0 ? 'has-unread' : ''}`}
                 onClick={() => setIsOpen(!isOpen)}
                 title="Notifications"
             >
                 {unreadCount > 0 ? (
                     <>
-                        <BellDot size={20} className="bell-icon active" />
+                        <BellDot size={18} className="bell-icon active" />
                         <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
                     </>
                 ) : (
-                    <Bell size={20} className="bell-icon" />
+                    <Bell size={18} className="bell-icon" />
                 )}
             </button>
 

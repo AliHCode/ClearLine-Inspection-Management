@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
-import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch, ListChecks } from 'lucide-react';
+import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch, ListChecks, ChevronDown } from 'lucide-react';
 import { BarChart2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -62,7 +62,7 @@ export default function Header() {
             const subscription = await registration.pushManager.getSubscription();
             setPushBadge(
                 subscription
-                    ? { state: 'subscribed', label: 'Push: Subscribed' }
+                     ? { state: 'subscribed', label: 'Push: Subscribed' }
                     : { state: 'granted-no-sub', label: 'Push: Granted (Not Subscribed)' }
             );
         } catch {
@@ -134,28 +134,16 @@ export default function Header() {
             {/* Project Selector */}
             {activeProject && (
                 <div className="header-project-area">
-                    <div className="header-project-selector">
-                        <Building size={16} color="var(--clr-text-muted)" />
-                        <select
-                            value={activeProject.id}
-                            onChange={(e) => changeActiveProject(e.target.value)}
-                            style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', fontWeight: '500', color: 'var(--clr-text-main)', outline: 'none', cursor: 'pointer' }}
-                        >
-                            {projects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <button
-                        className="header-project-icon-btn"
+                    <button 
+                        className="header-project-selector-pill"
                         onClick={() => {
                             setProjectMenuOpen(!projectMenuOpen);
                             setMenuOpen(false);
                         }}
-                        aria-label="Switch project"
                     >
-                        <Building size={18} />
+                        <Building size={16} className="project-icon" />
+                        <span className="project-name">{activeProject.name}</span>
+                        <ChevronDown size={14} className={`chevron-icon ${projectMenuOpen ? 'open' : ''}`} />
                     </button>
 
                     {projectMenuOpen && (
