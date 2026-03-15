@@ -75,6 +75,7 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
                 description: formData.description,
                 location: formData.location,
                 inspectionType: formData.inspectionType,
+                filedBy: user.id,
                 assignedTo: formData.assignedTo || null,
                 images: uploadedUrls,
                 customFields: finalCustomFields,

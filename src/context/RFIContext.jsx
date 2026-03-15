@@ -580,6 +580,11 @@ export function RFIProvider({ children }) {
 
         const effectiveFiledDate = filedDate || new Date().toISOString().split('T')[0];
         const normalizedImagesInput = images || [];
+        const effectiveFiledBy = filedBy || user?.id;
+
+        if (!effectiveFiledBy) {
+            throw new Error('User identification missing. Please ensure you are logged in.');
+        }
 
         // Dead-zone flow: persist request in IndexedDB and optimistically show it in the UI.
         if (!navigator.onLine) {
@@ -591,7 +596,7 @@ export function RFIProvider({ children }) {
                     description,
                     location,
                     inspectionType,
-                    filedBy,
+                    filedBy: effectiveFiledBy,
                     filedDate: effectiveFiledDate,
                     assignedTo: assignedTo || null,
                     images: queuedImages,
@@ -677,7 +682,7 @@ export function RFIProvider({ children }) {
                 description,
                 location,
                 inspectionType,
-                filedBy,
+                filedBy: effectiveFiledBy,
                 filedDate: effectiveFiledDate,
                 originalFiledDate: effectiveFiledDate,
                 status: RFI_STATUS.PENDING,
@@ -702,7 +707,7 @@ export function RFIProvider({ children }) {
                     location,
                     rfiId: insertedData[0].id,
                     assignedTo: assignedTo || null,
-                    filedBy,
+                    filedBy: effectiveFiledBy,
                 });
                 if (assignedTo) {
                     await logAuditEvent(insertedData[0].id, 'assigned', { assignee: assignedTo });

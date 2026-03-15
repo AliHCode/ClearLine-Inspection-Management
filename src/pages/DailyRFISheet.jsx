@@ -45,9 +45,10 @@ export default function DailyRFISheet() {
         rejected => !rfis.some(r => r.parentId === rejected.id)
     ).sort((a, b) => new Date(a.filedDate) - new Date(b.filedDate)); // Oldest first
 
-    // Current date's new RFIs (include all filings for today)
+    // Current date's new RFIs (exclude superseded/revised ones)
     const dailyRfis = newRfis.filter(r => 
-        r.filedBy === user.id
+        r.filedBy === user.id && 
+        !rfis.some(child => child.parentId === r.id)
     ).sort((a,b) => a.serialNo - b.serialNo);
 
     // Determines what to show in the table

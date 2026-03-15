@@ -332,6 +332,8 @@ h6 {
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
+  position: relative;
+  overflow: visible;
 }
 
 .push-status-chip:hover,
@@ -1516,14 +1518,23 @@ h6 {
 
 .notification-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -4px;
+  right: -4px;
   background: var(--clr-danger);
   color: white;
   font-size: 0.65rem;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 2px solid var(--clr-bg-secondary);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+  pointer-events: none;
+  line-height: 1;
 }
 
 .notification-dropdown {
