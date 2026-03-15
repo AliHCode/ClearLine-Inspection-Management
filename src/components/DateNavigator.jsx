@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { formatDateDisplay, getToday } from '../utils/rfiLogic';
 
-export default function DateNavigator({ currentDate, onDateChange }) {
+export default function DateNavigator({ currentDate, onDateChange, showArrows = true }) {
     const today = getToday();
     const isToday = currentDate === today;
+    const dateInputRef = useRef(null);
 
     function adjustDate(days) {
         const [year, month, day] = currentDate.split('-').map(Number);
@@ -27,22 +29,66 @@ export default function DateNavigator({ currentDate, onDateChange }) {
         onDateChange(today);
     }
 
+    const handleLabelClick = () => {
+        if (dateInputRef.current) {
+            if (dateInputRef.current.showPicker) {
+                dateInputRef.current.showPicker();
+            } else {
+                dateInputRef.current.click();
+            }
+        }
+    };
+
     return (
         <div className="date-navigator">
-            <button className="date-nav-btn" onClick={goBack}>
-                <ChevronLeft size={20} />
-            </button>
-            <div className="date-nav-center">
-                <Calendar size={16} />
+            {showArrows && (
+                <button 
+                    className="integrated-nav-btn" 
+                    onClick={goBack}
+                    title="Previous Day"
+                >
+                    <ChevronLeft size={16} />
+                </button>
+            )}
+
+            <div 
+                className={`date-nav-center ${!showArrows ? 'full-width' : ''}`}
+                onClick={handleLabelClick}
+                style={{ cursor: 'pointer' }}
+                title="Open calendar"
+            >
+                <Calendar size={16} style={{ color: '#64748b' }} />
                 <span className="date-nav-label">{formatDateDisplay(currentDate)}</span>
                 {isToday && <span className="today-badge">Today</span>}
             </div>
-            <button className="date-nav-btn" onClick={goForward}>
-                <ChevronRight size={20} />
-            </button>
-            {!isToday && (
+            
+            {showArrows && (
+                <button 
+                    className="integrated-nav-btn" 
+                    onClick={goForward}
+                    title="Next Day"
+                >
+                    <ChevronRight size={16} />
+                </button>
+            )}
+
+            <input
+                ref={dateInputRef}
+                type="date"
+                value={currentDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                style={{
+                    position: 'absolute',
+                    opacity: 0,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: 'none'
+                }}
+            />
+
+            {!isToday && showArrows && (
                 <button className="date-nav-today-btn" onClick={goToday}>
-                    Go to Today
+                    Go Today
                 </button>
             )}
         </div>

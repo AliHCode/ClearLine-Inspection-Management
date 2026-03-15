@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
-import { getToday } from '../utils/rfiLogic';
+import { getToday, formatDateDisplay } from '../utils/rfiLogic';
 import { INSPECTION_TYPES, RFI_STATUS } from '../utils/constants';
 import Header from '../components/Header';
 import DateNavigator from '../components/DateNavigator';
@@ -45,10 +45,9 @@ export default function DailyRFISheet() {
         rejected => !rfis.some(r => r.parentId === rejected.id)
     ).sort((a, b) => new Date(a.filedDate) - new Date(b.filedDate)); // Oldest first
 
-    // Current date's new RFIs (excluding any already in the active rejected list to prevent duplicates)
-    const activeRejectedIds = new Set(activeRejectedRfis.map(r => r.id));
+    // Current date's new RFIs (include all filings for today)
     const dailyRfis = newRfis.filter(r => 
-        r.filedBy === user.id && !activeRejectedIds.has(r.id)
+        r.filedBy === user.id
     ).sort((a,b) => a.serialNo - b.serialNo);
 
     // Determines what to show in the table
@@ -309,6 +308,23 @@ export default function DailyRFISheet() {
     const NEW_ENTRY_SKIP_COLS = ['status', 'remarks'];
     const newEntryColumns = orderedTableColumns.filter(col => !NEW_ENTRY_SKIP_COLS.includes(col.field_key));
 
+    const displayTableColumns = activeTab === 'rejected' ? (() => {
+        const cols = [...orderedTableColumns];
+        const actionsIdx = cols.findIndex(c => c.field_key === 'actions');
+        if (actionsIdx !== -1) {
+            cols.splice(actionsIdx, 0,
+                { field_key: 'filed_date', field_name: 'Filed Date' },
+                { field_key: 'review_date', field_name: 'Review Date' }
+            );
+        } else {
+            cols.push(
+                { field_key: 'filed_date', field_name: 'Filed Date' },
+                { field_key: 'review_date', field_name: 'Review Date' }
+            );
+        }
+        return cols;
+    })() : orderedTableColumns;
+
     function renderDisplayCell(rfi, col, idx, isCarryover) {
         const style = getTableColumnStyle(col.field_key);
         switch (col.field_key) {
@@ -354,6 +370,10 @@ export default function DailyRFISheet() {
                         ) : <span className="text-muted">—</span>}
                     </td>
                 );
+            case 'filed_date':
+                return <td key={col.field_key} style={style} data-label="Filed Date">{formatDateDisplay(rfi.originalFiledDate || rfi.filedDate)}</td>;
+            case 'review_date':
+                return <td key={col.field_key} style={style} data-label="Review Date">{rfi.reviewedAt ? formatDateDisplay(rfi.reviewedAt.split('T')[0]) : '—'}</td>;
             case 'actions':
                 const canEditThisRfi = canUserEditRfi(rfi);
                 if (isCarryover) {
@@ -558,33 +578,23 @@ export default function DailyRFISheet() {
                             <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button
                                     className="btn btn-sm"
-                                    style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                    style={{ backgroundColor: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', borderRadius: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: '500', padding: '0.4rem 0.75rem' }}
                                     onClick={() => exportToPDF(currentRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                     title="Export to PDF"
                                 >
-                                    <FileDown size={16} /> PDF
+                                    <FileDown size={17} /> PDF
                                 </button>
                                 <button
                                     className="btn btn-sm"
-                                    style={{ backgroundColor: 'transparent', color: 'var(--clr-brand-secondary)', border: '1px solid var(--clr-border-dark)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                    style={{ backgroundColor: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', borderRadius: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: '500', padding: '0.4rem 0.75rem' }}
                                     onClick={() => exportToExcel(currentRfis, `ProWay_Contractor_Report_${currentDate}`, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
                                     title="Export to Excel"
                                 >
-                                    <Table size={16} /> Excel
+                                    <Table size={17} /> Excel
                                 </button>
-                                {activeTab === 'daily' && (
-                                    <button
-                                        className="btn btn-sm"
-                                        style={{ backgroundColor: 'var(--clr-brand-secondary)', color: 'white', border: '1px solid var(--clr-brand-secondary)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                                        onClick={() => generateDailyReport(reportRfis, currentDate, activeProjectName, orderedTableColumns, columnWidthMap, activeProject?.export_template)}
-                                        title="Generate branded daily report"
-                                    >
-                                        Daily Report
-                                    </button>
-                                )}
                             </div>
                         )}
-                        <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} />
+                        <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} showArrows={true} />
                     </div>
                 </div>
 
@@ -602,7 +612,7 @@ export default function DailyRFISheet() {
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
-                                        {orderedTableColumns.map(col => (
+                                        {displayTableColumns.map(col => (
                                             <th key={col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
                                         ))}
                                     </tr>
@@ -614,7 +624,7 @@ export default function DailyRFISheet() {
                                             data-rfi-id={rfi.id}
                                             className={`${activeTab === 'rejected' ? 'rejected-priority-row' : ''} ${focusedRfiId === rfi.id ? 'notification-focus-row' : ''}`}
                                         >
-                                            {orderedTableColumns.map(col => renderDisplayCell(rfi, col, idx, false))}
+                                            {displayTableColumns.map(col => renderDisplayCell(rfi, col, idx, false))}
                                         </tr>
                                     ))}
                                 </tbody>

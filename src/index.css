@@ -859,26 +859,28 @@ h6 {
 .date-navigator {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  background-color: var(--clr-bg-secondary);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-md);
-  padding: 0.25rem;
-  box-shadow: var(--shadow-sm);
+  gap: 0;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  padding: 0;
+  box-shadow: none;
+  overflow: hidden;
+  height: 38px;
 }
 
 .date-nav-btn {
   background: transparent;
   border: none;
-  color: var(--clr-text-secondary);
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 0.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: all 0.2s ease;
 }
 
 .date-nav-btn:hover {
@@ -886,25 +888,87 @@ h6 {
   color: var(--clr-brand-primary);
 }
 
+.date-navigator.mode-picker-only {
+  background-color: transparent;
+  border: 1px solid var(--clr-border-dark);
+  border-radius: 0.5rem;
+  padding: 0;
+  box-shadow: none;
+}
+
 .date-nav-center {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--clr-brand-primary);
-  font-weight: 600;
-  font-size: 0.95rem;
+  justify-content: center;
+  gap: 0.6rem;
+  color: #1e293b;
+  font-weight: 500;
+  font-size: 0.9rem;
   padding: 0 0.75rem;
+  height: 100%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.date-nav-center:hover {
+  background-color: #f1f5f9;
+}
+
+.date-nav-center.full-width {
+  flex: 1;
+  border-radius: 0.6rem;
+}
+
+.integrated-nav-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  width: 32px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.integrated-nav-btn:hover {
+  background-color: #f1f5f9;
+  color: #3b82f6;
+}
+
+.arrow-left {
+  border-right: 1px solid transparent;
+}
+
+.arrow-right {
+  border-left: 1px solid transparent;
+}
+
+.date-nav-center.picker-only {
+  padding: 0.35rem 0.75rem;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  font-size: 0.85rem;
+}
+
+.date-nav-center.picker-only:hover {
+  background-color: var(--clr-bg-hover);
+  border-radius: 0.5rem;
 }
 
 .today-badge {
-  background-color: var(--clr-info-bg);
-  color: var(--clr-brand-secondary);
-  font-size: 0.7rem;
-  font-weight: 700;
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 600;
   padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-sm);
+  border-radius: 2rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
 }
 
 .date-nav-today-btn {
@@ -4695,14 +4759,26 @@ h6 {
 
 .admin-project-active-badge {
   display: inline-block;
-  margin-top: 0.5rem;
   padding: 0.15rem 0.6rem;
-  background: var(--clr-brand-secondary);
+  background: #1e293b;
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
   border-radius: var(--radius-full);
   letter-spacing: 0.03em;
+}
+
+.admin-project-card-footer {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--clr-border);
+}
+
+.admin-project-status-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 /* --- Pending Users Banner --- */
@@ -6059,4 +6135,13 @@ body,
         padding: 0.6rem 0.5rem;
         font-size: 0.85rem;
     }
+}
+
+/* ============================================
+   CHART FOCUS REFINEMENT
+   ============================================ */
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-wrapper *:focus {
+    outline: none !important;
 }

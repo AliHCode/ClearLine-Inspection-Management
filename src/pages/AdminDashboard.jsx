@@ -25,7 +25,7 @@ export default function AdminDashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const {
-        projects, activeProject, fetchProjects, createProject, deleteProject, changeActiveProject,
+        projects, activeProject, fetchProjects, createProject, updateProject, deleteProject, changeActiveProject,
         projectFields, addProjectField, updateProjectField, deleteProjectField,
         assignUserToProject, removeUserFromProject, fetchProjectMembers,
     } = useProject();
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
 
     async function handleUpdateProjectCode(projectId) {
         if (!editCode.trim()) return;
-        const result = await useProject().updateProject(projectId, { code: editCode.trim() });
+        const result = await updateProject(projectId, { code: editCode.trim() });
         if (result?.success) {
             showMsg('Project code updated');
             setEditingProject(null);
@@ -461,7 +461,7 @@ export default function AdminDashboard() {
                             <form className="admin-inline-form" onSubmit={handleCreateProject} style={{ gridTemplateColumns: '1fr 120px 1fr auto auto', gap: '0.5rem' }}>
                                 <input type="text" placeholder="Project name *" value={newProjectName}
                                     onChange={e => setNewProjectName(e.target.value)} required />
-                                <input type="text" placeholder="Code (e.g. RR007)" value={newProjectCode}
+                                <input type="text" placeholder="Code (e.g. PWY-)" value={newProjectCode}
                                     onChange={e => setNewProjectCode(e.target.value)} />
                                 <input type="text" placeholder="Description (optional)" value={newProjectDesc}
                                     onChange={e => setNewProjectDesc(e.target.value)} />
@@ -478,35 +478,8 @@ export default function AdminDashboard() {
                                     onClick={() => changeActiveProject(p.id)}>
                                     <div className="admin-project-card-header">
                                         <div style={{ flexGrow: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                                                <h3 style={{ margin: 0 }}>{p.name}</h3>
-                                                {editingProject === p.id ? (
-                                                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                                        <input 
-                                                            autoFocus
-                                                            className="cell-input" 
-                                                            style={{ width: '80px', height: '24px', fontSize: '0.75rem' }} 
-                                                            value={editCode} 
-                                                            onChange={e => setEditCode(e.target.value)}
-                                                            onClick={e => e.stopPropagation()}
-                                                            onKeyDown={e => { if (e.key === 'Enter') handleUpdateProjectCode(p.id); }}
-                                                            placeholder="Code..."
-                                                        />
-                                                        <button className="btn-sm" style={{ padding: '0 4px', height: '24px' }} onClick={(e) => { e.stopPropagation(); handleUpdateProjectCode(p.id); }}><Save size={12} /></button>
-                                                        <button className="btn-sm btn-ghost" style={{ padding: '0 4px', height: '24px' }} onClick={(e) => { e.stopPropagation(); setEditingProject(null); }}><X size={12} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <span 
-                                                        className="ustat-pill ustat-info" 
-                                                        style={{ cursor: 'pointer' }}
-                                                        onClick={(e) => { e.stopPropagation(); setEditingProject(p.id); setEditCode(p.code || ''); }}
-                                                        title="Click to change project code"
-                                                    >
-                                                        {p.code || 'No Code'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {p.description && <p className="text-muted" style={{ fontSize: '0.8rem' }}>{p.description}</p>}
+                                            <h3 style={{ margin: 0 }}>{p.name}</h3>
+                                            {p.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{p.description}</p>}
                                         </div>
                                         {p.id !== '00000000-0000-0000-0000-000000000000' && (
                                             <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}
@@ -516,9 +489,37 @@ export default function AdminDashboard() {
                                             </button>
                                         )}
                                     </div>
-                                    {activeProject?.id === p.id && (
-                                        <span className="admin-project-active-badge">Active</span>
-                                    )}
+                                    <div className="admin-project-card-footer">
+                                        <div className="admin-project-status-group">
+                                            {activeProject?.id === p.id && (
+                                                <span className="admin-project-active-badge">Active</span>
+                                            )}
+                                            {editingProject === p.id ? (
+                                                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                                    <input 
+                                                        autoFocus
+                                                        className="cell-input" 
+                                                        style={{ width: '80px', height: '24px', fontSize: '0.75rem' }} 
+                                                        value={editCode} 
+                                                        onChange={e => setEditCode(e.target.value)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') handleUpdateProjectCode(p.id); }}
+                                                        placeholder="Code..."
+                                                    />
+                                                    <button className="btn-sm" style={{ padding: '0 4px', height: '24px' }} onClick={() => handleUpdateProjectCode(p.id)}><Save size={12} /></button>
+                                                    <button className="btn-sm btn-ghost" style={{ padding: '0 4px', height: '24px' }} onClick={() => setEditingProject(null)}><X size={12} /></button>
+                                                </div>
+                                            ) : (
+                                                <span 
+                                                    className="ustat-pill ustat-info" 
+                                                    style={{ cursor: 'pointer', margin: 0, padding: '0.15rem 0.6rem', fontSize: '0.7rem' }}
+                                                    onClick={(e) => { e.stopPropagation(); setEditingProject(p.id); setEditCode(p.code || ''); }}
+                                                    title="Click to change project code"
+                                                >
+                                                    {p.code || 'No Code'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
