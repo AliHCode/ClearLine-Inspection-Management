@@ -5,6 +5,7 @@ import ImageMarkupModal from './ImageMarkupModal';
 export default function RejectModal({ rfi, onReject, onClose, contractors = [] }) {
     const [remarks, setRemarks] = useState('');
     const [files, setFiles] = useState([]);
+    const [assignedTo, setAssignedTo] = useState(rfi.filedBy || '');
     const [markupIndex, setMarkupIndex] = useState(null);
     const fileInputRef = useRef(null);
 
@@ -19,10 +20,10 @@ export default function RejectModal({ rfi, onReject, onClose, contractors = [] }
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!remarks.trim()) return;
+        if (!remarks.trim() || !assignedTo) return;
         const confirmed = window.confirm('Confirm rejection for this inspection?');
         if (!confirmed) return;
-        onReject(rfi.id, remarks.trim(), files);
+        onReject(rfi.id, remarks.trim(), files, assignedTo);
         onClose();
     }
 
@@ -111,6 +112,28 @@ export default function RejectModal({ rfi, onReject, onClose, contractors = [] }
                         }}>
                             <User size={14} color="var(--clr-text-muted)" /> {rfi.filerName}
                         </span>
+                    </div>
+
+                    {/* Assignment Dropdown */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.5rem' }}>
+                            Action Assigned To <span style={{ color: 'var(--clr-danger)' }}>*</span>
+                        </label>
+                        <select
+                            value={assignedTo}
+                            onChange={(e) => setAssignedTo(e.target.value)}
+                            style={{
+                                width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
+                                border: '1px solid var(--clr-border)', background: '#fff',
+                                fontSize: '0.95rem', color: 'var(--clr-text-main)',
+                                outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+                            }}
+                        >
+                            <option value="" disabled>Select a Contractor</option>
+                            {contractors.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.company})</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Remarks Input Area */}

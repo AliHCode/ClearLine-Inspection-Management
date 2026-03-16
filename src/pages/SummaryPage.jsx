@@ -251,6 +251,10 @@ export default function SummaryPage() {
 
     const dateFiltered = useMemo(() => {
         return rfis.filter(r => {
+            // Filter out superseded RFIs
+            const isSuperseded = rfis.some(child => child.parentId === r.id);
+            if (isSuperseded) return false;
+
             const fDate = r.filedDate;
             const rDate = r.reviewedAt ? r.reviewedAt.split('T')[0] : null;
             

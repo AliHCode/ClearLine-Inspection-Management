@@ -168,9 +168,6 @@ export default function Header() {
             )}
 
             <div className="header-user-info">
-                <span className={`push-status-chip ${pushBadge.state}`} title={pushBadge.label}>
-                    <Smartphone size={14} />
-                </span>
                 <NotificationCenter />
             </div>
 
@@ -270,20 +267,29 @@ export default function Header() {
                         </>
                     )}
                     {canManageNotifications && (
-                        <>
-                            <button
+                        <div className="menu-alert-section">
+                             <div 
+                                className={`menu-alert-row ${pushBadge.state === 'blocked' ? 'blocked' : ''}`} 
                                 onClick={handleEnableNotifications}
-                                className={`header-dropdown-item notify ${notifPermission === 'granted' ? 'active' : ''}`}
-                                disabled={notifPermission === 'unsupported' || notifPermission === 'denied'}
                             >
-                                <Bell size={16} /> {getNotificationButtonLabel()}
-                            </button>
-                            {notifPermission === 'denied' && (
+                                <div className="menu-alert-info">
+                                    <Bell size={18} />
+                                    <span>{pushBadge.state === 'blocked' ? 'Notifications Blocked' : 'Real-time Alerts'}</span>
+                                </div>
+                                {pushBadge.state === 'blocked' ? (
+                                    <span className="menu-fix-link">Fix</span>
+                                ) : (
+                                    <div className={`menu-alert-toggle ${pushBadge.state === 'subscribed' ? 'subscribed' : ''}`}>
+                                        <div className="toggle-handle"></div>
+                                    </div>
+                                )}
+                            </div>
+                            {pushBadge.state === 'blocked' && (
                                 <div className="notif-blocked-hint">
-                                    To re-enable: click the <strong>lock / info icon</strong> in your browser address bar → <em>Notifications</em> → Allow, then reload.
+                                    To re-enable: click the <strong>lock icon</strong> in your address bar → <em>Notifications</em> → Allow.
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
                     <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">
                         <LogOut size={16} /> Sign Out

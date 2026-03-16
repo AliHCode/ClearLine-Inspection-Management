@@ -386,15 +386,28 @@ h6 {
   }
   
   .header-project-selector-pill {
-    max-width: 150px;
-    padding: 0.4rem 0.75rem;
+    max-width: none;
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
     font-size: 0.85rem;
+    gap: 0;
+    justify-content: center;
+  }
+  
+  .header-project-selector-pill .project-name {
+    display: none;
+  }
+
+  .header-project-selector-pill .chevron-icon {
+    display: none;
   }
   
   .push-status-chip, .header-menu-btn, .notification-trigger {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
   }
   
   .header-divider {
@@ -618,6 +631,100 @@ h6 {
 
 .header-dropdown-item.notify,
 .header-dropdown-item.logout {
+  margin-top: 0.25rem;
+}
+
+/* Real-time Alerts Menu Section */
+.menu-alert-section {
+  padding: 0.5rem 0.25rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  margin: 0.5rem 0.5rem 0.25rem;
+}
+
+.menu-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: rgba(241, 245, 249, 0.5);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-alert-row:hover {
+  background: #ffffff;
+  border-color: var(--clr-brand-accent);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.menu-alert-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--clr-brand-secondary);
+}
+
+.menu-alert-info span {
+  display: block;
+}
+
+.menu-alert-toggle {
+  width: 42px;
+  height: 24px;
+  background: #cbd5e1;
+  border-radius: 99px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.menu-alert-toggle .toggle-handle {
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.menu-alert-toggle.subscribed {
+  background: var(--clr-success);
+}
+
+.menu-alert-toggle.subscribed .toggle-handle {
+  transform: translateX(18px);
+}
+
+.menu-alert-row.blocked {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.menu-alert-row.blocked .menu-alert-info {
+  color: var(--clr-danger);
+}
+
+.menu-fix-link {
+  font-size: 0.75rem;
+  color: var(--clr-danger);
+  text-decoration: underline;
+  font-weight: 800;
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+}
+
+.text-danger {
+  color: var(--clr-danger) !important;
+}
+
+.header-dropdown-item.logout {
   margin-top: 0.5rem;
   border-top: 1px solid var(--clr-border);
   border-radius: 0;
@@ -784,6 +891,12 @@ h6 {
   background-color: var(--clr-danger-bg);
   color: var(--clr-danger);
   border: 1px solid rgba(217, 45, 32, 0.2);
+}
+
+.status-badge[data-status="conditional_approve"] {
+  background-color: var(--clr-warning-bg);
+  color: var(--clr-warning);
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 
 /* Empty out emojis from badges via JS replacement later if possible, or CSS hiding if they had spans */

@@ -634,8 +634,8 @@ export default function DailyRFISheet() {
                     )}
                 </div>
 
-                {/* New RFI Entry (Spreadsheet-like) - Only in Daily Tab */}
-                {activeTab === 'daily' && (
+                {/* New RFI Entry (Spreadsheet-like) - Only in Daily Tab and Only on Today's Date */}
+                {activeTab === 'daily' && currentDate === getToday() && (
                     <div className="sheet-section new-entry-section">
                     <div className="new-entry-launcher">
                         <div className="new-entry-launcher-copy">

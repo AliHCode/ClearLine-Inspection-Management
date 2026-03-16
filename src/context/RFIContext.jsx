@@ -43,6 +43,7 @@ function normalizeRfiRecord(rfi = {}) {
         originalFiledDate: rfi.originalFiledDate || filedDate,
         status: rfi.status || RFI_STATUS.PENDING,
         images: Array.isArray(rfi.images) ? rfi.images : [],
+        parentId: rfi.parent_id || rfi.parentId || rfi.customFields?.parentId || null,
         customFields: rfi.customFields && typeof rfi.customFields === 'object' ? rfi.customFields : {},
     };
 }
@@ -563,8 +564,8 @@ export function RFIProvider({ children }) {
         carryover_to: rfi.carryoverTo,
         images: rfi.images || [],
         assigned_to: rfi.assignedTo || null,
+        parent_id: rfi.parentId || null,
         project_id: activeProject?.id,
-        // parent_id remains null as column might be missing, we use custom_fields for linking if needed
         custom_fields: {
             ...(rfi.customFields || {}),
             parentId: rfi.parentId || null,
@@ -931,6 +932,7 @@ export function RFIProvider({ children }) {
                             reviewed_at: new Date().toISOString(),
                             remarks: payload.remarks || null,
                             images: mergedImages,
+                            assigned_to: payload.assignedTo || targetRfi?.assignedTo
                         }).eq('id', payload.rfiId);
                         if (error) throw error;
                     }
@@ -1040,7 +1042,7 @@ export function RFIProvider({ children }) {
     }
 
     /** Reject an RFI with remarks, and set carryover to next day */
-    async function rejectRFI(rfiId, reviewedBy, remarks, consultantAttachments = []) {
+    async function rejectRFI(rfiId, reviewedBy, remarks, consultantAttachments = [], assignedTo = null) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
@@ -1059,6 +1061,7 @@ export function RFIProvider({ children }) {
                     reviewedBy,
                     remarks,
                     consultantAttachments: queuedAttachments,
+                    assignedTo
                 },
             });
 
@@ -1070,6 +1073,7 @@ export function RFIProvider({ children }) {
                         reviewedBy,
                         reviewedAt: new Date().toISOString(),
                         remarks: remarks || null,
+                        assignedTo: assignedTo || r.assignedTo
                       }
                     : r
             )));
@@ -1089,6 +1093,7 @@ export function RFIProvider({ children }) {
                 reviewed_at: new Date().toISOString(),
                 remarks: remarks,
                 images: mergedImages,
+                assigned_to: assignedTo || targetRfi.assignedTo
             }).eq('id', rfiId);
             if (error) throw error;
 
@@ -1580,26 +1585,31 @@ export function RFIProvider({ children }) {
 
     /** Get stats (Sync from local state array) */
     function getStats(targetDate) {
+        const supersededIds = new Set(rfis.map(r => r.parentId).filter(Boolean));
+        
         const { all } = getRFIsForDate(targetDate);
+        const activeTodayAll = all.filter(r => !supersededIds.has(r.id));
+        
         const queue = getReviewQueue(targetDate).all;
-        const reviewedToday = rfis.filter(r => r.reviewedAt && r.reviewedAt.startsWith(targetDate));
+        const reviewedToday = rfis.filter(r => r.reviewedAt && r.reviewedAt.startsWith(targetDate) && !supersededIds.has(r.id));
+        const activeRfis = rfis.filter(r => !supersededIds.has(r.id));
 
         return {
-            todayTotal: all.length,
-            todayPending: all.filter((r) => r.status === RFI_STATUS.PENDING).length,
-            todayApproved: all.filter((r) => r.status === RFI_STATUS.APPROVED).length,
-            todayRejected: all.filter((r) => r.status === RFI_STATUS.REJECTED).length,
-            todayInfoRequested: all.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
+            todayTotal: activeTodayAll.length,
+            todayPending: activeTodayAll.filter((r) => r.status === RFI_STATUS.PENDING).length,
+            todayApproved: activeTodayAll.filter((r) => r.status === RFI_STATUS.APPROVED).length,
+            todayRejected: activeTodayAll.filter((r) => r.status === RFI_STATUS.REJECTED).length,
+            todayInfoRequested: activeTodayAll.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
 
-            queueTotal: queue.length,
+            queueTotal: queue.length, // Queue inherently handles this if we want all pending, but review queue already filters pending, which are rarely superseded
             reviewedApprovedToday: reviewedToday.filter(r => r.status === RFI_STATUS.APPROVED).length,
             reviewedRejectedToday: reviewedToday.filter(r => r.status === RFI_STATUS.REJECTED).length,
 
-            overallTotal: rfis.length,
-            overallPending: rfis.filter((r) => r.status === RFI_STATUS.PENDING).length,
-            overallApproved: rfis.filter((r) => r.status === RFI_STATUS.APPROVED).length,
-            overallRejected: rfis.filter((r) => r.status === RFI_STATUS.REJECTED).length,
-            overallInfoRequested: rfis.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
+            overallTotal: activeRfis.length,
+            overallPending: activeRfis.filter((r) => r.status === RFI_STATUS.PENDING).length,
+            overallApproved: activeRfis.filter((r) => r.status === RFI_STATUS.APPROVED).length,
+            overallRejected: activeRfis.filter((r) => r.status === RFI_STATUS.REJECTED).length,
+            overallInfoRequested: activeRfis.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
         };
     }
 

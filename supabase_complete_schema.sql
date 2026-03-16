@@ -1,10 +1,11 @@
 -- ==========================================
 -- ClearLine Inspections - Complete Database Schema
--- Consolidated for Phase 6 Production Ready
+-- Consolidated & Production Ready (Smart Workflow)
 -- ==========================================
 
 -- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 2. PROJECTS TABLE
 CREATE TABLE IF NOT EXISTS public.projects (
@@ -12,6 +13,9 @@ CREATE TABLE IF NOT EXISTS public.projects (
   name text NOT NULL,
   description text,
   code text,
+  column_order jsonb DEFAULT NULL,
+  column_widths jsonb DEFAULT '{}'::jsonb,
+  export_template jsonb DEFAULT '{}'::jsonb,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -24,9 +28,10 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid REFERENCES auth.users NOT NULL PRIMARY KEY,
   name text,
-  role text CHECK (role IN ('contractor', 'consultant', 'admin', 'pending')) DEFAULT 'pending',
+  role text CHECK (role IN ('contractor', 'consultant', 'admin', 'pending', 'rejected')) DEFAULT 'pending',
   company text,
   is_active boolean DEFAULT true,
+  is_archived boolean DEFAULT false,
   current_project_id uuid REFERENCES public.projects(id) DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -61,6 +66,7 @@ EXECUTE FUNCTION public.handle_new_user_profile();
 -- 4. RFIs TABLE
 CREATE TABLE IF NOT EXISTS public.rfis (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  parent_id uuid REFERENCES public.rfis(id) ON DELETE SET NULL,
   serial_no integer NOT NULL,
   project_id uuid REFERENCES public.projects(id) NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
   description text NOT NULL,
@@ -69,12 +75,13 @@ CREATE TABLE IF NOT EXISTS public.rfis (
   filed_by uuid REFERENCES public.profiles(id) NOT NULL,
   filed_date date NOT NULL,
   original_filed_date date NOT NULL,
-  status text CHECK (status IN ('pending', 'approved', 'rejected', 'info_requested')) DEFAULT 'pending',
+  status text CHECK (status IN ('pending', 'approved', 'rejected', 'info_requested', 'conditional_approve')) DEFAULT 'pending',
   assigned_to uuid REFERENCES public.profiles(id),
   reviewed_by uuid REFERENCES public.profiles(id),
   reviewed_at timestamp with time zone,
   remarks text,
   images text[] DEFAULT ARRAY[]::text[],
+  custom_fields jsonb DEFAULT '{}'::jsonb,
   carryover_count integer DEFAULT 0,
   carryover_to date,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -112,16 +119,15 @@ BEGIN
     OR NEW.filed_by IS DISTINCT FROM OLD.filed_by
     OR NEW.filed_date IS DISTINCT FROM OLD.filed_date
     OR NEW.original_filed_date IS DISTINCT FROM OLD.original_filed_date
-    OR NEW.assigned_to IS DISTINCT FROM OLD.assigned_to
     OR NEW.carryover_count IS DISTINCT FROM OLD.carryover_count
     OR NEW.custom_fields IS DISTINCT FROM OLD.custom_fields
     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
     RAISE EXCEPTION 'Consultants can only update remarks, attachments, and decision metadata.';
   END IF;
 
-  -- Consultant decision changes are limited to approved/rejected transitions.
-  IF NEW.status IS DISTINCT FROM OLD.status AND NEW.status NOT IN ('approved', 'rejected') THEN
-    RAISE EXCEPTION 'Consultants can only set status to approved or rejected.';
+  -- Consultant decision changes are limited to approved/rejected/conditional transitions.
+  IF NEW.status IS DISTINCT FROM OLD.status AND NEW.status NOT IN ('approved', 'rejected', 'conditional_approve') THEN
+    RAISE EXCEPTION 'Consultants can only set status to approved, rejected, or conditional_approve.';
   END IF;
 
   -- reviewed_by must be the acting consultant when it is changed.
@@ -139,6 +145,30 @@ CREATE TRIGGER trg_enforce_consultant_rfi_update_scope
 BEFORE UPDATE ON public.rfis
 FOR EACH ROW
 EXECUTE FUNCTION public.enforce_consultant_rfi_update_scope();
+
+-- 4B. PROJECT_FIELDS TABLE: Admin-defined custom columns per project
+CREATE TABLE IF NOT EXISTS public.project_fields (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
+  field_name text NOT NULL,
+  field_key text NOT NULL,
+  field_type text CHECK (field_type IN ('text', 'number', 'select', 'date', 'textarea')) DEFAULT 'text',
+  options jsonb DEFAULT '[]'::jsonb,
+  is_required boolean DEFAULT false,
+  sort_order integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(project_id, field_key)
+);
+
+-- 4C. PROJECT_MEMBERS TABLE: Admin assigns users to projects with roles
+CREATE TABLE IF NOT EXISTS public.project_members (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  role text CHECK (role IN ('contractor', 'consultant', 'admin')) NOT NULL,
+  assigned_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(project_id, user_id)
+);
 
 -- 5. COMMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.comments (
@@ -266,6 +296,8 @@ ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
 
 -- Projects Policies
 DROP POLICY IF EXISTS "Projects viewable by authenticated" ON public.projects;
@@ -273,6 +305,12 @@ CREATE POLICY "Projects viewable by authenticated" ON public.projects FOR SELECT
 
 DROP POLICY IF EXISTS "Authenticated can insert Projects" ON public.projects;
 CREATE POLICY "Authenticated can insert Projects" ON public.projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Admins can manage projects" ON public.projects;
+CREATE POLICY "Admins can manage projects" ON public.projects
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Profiles viewable by everyone" ON public.profiles;
@@ -477,6 +515,28 @@ CREATE POLICY "Authenticated users can view audit logs" ON public.audit_log FOR 
 DROP POLICY IF EXISTS "Authenticated users can insert audit logs" ON public.audit_log;
 CREATE POLICY "Authenticated users can insert audit logs" ON public.audit_log FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+-- 8F. PROJECT_FIELDS POLICIES
+DROP POLICY IF EXISTS "Project fields viewable by authenticated" ON public.project_fields;
+CREATE POLICY "Project fields viewable by authenticated" ON public.project_fields
+FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Admins can manage project fields" ON public.project_fields;
+CREATE POLICY "Admins can manage project fields" ON public.project_fields
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- 8G. PROJECT_MEMBERS POLICIES
+DROP POLICY IF EXISTS "Project members viewable by authenticated" ON public.project_members;
+CREATE POLICY "Project members viewable by authenticated" ON public.project_members
+FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Admins can manage project members" ON public.project_members;
+CREATE POLICY "Admins can manage project members" ON public.project_members
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
 -- 9. STORAGE POLICIES (Bucket 'rfi-images' must exist)
 -- These are applied to storage.objects, but bucket creation is usually via UI or API.
 DROP POLICY IF EXISTS "Authenticated users can upload images" ON storage.objects;
@@ -491,11 +551,51 @@ DROP POLICY IF EXISTS "Users can delete their own images" ON storage.objects;
 CREATE POLICY "Users can delete their own images" ON storage.objects
   FOR DELETE USING (auth.uid() = owner AND bucket_id = 'rfi-images');
 
--- 10. REALTIME PUBLICATION
--- Try to drop and recreate for a clean start
+-- 10. SEED DATA: Default project fields
+INSERT INTO public.project_fields (project_id, field_name, field_key, field_type, is_required, sort_order)
+VALUES
+  ('00000000-0000-0000-0000-000000000000', 'Description', 'description', 'text', true, 1),
+  ('00000000-0000-0000-0000-000000000000', 'Location', 'location', 'text', true, 2),
+  ('00000000-0000-0000-0000-000000000000', 'Inspection Type', 'inspection_type', 'select', true, 3)
+ON CONFLICT (project_id, field_key) DO NOTHING;
+
+UPDATE public.project_fields
+SET options = '["Structural","MEP","Electrical","Plumbing","Finishing","Landscaping","Civil","HVAC","Fire Safety","Other"]'::jsonb
+WHERE field_key = 'inspection_type' AND project_id = '00000000-0000-0000-0000-000000000000';
+
+-- 11. ADMIN DELETE USER FUNCTION
+CREATE OR REPLACE FUNCTION public.admin_delete_user(target_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: admin role required';
+  END IF;
+
+  UPDATE public.rfis SET assigned_to = NULL WHERE assigned_to = target_user_id;
+  UPDATE public.rfis SET reviewed_by = NULL WHERE reviewed_by = target_user_id;
+  DELETE FROM public.rfis WHERE filed_by = target_user_id;
+  DELETE FROM public.notifications WHERE user_id = target_user_id;
+  DELETE FROM public.project_members WHERE user_id = target_user_id;
+  DELETE FROM public.profiles WHERE id = target_user_id;
+  DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
+
+-- 12. REALTIME PUBLICATION
 DROP PUBLICATION IF EXISTS supabase_realtime;
 CREATE PUBLICATION supabase_realtime FOR TABLE 
   public.rfis, 
   public.comments, 
   public.notifications, 
   public.audit_log;
+
+-- 13. REFRESH SCHEMA CACHE
+NOTIFY pgrst, 'reload schema';

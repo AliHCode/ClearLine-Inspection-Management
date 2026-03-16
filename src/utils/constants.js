@@ -16,6 +16,7 @@ export const RFI_STATUS = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   INFO_REQUESTED: 'info_requested',
+  CONDITIONAL_APPROVE: 'conditional_approve',
 };
 
 export const USER_ROLES = {
@@ -31,4 +32,5 @@ export const STATUS_COLORS = {
   approved: { bg: '#d1fae5', text: '#065f46', border: '#34d399' },
   rejected: { bg: '#fee2e2', text: '#991b1b', border: '#f87171' },
   info_requested: { bg: '#e0e7ff', text: '#3730a3', border: '#818cf8' },
+  conditional_approve: { bg: '#fffbeb', text: '#b45309', border: '#fcd34d' },
 };

@@ -23,6 +23,7 @@ export default function ReviewQueue() {
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
+    const [approveMode, setApproveMode] = useState('full');
     const [rejectTarget, setRejectTarget] = useState(null);
     const [detailTarget, setDetailTarget] = useState(null);
     const [filter, setFilter] = useState('to_review'); // to_review, approved, rejected
@@ -215,17 +216,25 @@ export default function ReviewQueue() {
     }, [location.pathname]);
 
     const shouldShowTable = Boolean(activeProject?.id && readyTableProjectId === activeProject.id);
+    async function handleApprove(rfiId, remarks, files = [], status = 'approved') {
+        const updatePayload = {
+            status,
+            reviewed_by: user.id,
+            reviewed_at: new Date().toISOString(),
+            carryover_to: null,
+        };
+        if (remarks) updatePayload.remarks = remarks;
+        
+        // Pass standard array, not inside a parent object, RFIContext handles rest
+        await updateRFI(rfiId, { ...updatePayload, appendFiles: files });
 
-
-    async function handleApprove(rfiId, remarks = '', files = []) {
-        await approveRFI(rfiId, user.id, remarks, files);
-        setActionMessage('✅ Inspection Approved Successfully');
+        setActionMessage(status === 'conditional_approve' ? '⚠️ Inspection Conditionally Approved' : '✅ Inspection Approved');
         setTimeout(() => setActionMessage(''), 2000);
     }
 
-    async function handleReject(rfiId, remarks, files = []) {
-        await rejectRFI(rfiId, user.id, remarks, files);
-        setActionMessage('❌ Inspection Rejected & Returned');
+    async function handleReject(rfiId, remarks, files = [], assignedTo) {
+        await rejectRFI(rfiId, user.id, remarks, files, assignedTo);
+        setActionMessage('❌ Inspection Rejected & Assigned');
         setTimeout(() => setActionMessage(''), 3000);
     }
 
@@ -353,25 +362,49 @@ export default function ReviewQueue() {
                     {canEditThisRfi && (
                         <>
                             {showApproveAction && (
-                                <button
-                                    onClick={() => {
-                                        setApproveTarget(rfi);
-                                        setRejectTarget(null);
-                                        setDetailTarget(null);
-                                    }}
-                                    title="Approve"
-                                    style={{
-                                        background: 'transparent', border: '1.5px solid #d1d5db',
-                                        borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', gap: '3px',
-                                        color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                        fontFamily: 'inherit', transition: 'all 0.15s',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
-                                >
-                                    <CheckCircle size={15} />
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setApproveMode('full');
+                                            setApproveTarget(rfi);
+                                            setRejectTarget(null);
+                                            setDetailTarget(null);
+                                        }}
+                                        title="Full Approve"
+                                        style={{
+                                            background: 'transparent', border: '1.5px solid #d1d5db',
+                                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: '3px',
+                                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                            fontFamily: 'inherit', transition: 'all 0.15s',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-success)'; e.currentTarget.style.color = 'var(--clr-success)'; e.currentTarget.style.background = '#f0fdf4'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <CheckCircle size={15} />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setApproveMode('conditional');
+                                            setApproveTarget(rfi);
+                                            setRejectTarget(null);
+                                            setDetailTarget(null);
+                                        }}
+                                        title="Conditional Approve"
+                                        style={{
+                                            background: 'transparent', border: '1.5px solid #d1d5db',
+                                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: '3px',
+                                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                            fontFamily: 'inherit', transition: 'all 0.15s',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-warning)'; e.currentTarget.style.color = 'var(--clr-warning)'; e.currentTarget.style.background = '#fffbeb'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <CheckCircle size={15} />
+                                        <span style={{ fontSize: '10px', fontWeight: 700 }}>COND.</span>
+                                    </button>
+                                </>
                             )}
                             {showRejectAction && (
                                 <button
@@ -448,13 +481,32 @@ export default function ReviewQueue() {
         );
     }
 
+    function isEscalated(rfi) {
+        if (rfi.status !== 'pending' && rfi.status !== 'info_requested') return false;
+        const filingDate = new Date(rfi.originalFiledDate || rfi.filedDate);
+        const now = new Date();
+        const diffDays = (now - filingDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 2;
+    }
+
     function renderReviewOrderedCell(rfi, col, isCarryover) {
         if (col.field_key === 'serial') {
+            const escalated = isEscalated(rfi);
             return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <UserAvatar name={rfi.filerName} size={32} />
                     <div>
-                        <div style={{ fontWeight: 600 }}>#{rfi.serialNo}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 600 }}>#{rfi.serialNo}</span>
+                            {escalated && (
+                                <span style={{
+                                    backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '0.65rem',
+                                    fontWeight: 700, padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca'
+                                }}>
+                                    ESCALATED
+                                </span>
+                            )}
+                        </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-muted)' }}>
                             {rfi.filerName}
                         </div>
@@ -777,11 +829,12 @@ export default function ReviewQueue() {
                     />
                 )}
 
-                {/* Inline Rejection Widget */}
+                {/* Inline Widgets */}
                 {approveTarget && (
                     <ApproveModal
                         key={approveTarget.id}
                         rfi={approveTarget}
+                        mode={approveMode}
                         contractors={contractors}
                         onApprove={handleApprove}
                         onClose={() => setApproveTarget(null)}

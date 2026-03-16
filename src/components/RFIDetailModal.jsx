@@ -1,15 +1,42 @@
-import { useState } from 'react';
-import { X, Calendar, MapPin, Tag, User, MessageSquare, History, List } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Calendar, MapPin, Tag, User, MessageSquare, History, List, Upload, CheckCircle } from 'lucide-react';
 import ThreadedComments from './ThreadedComments';
 import AuditLog from './AuditLog';
 import StatusBadge from './StatusBadge';
 import { formatDateDisplay } from '../utils/rfiLogic';
 import { useRFI } from '../context/RFIContext';
+import { useAuth } from '../context/AuthContext';
+import { RFI_STATUS } from '../utils/constants';
 
 export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) {
     const [activeTab, setActiveTab] = useState('discussion');
     const [tabScrollTrigger, setTabScrollTrigger] = useState(0);
-    const { rfis } = useRFI();
+    const { rfis, updateRFI } = useRFI();
+    const { user } = useAuth();
+    const fileInputRef = useRef(null);
+    const [resolveFile, setResolveFile] = useState(null);
+    const [isResolving, setIsResolving] = useState(false);
+
+    async function handleResolve() {
+        if (!resolveFile) {
+            alert('Please select a final photo first.');
+            return;
+        }
+        setIsResolving(true);
+        try {
+            await updateRFI(rfi.id, {
+                status: 'approved',
+                appendFiles: [resolveFile],
+                remarks: 'Conditions resolved via final photo upload.'
+            });
+            onClose();
+        } catch (error) {
+            console.error('Error resolving conditional approval:', error);
+            alert('Failed to resolve. Please try again.');
+        } finally {
+            setIsResolving(false);
+        }
+    }
 
     if (!rfi) return null;
 
@@ -146,6 +173,54 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                                         </a>
                                     ))}
                                 </div>
+                            </div>
+                        )}
+
+                        {rfi.status === RFI_STATUS.CONDITIONAL_APPROVE && user.role === 'contractor' && (rfi.filedBy === user.id || rfi.assignedTo === user.id) && (
+                            <div className="rfi-resolve-section" style={{ marginTop: '1.5rem', padding: '1.25rem', background: 'var(--clr-warning-bg)', borderRadius: '12px', border: '1px solid var(--clr-warning-border)' }}>
+                                <h4 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--clr-warning)' }}>
+                                    <CheckCircle size={16} /> Resolve Conditions
+                                </h4>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--clr-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+                                    Upload a final photo demonstrating you have satisfied the consultant's conditions to fully approve this inspection.
+                                </p>
+                                
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setResolveFile(e.target.files[0]);
+                                        }
+                                    }}
+                                />
+
+                                {!resolveFile ? (
+                                    <button 
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="btn"
+                                        style={{ width: '100%', background: '#fff', border: '1px dashed var(--clr-warning)', color: 'var(--clr-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0.65rem' }}
+                                    >
+                                        <Upload size={16} /> Select Final Photo
+                                    </button>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--clr-border)', fontSize: '0.85rem' }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resolveFile.name}</span>
+                                            <button onClick={() => setResolveFile(null)} style={{ background: 'transparent', border: 'none', color: 'var(--clr-danger)', cursor: 'pointer' }}><X size={14}/></button>
+                                        </div>
+                                        <button 
+                                            onClick={handleResolve}
+                                            disabled={isResolving}
+                                            className="btn"
+                                            style={{ width: '100%', background: 'var(--clr-warning)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0.65rem', fontWeight: 600, border: 'none' }}
+                                        >
+                                            {isResolving ? 'Resolving...' : 'Submit Resolution'}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
 

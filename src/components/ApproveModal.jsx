@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { X, CheckCircle2, Upload, Brush, Send, Tag, User, Camera } from 'lucide-react';
 import ImageMarkupModal from './ImageMarkupModal';
 
-export default function ApproveModal({ rfi, onApprove, onClose, contractors = [] }) {
+export default function ApproveModal({ rfi, onApprove, onClose, contractors = [], mode = 'full' }) {
     const [remarks, setRemarks] = useState('');
     const [files, setFiles] = useState([]);
     const [markupIndex, setMarkupIndex] = useState(null);
@@ -19,9 +19,9 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
 
     function handleSubmit(e) {
         e.preventDefault();
-        const confirmed = window.confirm('Confirm approval for this inspection?');
+        const confirmed = window.confirm(`Confirm ${mode === 'conditional' ? 'conditional ' : ''}approval for this inspection?`);
         if (!confirmed) return;
-        onApprove(rfi.id, remarks.trim(), files);
+        onApprove(rfi.id, remarks.trim(), files, mode === 'conditional' ? 'conditional_approve' : 'approved');
         onClose();
     }
 
@@ -66,13 +66,14 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
                             width: '40px', height: '40px', borderRadius: '10px',
-                            background: 'var(--clr-success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: mode === 'conditional' ? 'var(--clr-warning-bg)' : 'var(--clr-success-bg)', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                            <CheckCircle2 size={20} color="var(--clr-success)" />
+                            <CheckCircle2 size={20} color={mode === 'conditional' ? 'var(--clr-warning)' : 'var(--clr-success)'} />
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--clr-text-main)' }}>
-                                Approve Inspection
+                                {mode === 'conditional' ? 'Conditionally Approve' : 'Approve Inspection'}
                             </h3>
                             <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--clr-text-secondary)' }}>
                                 RFI #{rfi.serialNo} · {rfi.location}
@@ -111,7 +112,7 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
 
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--clr-text-main)', marginBottom: '0.5rem' }}>
-                            Approval Remarks (optional)
+                            {mode === 'conditional' ? 'Conditions/Remarks (Required)' : 'Approval Remarks (optional)'}
                         </label>
                         <textarea
                             value={remarks}
@@ -304,19 +305,22 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
                     <button
                         type="button"
                         onClick={handleSubmit}
+                        disabled={mode === 'conditional' && !remarks.trim()}
                         className="btn"
                         style={{
-                            background: 'var(--clr-success)',
-                            color: 'white',
+                            background: mode === 'conditional' ? 'var(--clr-warning)' : 'var(--clr-success)',
+                            color: mode === 'conditional' ? '#0f172a' : 'white',
                             border: 'none',
                             fontWeight: 600,
                             padding: '0.6rem 1.5rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem'
+                            gap: '0.5rem',
+                            opacity: (mode === 'conditional' && !remarks.trim()) ? 0.5 : 1,
+                            cursor: (mode === 'conditional' && !remarks.trim()) ? 'not-allowed' : 'pointer'
                         }}
                     >
-                        <Send size={16} /> Confirm Approval
+                        <Send size={16} /> Confirm {mode === 'conditional' ? 'Conditions' : 'Approval'}
                     </button>
                 </div>
             </div>

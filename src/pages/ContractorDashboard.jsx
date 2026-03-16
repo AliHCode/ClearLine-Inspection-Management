@@ -33,9 +33,9 @@ export default function ContractorDashboard() {
     const today = getToday();
     const stats = getStats(today);
 
-    // Get all RFIs by this contractor
+    // Get all RFIs by this contractor (latest thread version only)
     const allMyRfis = rfis
-        .filter((r) => r.filedBy === user.id)
+        .filter((r) => r.filedBy === user.id && !rfis.some(child => child.parentId === r.id))
         .sort((a, b) => b.filedDate.localeCompare(a.filedDate) || b.serialNo - a.serialNo);
 
     // Get recent RFIs by this contractor for display
@@ -45,6 +45,11 @@ export default function ContractorDashboard() {
     const carryoverCount = rfis.filter(
         (r) => r.status === 'rejected' && r.carryoverTo === today && r.filedBy === user.id
     ).length;
+
+    // Action Required (Unresolved rejections assigned to me)
+    const actionRequiredRfis = rfis.filter(
+        (r) => r.status === 'rejected' && r.assignedTo === user.id && !rfis.some(child => child.parentId === r.id)
+    );
 
     const reportRfis = allMyRfis.filter(r =>
         (r.status === 'approved' || r.status === 'rejected') &&
@@ -77,8 +82,31 @@ export default function ContractorDashboard() {
 
     const contractorVisibleColumns = orderedTableColumns.filter(c => c.field_key !== 'actions');
 
+    function isEscalated(rfi) {
+        if (rfi.status !== 'pending' && rfi.status !== 'info_requested') return false;
+        const filingDate = new Date(rfi.originalFiledDate || rfi.filedDate);
+        const now = new Date();
+        const diffDays = (now - filingDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 2;
+    }
+
     function renderContractorCell(rfi, col) {
-        if (col.field_key === 'serial') return rfi.serialNo;
+        if (col.field_key === 'serial') {
+            const escalated = isEscalated(rfi);
+            return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    #{rfi.serialNo}
+                    {escalated && (
+                        <span style={{
+                            backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '0.65rem',
+                            fontWeight: 700, padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca'
+                        }}>
+                            ESCALATED
+                        </span>
+                    )}
+                </div>
+            );
+        }
         if (col.field_key === 'description') return rfi.description;
         if (col.field_key === 'location') return rfi.location;
         if (col.field_key === 'inspection_type') return rfi.inspectionType;
@@ -101,6 +129,41 @@ export default function ContractorDashboard() {
                         <Plus size={18} strokeWidth={2.5} /> File RFIs
                     </button>
                 </header>
+
+                {actionRequiredRfis.length > 0 && (
+                    <div style={{ marginBottom: '2rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#dc2626' }}>
+                            <AlertTriangle size={24} />
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Action Required</h2>
+                        </div>
+                        <p style={{ margin: 0, color: '#991b1b', fontWeight: 500, fontSize: '0.95rem' }}>
+                            You have {actionRequiredRfis.length} inspection{actionRequiredRfis.length > 1 ? 's' : ''} assigned directly to you that require corrective action.
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            {actionRequiredRfis.slice(0, 5).map(rfi => (
+                                <button
+                                    key={rfi.id}
+                                    onClick={() => navigate(`/contractor/summary?rfi=${rfi.id}`)}
+                                    style={{
+                                        background: '#fff', border: '1px solid #f87171', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: 600, color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#dc2626'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#f87171'; }}
+                                >
+                                    RFI #{rfi.customFields?.rfi_no || rfi.serialNo} &rarr;
+                                </button>
+                            ))}
+                            {actionRequiredRfis.length > 5 && (
+                                <button
+                                    onClick={() => navigate('/contractor/summary')}
+                                    style={{ background: 'transparent', border: 'none', color: '#b91c1c', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                                >
+                                    View all {actionRequiredRfis.length}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div className="bento-grid">
                     {/* Stats Section */}
