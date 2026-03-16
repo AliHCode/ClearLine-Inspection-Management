@@ -133,6 +133,13 @@ export default function NotificationCenter({ isOpen, onToggle }) {
                                             displayMessage = `Remarks: ${displayMessage}`;
                                         }
                                     }
+
+                                    // For Consultants: Remove serial numbers like #5 from the message body
+                                    if (!isContractor && displayMessage) {
+                                        displayMessage = displayMessage.replace(/\s*#\d+\s*/g, ' ').trim();
+                                        // Specific cleanup for redundant strings
+                                        displayMessage = displayMessage.replace(/New RFI (filed|submitted)/i, 'New RFI $1');
+                                    }
                                 }
 
                                 const isApproval = displayTitle.toLowerCase().includes('approved');

@@ -1146,7 +1146,10 @@ h6 {
     height: 32px !important;
   }
 
-  .dashboard-page,
+  .dashboard-page {
+    padding: 1rem 1.25rem; /* Increased side padding for better mobile room */
+  }
+  
   .rfi-sheet-page,
   .review-page {
     padding: 1rem;
@@ -1301,7 +1304,7 @@ h6 {
 @media (max-width: 640px) {
   .bento-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.25rem 0.5rem; /* Reduced vertical gap to 0.25rem */
+    gap: 0.75rem; /* Evened out grid gaps for a cleaner mobile look */
   }
 
   /* Reset all children to full width by default in mobile */
@@ -1315,12 +1318,12 @@ h6 {
   }
 
   .premium-header {
-    margin-bottom: 0.75rem !important; /* Significantly reduced margin-bottom for mobile */
-    gap: 1rem !important;
+    margin-bottom: 1.25rem !important; /* Balanced margin for mobile */
+    gap: 1.25rem !important;
   }
 
   .welcome-monochrome-container {
-    padding: 0.15rem 0 !important;
+    padding: 0.5rem 0 !important; /* Added breath to the greeting */
   }
 }
 
@@ -6953,7 +6956,7 @@ body,
 }
 
 .notification-item-premium {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1.25rem; /* Tightened row height */
   display: flex;
   gap: 1.15rem;
   cursor: pointer;
@@ -6988,34 +6991,36 @@ body,
 }
 
 .notif-icon-circle.success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.08);
   color: #10b981;
 }
 
 .notif-icon-circle.danger {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.08);
   color: #ef4444;
 }
 
 .notif-icon-circle.mention {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-}
-
-.notif-icon-circle.assignment {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(245, 158, 11, 0.08); /* Amber message */
   color: #f59e0b;
 }
 
+.notif-icon-circle.assignment {
+  background: rgba(6, 182, 212, 0.08); /* Cyan assignment */
+  color: #0891b2;
+}
+
 .notif-icon-circle.filed {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(139, 92, 246, 0.08); /* Purple filed */
+  color: #8b5cf6;
 }
 
 .notif-icon-circle.info {
-  background: rgba(100, 116, 139, 0.1);
+  background: rgba(100, 116, 139, 0.08);
   color: #64748b;
 }
+
+
 
 .notification-content {
   flex: 1;
@@ -7076,11 +7081,23 @@ body,
   color: #ffffff;
 }
 
-.notification-item-premium.contractor-view .notif-icon-circle.mention,
-.notification-item-premium.contractor-view .notif-icon-circle.assignment,
-.notification-item-premium.contractor-view .notif-icon-circle.filed,
+.notification-item-premium.contractor-view .notif-icon-circle.mention {
+  background: #d97706; /* Solid Amber */
+  color: #ffffff;
+}
+
+.notification-item-premium.contractor-view .notif-icon-circle.assignment {
+  background: #0891b2; /* Solid Cyan */
+  color: #ffffff;
+}
+
+.notification-item-premium.contractor-view .notif-icon-circle.filed {
+  background: #7c3aed; /* Solid Purple */
+  color: #ffffff;
+}
+
 .notification-item-premium.contractor-view .notif-icon-circle.info {
-  background: #1d4ed8; /* Specific Blue */
+  background: #475569;
   color: #ffffff;
 }
 
