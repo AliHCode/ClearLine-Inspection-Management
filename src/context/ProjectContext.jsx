@@ -266,9 +266,9 @@ export function ProjectProvider({ children }) {
     }
 
     // ─── Create project (admin) ───
-    async function createProject(name, code = '', description = '') {
+    async function createProject(name, code = '', description = '', timezone = 'UTC') {
         try {
-            const { data, error } = await supabase.from('projects').insert([{ name, code, description }]).select();
+            const { data, error } = await supabase.from('projects').insert([{ name, code, description, timezone }]).select();
             if (error) throw error;
             if (data && data[0]) {
                 setProjects(prev => [...prev, data[0]]);

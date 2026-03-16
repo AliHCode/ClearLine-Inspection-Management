@@ -11,8 +11,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS public.projects (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL,
-  description text,
   code text,
+  description text,
+  timezone TEXT DEFAULT 'UTC',
   column_order jsonb DEFAULT NULL,
   column_widths jsonb DEFAULT '{}'::jsonb,
   export_template jsonb DEFAULT '{}'::jsonb,

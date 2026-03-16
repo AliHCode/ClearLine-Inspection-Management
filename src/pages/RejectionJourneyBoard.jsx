@@ -16,7 +16,7 @@ import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 /* ─── Helpers ─── */
 
 function statusLabel(s) {
-    if (s === RFI_STATUS.REJECTED) return 'Invalid';
+    if (s === RFI_STATUS.REJECTED) return 'Rejected';
     if (s === RFI_STATUS.APPROVED) return 'Approved';
     if (s === RFI_STATUS.PENDING)  return 'Under Review';
     return s;
@@ -76,10 +76,10 @@ function JourneyCard({ chain, resolveName }) {
         color: '#6366f1'
     });
 
-    // 2) Each invalidation
+    // 2) Each rejection
     chain.chainItems.filter(r => r.status === RFI_STATUS.REJECTED).forEach((rej, idx) => {
         steps.push({
-            label: 'Invalid',
+            label: 'Rejected',
             date: rej.reviewedAt ? rej.reviewedAt.split('T')[0] : rej.filedDate,
             actor: resolveName(rej.reviewedBy),
             color: '#ef4444'
@@ -98,7 +98,7 @@ function JourneyCard({ chain, resolveName }) {
     });
 
     // 3) Current status of the latest RFI (if not already covered)
-    if (latest.status !== RFI_STATUS.REJECTED || !steps.find(s => s.label === 'Invalid' && s.date === (latest.reviewedAt?.split('T')[0] || latest.filedDate))) {
+    if (latest.status !== RFI_STATUS.REJECTED || !steps.find(s => s.label === 'Rejected' && s.date === (latest.reviewedAt?.split('T')[0] || latest.filedDate))) {
         if (latest.status === RFI_STATUS.APPROVED) {
             steps.push({ label: 'Approved', date: latest.reviewedAt?.split('T')[0], actor: resolveName(latest.reviewedBy), color: '#10b981' });
         } else if (latest.status === RFI_STATUS.PENDING) {
@@ -119,7 +119,7 @@ function JourneyCard({ chain, resolveName }) {
             <div className="rj-card-top">
                 <div className="rj-badge">
                     <Hash size={13} />
-                    <span>RFI {root.serialNo}</span>
+                    <span>{root.customFields?.rfi_no || `RFI ${root.serialNo}`}</span>
                 </div>
                 <div className="rj-pill" style={{ color: clr, background: `${clr}12`, borderColor: `${clr}30` }}>
                     {statusIcon(latest.status)}
@@ -135,7 +135,7 @@ function JourneyCard({ chain, resolveName }) {
 
             {/* Quick Info */}
             <div className="rj-info-row">
-                <div className="rj-info"><Calendar size={12} /> Invalid: {firstInvalid ? formatDateDisplay(firstInvalid.reviewedAt?.split('T')[0] || firstInvalid.filedDate) : '—'}</div>
+                <div className="rj-info"><Calendar size={12} /> Rejected: {firstInvalid ? formatDateDisplay(firstInvalid.reviewedAt?.split('T')[0] || firstInvalid.filedDate) : '—'}</div>
                 <div className="rj-info"><MapPin size={12} /> {root.location || 'N/A'}</div>
             </div>
 
@@ -205,18 +205,19 @@ export default function RejectionJourneyBoard() {
         const chains = [];
         grouped.forEach(items => {
             if (!items.some(r => r.status === RFI_STATUS.REJECTED)) return;
-            const ordered = [...items].sort((a, b) => (a.filedDate || '').localeCompare(b.filedDate || '') || (a.id || '').localeCompare(b.id || ''));
+            const ordered = [...items].sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
             const latest = ordered[ordered.length - 1];
             const firstInvalid = ordered.find(r => r.status === RFI_STATUS.REJECTED);
             const rejDate = firstInvalid ? (firstInvalid.reviewedAt?.split('T')[0] || firstInvalid.filedDate) : latest.filedDate;
             chains.push({
                 id: ordered[0].id,
                 chainItems: ordered,
-                rejectedDate: rejDate
+                rejectedDate: rejDate,
+                lastActivityAt: latest.createdAt || latest.filedDate
             });
         });
 
-        chains.sort((a, b) => (b.rejectedDate || '').localeCompare(a.rejectedDate || ''));
+        chains.sort((a, b) => (b.lastActivityAt || '').localeCompare(a.lastActivityAt || ''));
         return {
             active: chains.filter(c => c.chainItems[c.chainItems.length - 1].status !== RFI_STATUS.APPROVED),
             history: chains.filter(c => c.chainItems[c.chainItems.length - 1].status === RFI_STATUS.APPROVED)
@@ -322,7 +323,7 @@ export default function RejectionJourneyBoard() {
                     <div className="rj-empty">
                         <GitBranch size={48} />
                         <h3>No Journeys for {formatDateDisplay(currentDate)}</h3>
-                        <p>No RFIs were marked invalid on this date. Try navigating to another date.</p>
+                        <p>No RFIs were marked rejected on this date. Try navigating to another date.</p>
                     </div>
                 )}
             </main>

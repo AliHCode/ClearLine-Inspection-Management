@@ -34,3 +34,17 @@ export const STATUS_COLORS = {
   info_requested: { bg: '#e0e7ff', text: '#3730a3', border: '#818cf8' },
   conditional_approve: { bg: '#fffbeb', text: '#b45309', border: '#fcd34d' },
 };
+
+export const COMMON_TIMEZONES = [
+  { value: 'UTC', label: 'UTC (Universal)' },
+  { value: 'Asia/Dubai', label: 'Asia/Dubai (GST)' },
+  { value: 'Asia/Riyadh', label: 'Asia/Riyadh (AST)' },
+  { value: 'Asia/Qatar', label: 'Asia/Qatar (AST)' },
+  { value: 'Europe/London', label: 'Europe/London (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Europe/Paris (CET)' },
+  { value: 'America/New_York', label: 'America/New_York (EST/EDT)' },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (PST/PDT)' },
+  { value: 'Asia/Singapore', label: 'Asia/Singapore (SGT)' },
+  { value: 'Asia/Hong_Kong', label: 'Asia/Hong_Kong (HKT)' },
+  { value: 'Australia/Sydney', label: 'Australia/Sydney (AEST)' },
+];

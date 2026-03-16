@@ -8,18 +8,23 @@ export function generateId() {
 }
 
 /**
- * Format a date to YYYY-MM-DD
+ * Format a date to YYYY-MM-DD (Local Time)
  */
 export function formatDate(date) {
     const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 /**
  * Format a date for display (e.g., "March 7, 2026")
  */
 export function formatDateDisplay(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
+    if (!dateStr) return '—';
+    // Use the T00:00:00 suffix to ensure the date is treaty as local/specified date not UTC
+    const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
     return d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -28,7 +33,7 @@ export function formatDateDisplay(dateStr) {
 }
 
 /**
- * Get today's date as YYYY-MM-DD
+ * Get today's date as YYYY-MM-DD (Local Time)
  */
 export function getToday() {
     return formatDate(new Date());

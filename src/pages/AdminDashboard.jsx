@@ -10,8 +10,9 @@ import { buildColumnWidthMap, getDefaultColumnWidth, sanitizeColumnWidth } from 
 import {
     Users, Shield, UserX, UserCheck, RefreshCw,
     FolderPlus, Trash2, Plus, GripVertical, ArrowUp, ArrowDown, Save,
-    Building, Columns3, UserPlus, X, AlertCircle
+    Building, Columns3, UserPlus, X, AlertCircle, Clock, Globe, Briefcase
 } from 'lucide-react';
+import { COMMON_TIMEZONES } from '../utils/constants';
 
 const FIELD_TYPES = [
     { value: 'text', label: 'Text' },
@@ -49,9 +50,11 @@ export default function AdminDashboard() {
     const [newProjectName, setNewProjectName] = useState('');
     const [newProjectCode, setNewProjectCode] = useState('');
     const [newProjectDesc, setNewProjectDesc] = useState('');
+    const [newProjectTimezone, setNewProjectTimezone] = useState('UTC');
     
-    const [editingProject, setEditingProject] = useState(null); // { id, name, code, description }
+    const [editingProject, setEditingProject] = useState(null); // { id, name, code, description, timezone }
     const [editCode, setEditCode] = useState('');
+    const [editTimezone, setEditTimezone] = useState('');
 
     // Field creation form
     const [showNewField, setShowNewField] = useState(false);
@@ -253,12 +256,18 @@ export default function AdminDashboard() {
     async function handleCreateProject(e) {
         e.preventDefault();
         if (!newProjectName.trim()) return;
-        const result = await createProject(newProjectName.trim(), newProjectCode.trim(), newProjectDesc.trim());
+        const result = await createProject(
+            newProjectName.trim(), 
+            newProjectCode.trim(), 
+            newProjectDesc.trim(),
+            newProjectTimezone
+        );
         if (result?.success) {
             showMsg('Project created');
             setNewProjectName('');
             setNewProjectCode('');
             setNewProjectDesc('');
+            setNewProjectTimezone('UTC');
             setShowNewProject(false);
             fetchProjects();
         } else {
@@ -266,13 +275,17 @@ export default function AdminDashboard() {
         }
     }
 
-    async function handleUpdateProjectCode(projectId) {
+    async function handleUpdateProjectDetails(projectId) {
         if (!editCode.trim()) return;
-        const result = await updateProject(projectId, { code: editCode.trim() });
+        const result = await updateProject(projectId, { 
+            code: editCode.trim(),
+            timezone: editTimezone
+        });
         if (result?.success) {
-            showMsg('Project code updated');
+            showMsg('Project details updated');
             setEditingProject(null);
             setEditCode('');
+            setEditTimezone('');
         } else {
             showMsg('Error: ' + (result?.error || 'Update failed'));
         }
@@ -458,67 +471,108 @@ export default function AdminDashboard() {
                         </div>
 
                         {showNewProject && (
-                            <form className="admin-inline-form" onSubmit={handleCreateProject} style={{ gridTemplateColumns: '1fr 120px 1fr auto auto', gap: '0.5rem' }}>
-                                <input type="text" placeholder="Project name *" value={newProjectName}
-                                    onChange={e => setNewProjectName(e.target.value)} required />
-                                <input type="text" placeholder="Code (e.g. PWY-)" value={newProjectCode}
-                                    onChange={e => setNewProjectCode(e.target.value)} />
-                                <input type="text" placeholder="Description (optional)" value={newProjectDesc}
-                                    onChange={e => setNewProjectDesc(e.target.value)} />
-                                <button type="submit" className="btn btn-sm" style={{ background: 'var(--clr-brand-secondary)', color: '#fff', border: 'none' }}>
-                                    Create
-                                </button>
-                                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowNewProject(false)}>Cancel</button>
+                            <form className="admin-inline-form premium-project-form" onSubmit={handleCreateProject}>
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label>Project Name *</label>
+                                        <input type="text" placeholder="e.g. Burj Khalifa Site" value={newProjectName}
+                                            onChange={e => setNewProjectName(e.target.value)} required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Project Code</label>
+                                        <input type="text" placeholder="e.g. BK-01" value={newProjectCode}
+                                            onChange={e => setNewProjectCode(e.target.value)} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Site Timezone</label>
+                                        <select value={newProjectTimezone} onChange={e => setNewProjectTimezone(e.target.value)}>
+                                            {COMMON_TIMEZONES.map(tz => (
+                                                <option key={tz.value} value={tz.value}>{tz.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group full-width">
+                                        <label>Description</label>
+                                        <input type="text" placeholder="Short description of the project scope..." value={newProjectDesc}
+                                            onChange={e => setNewProjectDesc(e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="form-actions">
+                                    <button type="submit" className="btn btn-primary">
+                                        <Plus size={16} /> Create Project
+                                    </button>
+                                    <button type="button" className="btn btn-ghost" onClick={() => setShowNewProject(false)}>Cancel</button>
+                                </div>
                             </form>
                         )}
 
-                        <div className="admin-project-grid">
+                        <div className="admin-project-grid-premium">
                             {projects.map(p => (
-                                <div key={p.id} className={`admin-project-card ${activeProject?.id === p.id ? 'active' : ''}`}
+                                <div key={p.id} className={`project-card-premium ${activeProject?.id === p.id ? 'active' : ''}`}
                                     onClick={() => changeActiveProject(p.id)}>
-                                    <div className="admin-project-card-header">
-                                        <div style={{ flexGrow: 1 }}>
-                                            <h3 style={{ margin: 0 }}>{p.name}</h3>
-                                            {p.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{p.description}</p>}
+                                    
+                                    <div className="project-card-main">
+                                        <div className="project-card-icon">
+                                            <Briefcase size={22} />
                                         </div>
-                                        {p.id !== '00000000-0000-0000-0000-000000000000' && (
-                                            <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}
-                                                onClick={e => { e.stopPropagation(); handleDeleteProject(p.id); }}
-                                                title="Delete project">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        )}
+                                        <div className="project-card-content">
+                                            <div className="project-card-header-row">
+                                                <h3>{p.name}</h3>
+                                                {activeProject?.id === p.id && <span className="active-tag">Active</span>}
+                                            </div>
+                                            <p className="project-desc">{p.description || 'No description provided.'}</p>
+                                        </div>
                                     </div>
-                                    <div className="admin-project-card-footer">
-                                        <div className="admin-project-status-group">
-                                            {activeProject?.id === p.id && (
-                                                <span className="admin-project-active-badge">Active</span>
-                                            )}
+
+                                    <div className="project-card-details">
+                                        <div className="detail-item">
+                                            <span className="detail-label">Code</span>
                                             {editingProject === p.id ? (
-                                                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                                                    <input 
-                                                        autoFocus
-                                                        className="cell-input" 
-                                                        style={{ width: '80px', height: '24px', fontSize: '0.75rem' }} 
-                                                        value={editCode} 
-                                                        onChange={e => setEditCode(e.target.value)}
-                                                        onKeyDown={e => { if (e.key === 'Enter') handleUpdateProjectCode(p.id); }}
-                                                        placeholder="Code..."
-                                                    />
-                                                    <button className="btn-sm" style={{ padding: '0 4px', height: '24px' }} onClick={() => handleUpdateProjectCode(p.id)}><Save size={12} /></button>
-                                                    <button className="btn-sm btn-ghost" style={{ padding: '0 4px', height: '24px' }} onClick={() => setEditingProject(null)}><X size={12} /></button>
-                                                </div>
+                                                <input 
+                                                    className="detail-input"
+                                                    value={editCode}
+                                                    onChange={e => setEditCode(e.target.value)}
+                                                    onClick={e => e.stopPropagation()}
+                                                />
                                             ) : (
-                                                <span 
-                                                    className="ustat-pill ustat-info" 
-                                                    style={{ cursor: 'pointer', margin: 0, padding: '0.15rem 0.6rem', fontSize: '0.7rem' }}
-                                                    onClick={(e) => { e.stopPropagation(); setEditingProject(p.id); setEditCode(p.code || ''); }}
-                                                    title="Click to change project code"
+                                                <span className="detail-value">{p.code || '—'}</span>
+                                            )}
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">Timezone</span>
+                                            {editingProject === p.id ? (
+                                                <select 
+                                                    className="detail-select"
+                                                    value={editTimezone}
+                                                    onChange={e => setEditTimezone(e.target.value)}
+                                                    onClick={e => e.stopPropagation()}
                                                 >
-                                                    {p.code || 'No Code'}
+                                                    {COMMON_TIMEZONES.map(tz => (
+                                                        <option key={tz.value} value={tz.value}>{tz.label}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className="detail-value" title={p.timezone}>
+                                                    <Globe size={12} /> {p.timezone || 'UTC'}
                                                 </span>
                                             )}
                                         </div>
+                                    </div>
+
+                                    <div className="project-card-actions" onClick={e => e.stopPropagation()}>
+                                        {editingProject === p.id ? (
+                                            <>
+                                                <button className="btn-save" onClick={() => handleUpdateProjectDetails(p.id)}><Save size={14} /> Save</button>
+                                                <button className="btn-cancel" onClick={() => setEditingProject(null)}><X size={14} /></button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button className="btn-edit" onClick={() => { setEditingProject(p.id); setEditCode(p.code || ''); setEditTimezone(p.timezone || 'UTC'); }}>Edit</button>
+                                                {p.id !== '00000000-0000-0000-0000-000000000000' && (
+                                                    <button className="btn-delete" onClick={() => handleDeleteProject(p.id)}><Trash2 size={14} /></button>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))}
