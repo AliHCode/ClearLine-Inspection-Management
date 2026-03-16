@@ -44,6 +44,51 @@ function ConnectivityBanner() {
 
 export default function AppExperienceEnhancements() {
     useEffect(() => {
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+        let activeElement = null;
+
+        const handleMouseDown = (e) => {
+            const runner = e.target.closest('.rfi-table-wrapper');
+            if (!runner) return;
+            if (e.button !== 0) return; // Left click only
+
+            isDown = true;
+            activeElement = runner;
+            activeElement.classList.add('grabbing');
+            startX = e.pageX - activeElement.offsetLeft;
+            scrollLeft = activeElement.scrollLeft;
+        };
+
+        const handleGlobalMouseUp = () => {
+            if (activeElement) activeElement.classList.remove('grabbing');
+            isDown = false;
+            activeElement = null;
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isDown || !activeElement) return;
+            e.preventDefault();
+            const x = e.pageX - activeElement.offsetLeft;
+            const walk = (x - startX) * 1.5; 
+            activeElement.scrollLeft = scrollLeft - walk;
+        };
+
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+        document.addEventListener('mouseleave', handleGlobalMouseUp);
+        document.addEventListener('mousemove', handleMouseMove);
+
+        return () => {
+            document.removeEventListener('mousedown', handleMouseDown);
+            document.removeEventListener('mouseup', handleGlobalMouseUp);
+            document.removeEventListener('mouseleave', handleGlobalMouseUp);
+            document.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, []);
+
+    useEffect(() => {
         const media = window.matchMedia('(display-mode: standalone)');
 
         const applyDisplayClass = () => {

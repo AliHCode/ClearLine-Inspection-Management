@@ -4,26 +4,25 @@ import { Bell, Check, X, BellDot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { buildNotificationOpenPath } from '../utils/notificationLinks';
 
-export default function NotificationCenter() {
+export default function NotificationCenter({ isOpen, onToggle }) {
     const { rfis, notifications, markNotificationRead, markAllNotificationsRead, unreadCount } = useRFI();
-    const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
     // Close dropdown when clicking outside
     useEffect(() => {
         function handleClickOutside(event) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target) && isOpen) {
+                onToggle(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [isOpen, onToggle]);
 
     const handleNotificationClick = (notification) => {
         markNotificationRead(notification.id);
-        setIsOpen(false);
+        if (onToggle) onToggle(false);
         navigate(buildNotificationOpenPath(notification.rfi_id));
     };
 
@@ -31,7 +30,7 @@ export default function NotificationCenter() {
         <div className="notification-center" ref={dropdownRef}>
             <button
                 className={`notification-trigger ${unreadCount > 0 ? 'has-unread' : ''}`}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => onToggle(!isOpen)}
                 title="Notifications"
             >
                 {unreadCount > 0 ? (

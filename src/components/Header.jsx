@@ -2,7 +2,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
 import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch, ListChecks, ChevronDown } from 'lucide-react';
 import { BarChart2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
 import { syncPushSubscriptionForUser } from '../utils/pushNotifications';
@@ -14,8 +14,14 @@ export default function Header() {
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+    const [notifMenuOpen, setNotifMenuOpen] = useState(false);
     const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
     const [pushBadge, setPushBadge] = useState({ state: 'checking', label: 'Push: Checking' });
+    
+    // Refs for click-away detection
+    const projectRef = useRef(null);
+    const menuRef = useRef(null);
+    const notifRef = useRef(null);
 
     if (!user) return null;
 
@@ -90,6 +96,27 @@ export default function Header() {
         document.body.classList.remove('no-scroll');
     }, [location.pathname]);
 
+    // Click-away listener for all header dropdowns
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // Close Project Menu if clicked outside
+            if (projectMenuOpen && projectRef.current && !projectRef.current.contains(event.target)) {
+                setProjectMenuOpen(false);
+            }
+            // Close User Menu if clicked outside
+            if (menuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
+                setMenuOpen(false);
+            }
+            // Close Notification Tray if clicked outside
+            if (notifMenuOpen && notifRef.current && !notifRef.current.contains(event.target)) {
+                setNotifMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [projectMenuOpen, menuOpen, notifMenuOpen]);
+
     const handleEnableNotifications = async () => {
         if (typeof Notification === 'undefined') {
             setNotifPermission('unsupported');
@@ -133,12 +160,13 @@ export default function Header() {
 
             {/* Project Selector */}
             {activeProject && (
-                <div className="header-project-area">
+                <div className="header-project-area" ref={projectRef}>
                     <button 
                         className="header-project-selector-pill"
                         onClick={() => {
                             setProjectMenuOpen(!projectMenuOpen);
                             setMenuOpen(false);
+                            setNotifMenuOpen(false);
                         }}
                     >
                         <Building size={16} className="project-icon" />
@@ -167,38 +195,53 @@ export default function Header() {
                 </div>
             )}
 
-            <div className="header-user-info">
-                <NotificationCenter />
+            <div className="header-user-info" ref={notifRef}>
+                <NotificationCenter 
+                    isOpen={notifMenuOpen} 
+                    onToggle={(val) => {
+                        setNotifMenuOpen(val);
+                        if (val) {
+                            setMenuOpen(false);
+                            setProjectMenuOpen(false);
+                        }
+                    }} 
+                />
             </div>
 
             <div className="header-divider"></div>
 
-            <button className="header-menu-btn" onClick={() => { setMenuOpen(!menuOpen); setProjectMenuOpen(false); }}>
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <div className="header-menu-wrap" ref={menuRef}>
+                <button className="header-menu-btn" onClick={() => { 
+                    const newState = !menuOpen;
+                    setMenuOpen(newState); 
+                    setProjectMenuOpen(false); 
+                    setNotifMenuOpen(false);
+                }}>
+                    {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
 
-            {menuOpen && (
-                <div className="header-dropdown">
-                    <div className="header-dropdown-info">
-                        <div className="header-identity-card">
-                            <div className="header-identity-avatar" aria-hidden="true">
-                                {nameInitials}
-                            </div>
-                            <div className="header-identity-meta">
-                                <div className="header-identity-name">{user.name}</div>
-                                <div className="header-identity-details">
-                                    <div className="header-identity-detail">
-                                        <Briefcase size={12} />
-                                        <span>{user.company || 'ClearLine Inc.'}</span>
-                                    </div>
-                                    <div className="header-identity-detail">
-                                        <User size={12} />
-                                        <span className="header-identity-designation">{roleLabel}</span>
+                {menuOpen && (
+                    <div className="header-dropdown">
+                        <div className="header-dropdown-info">
+                            <div className="header-identity-card">
+                                <div className="header-identity-avatar" aria-hidden="true">
+                                    {nameInitials}
+                                </div>
+                                <div className="header-identity-meta">
+                                    <div className="header-identity-name">{user.name}</div>
+                                    <div className="header-identity-details">
+                                        <div className="header-identity-detail">
+                                            <Briefcase size={12} />
+                                            <span>{user.company || 'ClearLine Inc.'}</span>
+                                        </div>
+                                        <div className="header-identity-detail">
+                                            <User size={12} />
+                                            <span className="header-identity-designation">{roleLabel}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                     <button
                         onClick={() => { navigate(dashPath); setMenuOpen(false); }}
                         className={`header-dropdown-item ${location.pathname === dashPath ? 'active' : ''}`}
@@ -296,6 +339,7 @@ export default function Header() {
                     </button>
                 </div>
             )}
+            </div>
         </header>
     );
 }
