@@ -21,6 +21,7 @@ import SummaryPage from './pages/SummaryPage';
 import RegisteredDevicesPage from './pages/RegisteredDevicesPage';
 import NotificationRedirect from './pages/NotificationRedirect';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
+import SettingsPage from './pages/SettingsPage';
 import SubscriptionGuard from './components/SubscriptionGuard';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -163,6 +164,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['admin']}>
                         <RegisteredDevicesPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <SettingsPage />
                     </ProtectedRoute>
                 }
             />

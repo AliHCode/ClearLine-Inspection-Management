@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
-import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch, ListChecks, ChevronDown, Wifi, WifiOff, BarChart2 } from 'lucide-react';
+import { LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, LayoutDashboard, FileText, ClipboardList, Bell, Smartphone, GitBranch, ListChecks, ChevronDown, BarChart2, Settings } from 'lucide-react';
 import { useRFI } from '../context/RFIContext';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -20,7 +20,7 @@ export default function Header() {
     const { mfaFactors } = useAuth();
     const isMFAEnabled = mfaFactors.some(f => f.status === 'verified');
     const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
-    const { isOffline, lastSyncTime } = useRFI() || { isOffline: false, lastSyncTime: null };
+    const { notifications } = useRFI() || { notifications: [] };
     const [pushBadge, setPushBadge] = useState({ state: 'checking', label: 'Push: Checking' });
     
     // Refs for click-away detection
@@ -163,17 +163,6 @@ export default function Header() {
                 <div className="header-left" onClick={() => navigate(dashPath)} style={{ padding: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <img src="/dashboardlogo.png" alt="ProWay Logo" className="header-logo-img" style={{ height: '38px', objectFit: 'contain' }} />
                     
-                    {/* Connection Status Indicator */}
-                    <div className={`network-status-indicator ${isOffline ? 'offline' : 'online'}`} title={isOffline ? 'Sync issue: Supabase unreachable' : `Connected. Last sync: ${lastSyncTime ? lastSyncTime.toLocaleTimeString() : 'Just now'}`}>
-                        {isOffline ? (
-                            <>
-                                <WifiOff size={16} color="var(--clr-error)" />
-                                <span style={{ fontSize: '0.7rem', color: 'var(--clr-error)', fontWeight: 600 }}>Sync Issue</span>
-                            </>
-                        ) : (
-                            <Wifi size={16} color="var(--clr-success)" style={{ opacity: 0.6 }} />
-                        )}
-                    </div>
                 </div>
 
                 {/* Project Selector */}
@@ -328,50 +317,15 @@ export default function Header() {
                             </>
                         )}
                         <div className="header-dropdown-divider" style={{ height: '1px', background: 'var(--clr-border)', margin: '0.25rem 0' }}></div>
+                        
                         <button
-                            onClick={() => { setMfaModalOpen(true); setMenuOpen(false); }}
-                            className="header-dropdown-item"
+                            onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                            className={`header-dropdown-item ${location.pathname === '/settings' ? 'active' : ''}`}
                         >
-                            <Shield size={16} /> 
-                            <span>Security & MFA</span>
-                            {isMFAEnabled && (
-                                <span style={{ 
-                                    marginLeft: 'auto', 
-                                    background: 'var(--clr-success)', 
-                                    color: '#fff', 
-                                    fontSize: '0.65rem', 
-                                    padding: '2px 6px', 
-                                    borderRadius: '10px',
-                                    fontWeight: 700
-                                }}>ON</span>
-                            )}
+                            <Settings size={16} /> 
+                            <span>Settings</span>
                         </button>
 
-                        {canManageNotifications && (
-                            <div className="menu-alert-section">
-                                <div 
-                                    className={`menu-alert-row ${pushBadge.state === 'blocked' ? 'blocked' : ''}`} 
-                                    onClick={handleEnableNotifications}
-                                >
-                                    <div className="menu-alert-info">
-                                        <Bell size={18} />
-                                        <span>{pushBadge.state === 'blocked' ? 'Notifications Blocked' : 'Real-time Alerts'}</span>
-                                    </div>
-                                    {pushBadge.state === 'blocked' ? (
-                                        <span className="menu-fix-link">Fix</span>
-                                    ) : (
-                                        <div className={`menu-alert-toggle ${pushBadge.state === 'subscribed' ? 'subscribed' : ''}`}>
-                                            <div className="toggle-handle"></div>
-                                        </div>
-                                    )}
-                                </div>
-                                {pushBadge.state === 'blocked' && (
-                                    <div className="notif-blocked-hint">
-                                        To re-enable: click the <strong>lock icon</strong> in your address bar → <em>Notifications</em> → Allow.
-                                    </div>
-                                )}
-                            </div>
-                        )}
                         <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item logout">
                             <LogOut size={16} /> Sign Out
                         </button>
