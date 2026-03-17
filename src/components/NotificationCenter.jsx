@@ -9,6 +9,7 @@ export default function NotificationCenter({ isOpen, onToggle }) {
     const { rfis, notifications, markNotificationRead, markAllNotificationsRead, unreadCount } = useRFI();
     const { user } = useAuth();
     const isContractor = user?.role === 'contractor';
+    const isConsultant = user?.role === 'consultant';
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
@@ -148,6 +149,7 @@ export default function NotificationCenter({ isOpen, onToggle }) {
                                 const isAssignment = displayTitle.toLowerCase().includes('assigned');
                                 const isFiled = displayTitle.toLowerCase().includes('filed') || displayTitle.toLowerCase().includes('submitted');
 
+                                const iconSize = isConsultant ? 20 : 16;
                                 const getIcon = () => {
                                     if (isContractor) {
                                         if (isApproval) return <Check size={16} />;
@@ -158,13 +160,13 @@ export default function NotificationCenter({ isOpen, onToggle }) {
                                         if (isAssignment) return <UserPlus size={16} />;
                                         if (isFiled) return <FilePlus size={16} />;
                                     } else {
-                                        if (isApproval) return <CheckCircle2 size={16} />;
-                                        if (isRejection) return <XCircle size={16} />;
-                                        if (isMention) return <MessageCircle size={16} />;
-                                        if (isAssignment) return <UserPlus size={16} />;
-                                        if (isFiled) return <FilePlus size={16} />;
+                                        if (isApproval) return <CheckCircle2 size={iconSize} />;
+                                        if (isRejection) return <XCircle size={iconSize} />;
+                                        if (isMention) return <MessageCircle size={iconSize} />;
+                                        if (isAssignment) return <UserPlus size={iconSize} />;
+                                        if (isFiled) return <FilePlus size={iconSize} />;
                                     }
-                                    return <Bell size={16} />;
+                                    return <Bell size={iconSize} />;
                                 };
 
                                 const getIconClass = () => {
@@ -179,7 +181,7 @@ export default function NotificationCenter({ isOpen, onToggle }) {
                                 return (
                                     <div
                                         key={notif.id}
-                                        className={`notification-item-premium ${isContractor ? 'contractor-view' : ''} ${!notif.is_read ? 'unread' : ''}`}
+                                        className={`notification-item-premium ${isContractor ? 'contractor-view' : ''} ${isConsultant ? 'consultant-view' : ''} ${!notif.is_read ? 'unread' : ''}`}
                                         onClick={() => handleNotificationClick(notif)}
                                     >
                                         <div className="notification-icon-wrapper">
