@@ -23,3 +23,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Diagnostic and Temp Files
+build_out.txt
+stderr.txt
+stdout.txt
+fix.cjs
+*.tmp
+temp/
+supabase/.temp/
