@@ -4,7 +4,7 @@ import {
     LogOut, Menu, X, Building, Shield, User, Briefcase, UserCircle, 
     LayoutGrid, ScrollText, ListChecks, BellRing, Smartphone, 
     GitBranch, BarChart3, Settings2, LifeBuoy, Edit2, 
-    ShieldCheck, Power, Activity, ChevronDown, Info
+    ShieldCheck, Power, Activity, ChevronDown, Info, Building2
 } from 'lucide-react';
 import { useRFI } from '../context/RFIContext';
 import { useCallback, useEffect, useState, useRef } from 'react';
@@ -164,82 +164,101 @@ export default function Header() {
         await refreshPushBadge();
     };
 
+    const handleMenuNavigation = (targetPath) => {
+        if (location.pathname === targetPath) {
+            setMenuOpen(false);
+            return;
+        }
+
+        const isCurrentlyDashboard = location.pathname === dashPath;
+
+        if (isCurrentlyDashboard) {
+            // Dashboard -> Spoke: PUSH
+            navigate(targetPath);
+        } else {
+            // Spoke -> Spoke: REPLACE
+            // Spoke -> Dashboard: REPLACE (so back button doesn't trap you in Spokes)
+            navigate(targetPath, { replace: true });
+        }
+        setMenuOpen(false);
+    };
+
     return (
         <>
             <header className="app-header">
-                <div className="header-left" onClick={() => navigate(dashPath)} style={{ padding: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="header-left" onClick={() => handleMenuNavigation(dashPath)} style={{ padding: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <img src="/dashboardlogo.png" alt="ProWay Logo" className="header-logo-img" style={{ height: '38px', objectFit: 'contain' }} />
                     
                 </div>
 
-                {/* Project Selector */}
-                {activeProject && (
-                    <div className="header-project-area" ref={projectRef}>
-                        <button 
-                            className="header-project-selector-pill"
-                            onClick={() => {
-                                setProjectMenuOpen(!projectMenuOpen);
-                                setMenuOpen(false);
-                                setNotifMenuOpen(false);
-                            }}
-                        >
-                            <LayoutGrid size={18} className="project-icon" strokeWidth={1.5} fill="#000000" color="#000000" />
-                            <span className="project-name">{activeProject.name}</span>
-                            <ChevronDown size={14} className={`chevron-icon ${projectMenuOpen ? 'open' : ''}`} />
-                        </button>
+                <div className="header-right-group">
+                    {/* Project Selector */}
+                    {activeProject && (
+                        <div className="header-project-area" ref={projectRef}>
+                            <button 
+                                className="header-project-selector-pill"
+                                onClick={() => {
+                                    setProjectMenuOpen(!projectMenuOpen);
+                                    setMenuOpen(false);
+                                    setNotifMenuOpen(false);
+                                }}
+                            >
+                                <Building2 size={20} className="project-icon" strokeWidth={2} />
+                                <span className="project-name">{activeProject.name}</span>
+                                <ChevronDown size={14} className={`chevron-icon ${projectMenuOpen ? 'open' : ''}`} />
+                            </button>
 
-                        {projectMenuOpen && (
-                            <div className="header-project-dropdown">
-                                <div className="header-project-dropdown-title">Select Project</div>
-                                {projects.map((p) => (
-                                    <button
-                                        key={p.id}
-                                        className={`header-dropdown-item ${p.id === activeProject.id ? 'active' : ''}`}
-                                        onClick={() => {
-                                            changeActiveProject(p.id);
-                                            setProjectMenuOpen(false);
-                                        }}
-                                    >
-                                        <LayoutGrid size={16} strokeWidth={1.5} fill="currentColor" />
-                                        {p.name}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            {projectMenuOpen && (
+                                <div className="header-project-dropdown">
+                                    <div className="header-project-dropdown-title">Select Project</div>
+                                    {projects.map((p) => (
+                                        <button
+                                            key={p.id}
+                                            className={`header-dropdown-item ${p.id === activeProject.id ? 'active' : ''}`}
+                                            onClick={() => {
+                                                changeActiveProject(p.id);
+                                                setProjectMenuOpen(false);
+                                            }}
+                                        >
+                                            <Building2 size={18} strokeWidth={2} />
+                                            {p.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="header-user-info" ref={notifRef}>
+                        <NotificationCenter 
+                            isOpen={notifMenuOpen} 
+                            onToggle={(val) => {
+                                setNotifMenuOpen(val);
+                                if (val) {
+                                    setMenuOpen(false);
+                                    setProjectMenuOpen(false);
+                                }
+                            }} 
+                        />
                     </div>
-                )}
 
-                <div className="header-user-info" ref={notifRef}>
-                    <NotificationCenter 
-                        isOpen={notifMenuOpen} 
-                        onToggle={(val) => {
-                            setNotifMenuOpen(val);
-                            if (val) {
-                                setMenuOpen(false);
-                                setProjectMenuOpen(false);
-                            }
-                        }} 
-                    />
-                </div>
-
-                <div className="header-divider"></div>
-
-                <div className="header-menu-wrap" ref={menuRef}>
-                    <button className="header-menu-btn" onClick={() => { 
-                        const newState = !menuOpen;
-                        setMenuOpen(newState); 
-                        setProjectMenuOpen(false); 
-                        setNotifMenuOpen(false);
-                    }}>
-                        {menuOpen ? <X size={20} strokeWidth={2.5} color="#000000" /> : <Menu size={20} strokeWidth={2.5} color="#000000" />}
-                    </button>
+                    <div className="header-menu-wrap" ref={menuRef}>
+                        <button className="header-menu-btn" onClick={() => { 
+                            const newState = !menuOpen;
+                            setMenuOpen(newState); 
+                            setProjectMenuOpen(false); 
+                            setNotifMenuOpen(false);
+                        }}>
+                            {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
+                        </button>
+                    </div>
 
                     {menuOpen && (
                         <div className="header-dropdown premium-menu">
                             <div className="header-dropdown-info">
                                 <div 
                                     className="header-identity-card-premium" 
-                                    onClick={() => { navigate('/profile'); setMenuOpen(false); }}
+                                    onClick={() => handleMenuNavigation('/profile')}
                                     style={{ cursor: 'pointer' }}
                                 >
                                     <div className="header-identity-avatar-premium" aria-hidden="true">
@@ -256,7 +275,7 @@ export default function Header() {
                             {/* Section 1: Core Navigation */}
                             <div className="menu-section">
                                 <button
-                                    onClick={() => { navigate(dashPath); setMenuOpen(false); }}
+                                    onClick={() => handleMenuNavigation(dashPath)}
                                     className={`header-dropdown-item-premium ${location.pathname === dashPath ? 'active' : ''}`}
                                 >
                                     <div className="menu-icon-box"><LayoutGrid size={18} strokeWidth={1.5} /></div>
@@ -265,7 +284,7 @@ export default function Header() {
 
                                 {isContractor && (
                                     <button
-                                        onClick={() => { navigate('/contractor/rfi-sheet'); setMenuOpen(false); }}
+                                        onClick={() => handleMenuNavigation('/contractor/rfi-sheet')}
                                         className={`header-dropdown-item-premium ${location.pathname.includes('rfi-sheet') ? 'active' : ''}`}
                                     >
                                         <div className="menu-icon-box"><ScrollText size={18} strokeWidth={1.5} /></div>
@@ -275,7 +294,7 @@ export default function Header() {
 
                                 {isConsultant && (
                                     <button
-                                        onClick={() => { navigate('/consultant/review'); setMenuOpen(false); }}
+                                        onClick={() => handleMenuNavigation('/consultant/review')}
                                         className={`header-dropdown-item-premium ${location.pathname.includes('review') ? 'active' : ''}`}
                                     >
                                         <div className="menu-icon-box"><ListChecks size={18} strokeWidth={1.5} /></div>
@@ -285,7 +304,7 @@ export default function Header() {
 
                                 {isConsultant && (
                                     <button
-                                        onClick={() => { navigate('/consultant/rejection-journey'); setMenuOpen(false); }}
+                                        onClick={() => handleMenuNavigation('/consultant/rejection-journey')}
                                         className={`header-dropdown-item-premium ${location.pathname.includes('/consultant/rejection-journey') ? 'active' : ''}`}
                                     >
                                         <div className="menu-icon-box"><GitBranch size={18} strokeWidth={1.5} /></div>
@@ -297,8 +316,7 @@ export default function Header() {
                                     <button
                                         onClick={() => { 
                                             const path = isContractor ? '/contractor/summary' : '/consultant/summary';
-                                            navigate(path); 
-                                            setMenuOpen(false); 
+                                            handleMenuNavigation(path); 
                                         }}
                                         className={`header-dropdown-item-premium ${location.pathname.includes('summary') ? 'active' : ''}`}
                                     >
@@ -310,21 +328,21 @@ export default function Header() {
                                 {isAdmin && (
                                     <>
                                         <button
-                                            onClick={() => { navigate('/admin/users'); setMenuOpen(false); }}
+                                            onClick={() => handleMenuNavigation('/admin/users')}
                                             className={`header-dropdown-item-premium ${location.pathname === '/admin/users' ? 'active' : ''}`}
                                         >
                                             <div className="menu-icon-box"><UserCircle size={18} strokeWidth={1.5} /></div>
                                             <span>Users</span>
                                         </button>
                                         <button
-                                            onClick={() => { navigate('/admin/export-format'); setMenuOpen(false); }}
+                                            onClick={() => handleMenuNavigation('/admin/export-format')}
                                             className={`header-dropdown-item-premium ${location.pathname === '/admin/export-format' ? 'active' : ''}`}
                                         >
                                             <div className="menu-icon-box"><Shield size={18} strokeWidth={1.5} /></div>
                                             <span>Project Export Format</span>
                                         </button>
                                         <button
-                                            onClick={() => { navigate('/admin/registered-devices'); setMenuOpen(false); }}
+                                            onClick={() => handleMenuNavigation('/admin/registered-devices')}
                                             className={`header-dropdown-item-premium ${location.pathname === '/admin/registered-devices' ? 'active' : ''}`}
                                         >
                                             <div className="menu-icon-box"><Smartphone size={18} strokeWidth={1.5} /></div>
@@ -354,7 +372,7 @@ export default function Header() {
                                 </div>
                                 
                                 <button
-                                    onClick={() => { navigate('/subscription'); setMenuOpen(false); }}
+                                    onClick={() => handleMenuNavigation('/subscription')}
                                     className={`header-dropdown-item-premium ${location.pathname === '/subscription' ? 'active' : ''}`}
                                 >
                                     <div className="menu-icon-box"><ShieldCheck size={18} strokeWidth={1.5} /></div>
@@ -363,7 +381,7 @@ export default function Header() {
                                 </button>
 
                                 <button
-                                    onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                                    onClick={() => handleMenuNavigation('/settings')}
                                     className={`header-dropdown-item-premium ${location.pathname === '/settings' ? 'active' : ''}`}
                                 >
                                     <div className="menu-icon-box"><Settings2 size={18} strokeWidth={1.5} /></div>

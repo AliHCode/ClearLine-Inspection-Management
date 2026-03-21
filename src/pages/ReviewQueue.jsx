@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
@@ -13,7 +13,7 @@ import CancelModal from '../components/CancelModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, MessageSquare, Ban, X, FileDown, Table, ClipboardList, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -40,6 +40,8 @@ export default function ReviewQueue() {
     const [columnFilterValues, setColumnFilterValues] = useState({});
     const [filterValueSearch, setFilterValueSearch] = useState('');
     const [showAllToday, setShowAllToday] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const tableWrapperRef = useRef(null);
 
     const queue = getReviewQueue(currentDate);
 
@@ -218,6 +220,39 @@ export default function ReviewQueue() {
     }, [location.pathname]);
 
     const shouldShowTable = Boolean(activeProject?.id && readyTableProjectId === activeProject.id);
+
+    // Fullscreen / Landscape Logic (V60)
+    useEffect(() => {
+        const handleFsChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFsChange);
+        return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        if (!tableWrapperRef.current) return;
+
+        if (!isFullscreen) {
+            try {
+                if (tableWrapperRef.current.requestFullscreen) {
+                    await tableWrapperRef.current.requestFullscreen();
+                    if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                        await window.screen.orientation.lock('landscape').catch(err => {
+                            console.log("Orientation lock failed (harmless):", err);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Fullscreen error:", err);
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
+
     async function handleApprove(rfiId, remarks, files = [], status = 'approved') {
         const updatePayload = {
             status,
@@ -644,6 +679,13 @@ export default function ReviewQueue() {
                             </button>
                             <div className="review-filter-wrap" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button
+                                    className="fullscreen-btn"
+                                    onClick={toggleFullscreen}
+                                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Landscape View"}
+                                >
+                                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                                </button>
+                                <button
                                     type="button"
                                     className="btn btn-sm review-filter-btn"
                                     style={{
@@ -829,7 +871,15 @@ export default function ReviewQueue() {
                     </div>
                 ) : (
                     <div className="sheet-section">
-                        <div className="rfi-table-wrapper">
+                        <div 
+                            ref={tableWrapperRef}
+                            className={`rfi-table-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`}
+                        >
+                            {isFullscreen && (
+                                <button className="fullscreen-exit-btn" onClick={toggleFullscreen}>
+                                    Exit Fullscreen
+                                </button>
+                            )}
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
@@ -892,6 +942,12 @@ export default function ReviewQueue() {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                )}
+
+                {isFullscreen && (
+                    <div className="landscape-hint">
+                        <RotateCcw size={16} /> <span>Rotate device for landscape view</span>
                     </div>
                 )}
 
@@ -1022,16 +1078,12 @@ export default function ReviewQueue() {
                     }
                     .review-filter-wrap {
                         display: flex;
-                        width: 100%;
                         gap: 0.5rem;
-                        justify-content: space-between;
                     }
                     .rq-all-btn {
-                        flex: 1;
                         text-align: center;
                     }
                     .review-filter-btn {
-                        flex: 1;
                         justify-content: center;
                     }
                     .date-navigator {

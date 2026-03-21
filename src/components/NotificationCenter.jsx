@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRFI } from '../context/RFIContext';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Check, X, BellDot, CheckCircle2, XCircle, MessageCircle, UserPlus, FilePlus, AlertCircle } from 'lucide-react';
+import { Bell, Check, X, BellDot, BellRing, Trash2, CheckCircle2, XCircle, MessageCircle, UserPlus, FilePlus, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { buildNotificationOpenPath } from '../utils/notificationLinks';
 
 export default function NotificationCenter({ isOpen, onToggle }) {
-    const { rfis, notifications, markNotificationRead, markAllNotificationsRead, unreadCount } = useRFI();
+    const { rfis, notifications, markNotificationRead, markAllNotificationsRead, deleteNotification, deleteAllNotifications, unreadCount } = useRFI();
     const { user } = useAuth();
     const isContractor = user?.role === 'contractor';
     const isConsultant = user?.role === 'consultant';
@@ -24,6 +24,12 @@ export default function NotificationCenter({ isOpen, onToggle }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen, onToggle]);
 
+    const handleDeleteAll = () => {
+        if (window.confirm('Are you sure you want to delete all notifications? This action cannot be undone.')) {
+            deleteAllNotifications();
+        }
+    };
+
     const handleNotificationClick = (notification) => {
         markNotificationRead(notification.id);
         if (onToggle) onToggle(false);
@@ -32,33 +38,43 @@ export default function NotificationCenter({ isOpen, onToggle }) {
 
     return (
         <div className="notification-center" ref={dropdownRef}>
-            <button
-                className={`notification-trigger ${unreadCount > 0 ? 'has-unread' : ''}`}
+            <button 
+                className={`notification-trigger ${isOpen ? 'active' : ''}`} 
                 onClick={() => onToggle(!isOpen)}
-                title="Notifications"
+                aria-label="Notifications"
             >
-                {unreadCount > 0 ? (
-                    <>
-                        <BellDot size={18} className="bell-icon active" strokeWidth={1.5} fill="#000000" color="#000000" />
-                        <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                    </>
-                ) : (
-                    <Bell size={18} className="bell-icon" strokeWidth={1.5} fill="#000000" color="#000000" />
-                )}
+                {unreadCount > 0 && <span className="notification-unread-dot"></span>}
+                <BellRing size={20} className={`bell-icon ${unreadCount > 0 ? 'active' : ''}`} strokeWidth={2} />
             </button>
 
             {isOpen && (
                 <div className="notification-dropdown">
                     <div className="notification-header">
                         <h3>Notifications</h3>
-                        {unreadCount > 0 && (
-                            <button
-                                className="btn-mark-all"
-                                onClick={markAllNotificationsRead}
-                            >
-                                <Check size={14} /> Mark all read
-                            </button>
-                        )}
+                        <div className="notification-header-actions">
+                            {unreadCount > 0 && (
+                                <button
+                                    className="btn-mark-all"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        markAllNotificationsRead();
+                                    }}
+                                >
+                                    <Check size={14} /> Mark all read
+                                </button>
+                            )}
+                            {notifications.length > 0 && (
+                                <button
+                                    className="btn-delete-all"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteAll();
+                                    }}
+                                >
+                                    <Trash2 size={13} /> Delete all
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="notification-list">
@@ -196,7 +212,9 @@ export default function NotificationCenter({ isOpen, onToggle }) {
                                             </div>
                                             <div className="notification-message">{displayMessage}</div>
                                         </div>
-                                        {!notif.is_read && <div className="unread-indicator"></div>}
+                                        <div className="notif-actions">
+                                            {!notif.is_read && <div className="unread-indicator"></div>}
+                                        </div>
                                     </div>
                                 );
                             });

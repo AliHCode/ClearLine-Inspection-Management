@@ -22,6 +22,7 @@ import { buildNotificationOpenPath } from '../utils/notificationLinks';
 const RFIContext = createContext(null);
 const NOTIFICATION_PROMPT_SEEN_KEY = 'proway_notification_prompt_seen_v1';
 const RFI_CACHE_PREFIX = 'saa_rfis_cache_v1';
+const DISMISSED_NOTIFICATIONS_KEY = 'proway_dismissed_notifications_v1';
 
 function rfiCacheKey(userId, projectId) {
     return `${RFI_CACHE_PREFIX}:${userId || 'anon'}:${projectId || 'none'}`;
@@ -105,8 +106,17 @@ export function RFIProvider({ children }) {
     const [contractors, setContractors] = useState([]);
 
     // Notifications State
+    const [dismissedIds, setDismissedIds] = useState(() => {
+        try {
+            const saved = localStorage.getItem(DISMISSED_NOTIFICATIONS_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
     const [notifications, setNotifications] = useState([]);
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+    
+    // Derived filtered notifications
+    const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
+    const unreadCount = visibleNotifications.filter(n => !n.is_read).length;
 
     const restoreRfiCache = useCallback((projectId) => {
         if (!projectId || !user?.id) return false;
@@ -314,29 +324,37 @@ export function RFIProvider({ children }) {
             return;
         }
 
-        async function performFetch(retryCount = 0) {
-            try {
-                const { data, error } = await supabase
-                    .from('notifications')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
 
-                if (error) throw error;
-                setNotifications(data || []);
-                setIsOffline(false);
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-                if (!navigator.onLine || retryCount < 1) {
-                    if (retryCount < 1) {
-                        await new Promise(r => setTimeout(r, 1500));
-                        return performFetch(retryCount + 1);
-                    }
+            if (error) throw error;
+            
+            // Note: We keep all data but use visibleNotifications for UI.
+            // This allows us to keep the logic simple in deleteAllNotifications
+            setNotifications(data || []);
+            setIsOffline(false);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            if (navigator.onLine) {
+                try {
+                    await new Promise(r => setTimeout(r, 1500));
+                    const { data: retryData, error: retryError } = await supabase
+                        .from('notifications')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+                    if (!retryError) setNotifications(retryData || []);
+                } catch (retryErr) {
+                    console.error('Retry error:', retryErr);
                 }
             }
         }
-        performFetch();
     }, [user]);
 
     // Fetch consultants/contractors scoped to the active project's members only
@@ -1783,7 +1801,8 @@ export function RFIProvider({ children }) {
                 .update({ is_read: true })
                 .eq('id', notifId);
             if (error) throw error;
-            fetchNotifications(); // Optimistic UI could be used here instead for speed
+            setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
+            await fetchNotifications();
         } catch (error) {
             console.error("Error marking notification read:", error);
         }
@@ -1798,10 +1817,38 @@ export function RFIProvider({ children }) {
                 .eq('user_id', user.id)
                 .eq('is_read', false);
             if (error) throw error;
-            fetchNotifications();
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            await fetchNotifications();
         } catch (error) {
             console.error("Error marking all notifications read:", error);
         }
+    }
+
+    async function deleteNotification(notifId) {
+        // Individual "Soft Delete" due to RLS backend block
+        const nextDismissed = [...new Set([...dismissedIds, notifId])];
+        setDismissedIds(nextDismissed);
+        localStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(nextDismissed));
+        toast.success("Notification cleared");
+    }
+
+    async function deleteAllNotifications() {
+        if (visibleNotifications.length === 0) return;
+        
+        // Final "Global Clear" workaround: Blacklist all current IDs
+        const newIds = visibleNotifications.map(n => n.id);
+        const nextDismissed = [...new Set([...dismissedIds, ...newIds])].slice(-200); // Keep last 200 for perf
+        
+        setDismissedIds(nextDismissed);
+        localStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(nextDismissed));
+        toast.success("All notifications cleared from this device");
+        
+        // We still attempt a background mark-as-read so the badge counts on other devices are lower
+        supabase.from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false)
+            .then(() => { /* silent success */ });
     }
 
     // --- Helper to trigger notifications (Used internally by approve/reject/comment) ---
@@ -1877,7 +1924,7 @@ export function RFIProvider({ children }) {
                 loadingRfis,
                 consultants,
                 contractors,
-                notifications,
+                notifications: visibleNotifications,
                 unreadCount,
                 pendingSyncCount,
                 uploadImages,
@@ -1902,6 +1949,8 @@ export function RFIProvider({ children }) {
                 canUserDiscussRfi: (rfi) => canUserDiscussRfiRecord(rfi, user?.id),
                 markNotificationRead,
                 markAllNotificationsRead,
+                deleteNotification,
+                deleteAllNotifications,
                 createNotification,
                 isOffline,
                 lastSyncTime

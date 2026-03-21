@@ -12,7 +12,7 @@ import RFIDetailModal from '../components/RFIDetailModal';
 import EditRFIModal from '../components/EditRFIModal';
 import FieldMarkupStudio from '../components/FieldMarkupStudio';
 import CreateRevisionModal from '../components/CreateRevisionModal';
-import { Plus, Trash2, Send, RefreshCw, X, MessageSquare, FileDown, Table, ClipboardList, Brush } from 'lucide-react';
+import { Plus, Trash2, Send, RefreshCw, X, MessageSquare, FileDown, Table, ClipboardList, Brush, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
 import { useProject } from '../context/ProjectContext';
 
@@ -33,6 +33,8 @@ export default function DailyRFISheet() {
     const [focusedRfiId, setFocusedRfiId] = useState(null);
     const [showNewRfiEntry, setShowNewRfiEntry] = useState(false);
     const [scrollNonce, setScrollNonce] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const tableWrapperRef = useRef(null);
 
     const [activeTab, setActiveTab] = useState('daily');
     const [revisionTarget, setRevisionTarget] = useState(null);
@@ -271,6 +273,38 @@ export default function DailyRFISheet() {
             window.clearTimeout(clearTimer);
         };
     }, [searchParams, setSearchParams, rfis, user, currentDate]);
+
+    // Fullscreen / Landscape Logic (V60)
+    useEffect(() => {
+        const handleFsChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFsChange);
+        return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        if (!tableWrapperRef.current) return;
+
+        if (!isFullscreen) {
+            try {
+                if (tableWrapperRef.current.requestFullscreen) {
+                    await tableWrapperRef.current.requestFullscreen();
+                    if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                        await window.screen.orientation.lock('landscape').catch(err => {
+                            console.log("Orientation lock failed (harmless):", err);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Fullscreen error:", err);
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
 
     // Background Scroll Locking
     useEffect(() => {
@@ -624,6 +658,13 @@ export default function DailyRFISheet() {
                                 >
                                     <Table size={17} /> Excel
                                 </button>
+                                <button
+                                    className="fullscreen-btn"
+                                    onClick={toggleFullscreen}
+                                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Landscape View"}
+                                >
+                                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                                </button>
                             </div>
                         )}
                         <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} showArrows={true} />
@@ -646,7 +687,15 @@ export default function DailyRFISheet() {
                             </p>
                         </div>
                     ) : (
-                        <div className="rfi-table-wrapper">
+                        <div 
+                            ref={tableWrapperRef}
+                            className={`rfi-table-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`}
+                        >
+                            {isFullscreen && (
+                                <button className="fullscreen-exit-btn" onClick={toggleFullscreen}>
+                                    Exit Fullscreen
+                                </button>
+                            )}
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
@@ -667,6 +716,11 @@ export default function DailyRFISheet() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                    {isFullscreen && (
+                        <div className="landscape-hint">
+                            <RotateCcw size={16} /> <span>Rotate device for landscape view</span>
                         </div>
                     )}
                 </div>
