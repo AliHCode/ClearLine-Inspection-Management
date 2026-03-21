@@ -2247,22 +2247,34 @@ input:checked + .premium-slider:before {
 }
 
 /* ============================================
-   MOBILE LANDSCAPE FULLSCREEN (V60)
+   MOBILE LANDSCAPE FULLSCREEN (V74)
    ============================================ */
-.rfi-table-wrapper.is-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 99999 !important;
+.is-fullscreen-page {
   background: var(--clr-bg) !important;
   width: 100vw !important;
   height: 100vh !important;
-  padding: 1rem !important;
-  overflow: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
-.rfi-table-wrapper.is-fullscreen .rfi-table {
+.is-fullscreen-page .sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--clr-bg);
+  padding: 1rem 1.5rem 0.5rem 1.5rem; /* Match typical sheet padding */
+  margin: 0; /* Remove default top margin inside fullscreen to avoid gap */
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.is-fullscreen-page .rfi-table-wrapper {
+  overflow-x: auto;
+  border-radius: 0; /* Let it flow edge to edge horizontally */
+}
+
+.is-fullscreen-page .rfi-table {
   min-width: 1000px; /* Ensure horizontal scroll in landscape if needed */
 }
 
@@ -2293,7 +2305,7 @@ input:checked + .premium-slider:before {
 }
 
 @media (orientation: portrait) {
-  .is-fullscreen + .landscape-hint {
+  .is-fullscreen-page .landscape-hint {
     display: flex;
   }
 }
@@ -2318,22 +2330,7 @@ input:checked + .premium-slider:before {
   color: var(--clr-brand-primary);
 }
 
-.fullscreen-exit-btn {
-  position: sticky;
-  top: 0;
-  right: 0;
-  margin-left: auto;
-  z-index: 10;
-  background: var(--clr-brand-primary);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 700;
-  font-size: 0.8rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
+
 
 @media (max-width: 480px) {
   .connectivity-banner {

@@ -11,7 +11,8 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
-import { syncPushSubscriptionForUser } from '../utils/pushNotifications';
+import { toast } from 'react-hot-toast';
+import { syncPushSubscriptionForUser, unregisterCurrentPushSubscription } from '../utils/pushNotifications';
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -130,35 +131,62 @@ export default function Header() {
     }, [projectMenuOpen, menuOpen, notifMenuOpen]);
 
     const handleEnableNotifications = async () => {
-        if (typeof Notification === 'undefined') {
+        if (typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+            toast.error("Push notifications are not supported on this browser. On iOS, try 'Add to Home Screen'.");
             setNotifPermission('unsupported');
             return;
         }
 
-        if (Notification.permission === 'denied') {
-            setNotifPermission('denied');
-            return;
-        }
-
-        if (Notification.permission === 'granted') {
-            setNotifPermission('granted');
-            if (user?.id) {
-                await syncPushSubscriptionForUser(user.id).catch((error) => {
-                    console.error('Error syncing push subscription:', error);
-                });
+        // Handle Unsubscribe
+        if (pushBadge.state === 'subscribed') {
+            try {
+                if (user?.id) {
+                    const res = await unregisterCurrentPushSubscription(user.id);
+                    if (res.status === 'removed') toast.success("Push notifications disabled.");
+                }
+            } catch (err) {
+                console.error('Error unsubscribing:', err);
+                toast.error("Failed to disable push notifications.");
             }
             await refreshPushBadge();
             return;
         }
 
+        // Handle ALREADY granted OS permission but no active subscription
+        if (Notification.permission === 'granted') {
+            setNotifPermission('granted');
+            if (user?.id) {
+                try {
+                    const res = await syncPushSubscriptionForUser(user.id);
+                    if (res.status === 'missing-vapid-key') toast.error("System Error: Missing VAPID Key.");
+                    else if (res.status === 'registered') toast.success("Push notifications enabled!");
+                    else toast.error("Failed to subscribe: " + res.status);
+                } catch (error) {
+                    console.error('Error syncing push subscription:', error);
+                    toast.error("Failed to sync push subscription.");
+                }
+            }
+            await refreshPushBadge();
+            return;
+        }
+
+        // Handle requesting NEW permission
         const result = await Notification.requestPermission();
         setNotifPermission(result);
         if (result === 'granted' && user?.id) {
-            await syncPushSubscriptionForUser(user.id).catch((error) => {
+            try {
+                const res = await syncPushSubscriptionForUser(user.id);
+                if (res.status === 'missing-vapid-key') toast.error("System Error: Missing VAPID Key.");
+                else if (res.status === 'registered') toast.success("Push notifications enabled!");
+                else toast.error("Failed to subscribe: " + res.status);
+            } catch (error) {
                 console.error('Error syncing push subscription:', error);
-            });
+                toast.error("Failed to subscribe to push notifications.");
+            }
             await refreshPushBadge();
             return;
+        } else if (result === 'denied') {
+            toast.error("Permission denied. Please enable notifications in your browser settings.");
         }
 
         await refreshPushBadge();

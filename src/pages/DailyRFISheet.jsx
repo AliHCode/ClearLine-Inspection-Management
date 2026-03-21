@@ -34,7 +34,7 @@ export default function DailyRFISheet() {
     const [showNewRfiEntry, setShowNewRfiEntry] = useState(false);
     const [scrollNonce, setScrollNonce] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const tableWrapperRef = useRef(null);
+    const pageRef = useRef(null);
 
     const [activeTab, setActiveTab] = useState('daily');
     const [revisionTarget, setRevisionTarget] = useState(null);
@@ -284,12 +284,12 @@ export default function DailyRFISheet() {
     }, []);
 
     const toggleFullscreen = async () => {
-        if (!tableWrapperRef.current) return;
+        if (!pageRef.current) return;
 
         if (!isFullscreen) {
             try {
-                if (tableWrapperRef.current.requestFullscreen) {
-                    await tableWrapperRef.current.requestFullscreen();
+                if (pageRef.current.requestFullscreen) {
+                    await pageRef.current.requestFullscreen();
                     if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
                         await window.screen.orientation.lock('landscape').catch(err => {
                             console.log("Orientation lock failed (harmless):", err);
@@ -617,7 +617,7 @@ export default function DailyRFISheet() {
     return (
         <div className="page-wrapper">
             <Header />
-            <main className="rfi-sheet-page">
+            <main className={`rfi-sheet-page ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
                 <div className="sheet-header">
                     <div className="sheet-tabs-container">
                         <div 
@@ -687,15 +687,7 @@ export default function DailyRFISheet() {
                             </p>
                         </div>
                     ) : (
-                        <div 
-                            ref={tableWrapperRef}
-                            className={`rfi-table-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`}
-                        >
-                            {isFullscreen && (
-                                <button className="fullscreen-exit-btn" onClick={toggleFullscreen}>
-                                    Exit Fullscreen
-                                </button>
-                            )}
+                        <div className="rfi-table-wrapper">
                             <table className="rfi-table editable">
                                 <thead>
                                     <tr>
