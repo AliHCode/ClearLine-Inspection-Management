@@ -251,8 +251,6 @@ export default function Header() {
                         }}>
                             {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
                         </button>
-                    </div>
-
                     {menuOpen && (
                         <div className="header-dropdown premium-menu">
                             <div className="header-dropdown-info">
@@ -405,6 +403,7 @@ export default function Header() {
                             </div>
                         </div>
                     )}
+                    </div>
                 </div>
             </header>
             <MFAEnrollmentModal isOpen={mfaModalOpen} onClose={() => setMfaModalOpen(false)} />
