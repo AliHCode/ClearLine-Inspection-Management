@@ -478,15 +478,18 @@ export default function SupportPage() {
                                             </span>
 
                                             {/* Subject */}
-                                            <span style={{
-                                                flex: 1,
-                                                fontSize: '0.85rem',
-                                                fontWeight: 600,
-                                                color: '#0f172a',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                            }}>
+                                            <span 
+                                                className="allow-select"
+                                                style={{
+                                                    flex: 1,
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 600,
+                                                    color: '#0f172a',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
                                                 {ticket.subject}
                                             </span>
 
@@ -522,7 +525,7 @@ export default function SupportPage() {
                                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.75rem' }}>
                                                     Submitted {createdAt} • Project: {ticket.project_name || 'N/A'}
                                                 </div>
-                                                <div style={{
+                                                <div className="allow-select" style={{
                                                     background: '#fff',
                                                     border: '1px solid #e2e8f0',
                                                     borderRadius: '8px',
@@ -575,7 +578,7 @@ export default function SupportPage() {
                                                         }}>
                                                             <ArrowRight size={12} /> Admin Response
                                                         </div>
-                                                        <div style={{
+                                                        <div className="allow-select" style={{
                                                             fontSize: '0.85rem',
                                                             color: '#1e40af',
                                                             lineHeight: 1.6,

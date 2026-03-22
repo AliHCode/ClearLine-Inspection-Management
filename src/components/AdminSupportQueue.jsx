@@ -151,7 +151,10 @@ export default function AdminSupportQueue() {
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: sCfg.bg, color: sCfg.color, fontSize: '0.6rem', fontWeight: 700, padding: '0.2rem 0.45rem', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                             {ticket.status === 'open' ? '●' : ticket.status === 'in_progress' ? '◐' : ticket.status === 'resolved' ? '✓' : '—'} {ticket.status.replace('_', ' ')}
                                         </span>
-                                        <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <span 
+                                            className="allow-select"
+                                            style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                        >
                                             {ticket.subject}
                                         </span>
                                         <span style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -175,7 +178,7 @@ export default function AdminSupportQueue() {
                                             </div>
 
                                             {/* Message */}
-                                            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.85rem', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: (ticket.attachment_url || ticket.admin_reply) ? '0.75rem' : '1.25rem' }}>
+                                            <div className="allow-select" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.85rem', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: (ticket.attachment_url || ticket.admin_reply) ? '0.75rem' : '1.25rem' }}>
                                                 {ticket.message}
                                             </div>
 
@@ -203,7 +206,7 @@ export default function AdminSupportQueue() {
                                                     <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         <ArrowRight size={11} /> Your Reply
                                                     </div>
-                                                    <div style={{ fontSize: '0.85rem', color: '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                                    <div className="allow-select" style={{ fontSize: '0.85rem', color: '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                                         {ticket.admin_reply}
                                                     </div>
                                                 </div>

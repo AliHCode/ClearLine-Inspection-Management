@@ -258,7 +258,6 @@ export default function Header() {
                     )}
 
                     <div className="header-user-info" ref={notifRef}>
-                        <span className="header-username">{user?.name}</span>
                         <NotificationCenter 
                             isOpen={notifMenuOpen} 
                             onToggle={(val) => {

@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
-import { Camera, Mail, Building, User, Edit2, Shield, Globe, Calendar, BadgeCheck, Loader2 } from 'lucide-react';
+import { Camera, Mail, Building, User, Edit2, Shield, Globe, Calendar, BadgeCheck, Loader2, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../utils/supabaseClient';
 
 export default function ProfilePage() {
+    const navigate = useNavigate();
     const { user, updateProfile } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -85,10 +87,18 @@ export default function ProfilePage() {
         }
     };
 
+    const dashPath = user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : '/consultant';
+
     return (
         <div className="page-wrapper">
             <Header />
             <main className="main-content dashboard-page">
+                {/* Dashboard Breadcrumb */}
+                <div className="settings-breadcrumb" onClick={() => navigate(dashPath)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>
+                    <ChevronLeft size={16} />
+                    <span>Back to Dashboard</span>
+                </div>
+
                 <header className="v53-page-header">
                     <h1>Account Settings</h1>
                     <p>Manage your professional identity and security preferences.</p>

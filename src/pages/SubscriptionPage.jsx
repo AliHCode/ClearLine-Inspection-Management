@@ -5,7 +5,8 @@ import Header from '../components/Header';
 import {
     Shield, Calendar, Building2, Clock, Zap, Users,
     CheckCircle, Lock, AlertTriangle, Sparkles,
-    CircleCheck, FileText, BarChart3, Globe, Layers, LifeBuoy, Send
+    CircleCheck, FileText, BarChart3, Globe, Layers, LifeBuoy, Send,
+    ChevronLeft
 } from 'lucide-react';
 
 export default function SubscriptionPage() {
@@ -88,15 +89,23 @@ export default function SubscriptionPage() {
             { icon: <Zap size={16} />, text: 'Real-time push notifications' },
         ];
 
+    const dashPath = user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : '/consultant';
+
     return (
         <div className="page-wrapper premium-dashboard">
             <Header />
-            <main className="dashboard-page" style={{ maxWidth: '860px', margin: '0 auto' }}>
+            <main className="main-content dashboard-page">
+                {/* Dashboard Breadcrumb */}
+                <div className="settings-breadcrumb" onClick={() => navigate(dashPath)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>
+                    <ChevronLeft size={16} />
+                    <span>Back to Dashboard</span>
+                </div>
+
                 {/* Page Header */}
                 <header className="premium-header" style={{ marginBottom: '1.5rem' }}>
                     <div className="welcome-monochrome-container">
                         <span className="welcome-label-mono">Account</span>
-                        <h1 className="welcome-user-mono" style={{ fontSize: '1.6rem' }}>Subscription</h1>
+                        <h1 className="welcome-user-mono" style={{ fontSize: '1.6rem', fontWeight: 700 }}>Subscription</h1>
                     </div>
                 </header>
 
