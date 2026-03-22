@@ -12,7 +12,8 @@ export default function SubscriptionBlocked() {
     const access = checkProjectAccess();
 
     useEffect(() => {
-        if (access.allowed) {
+        // Admins should never see this page even if a project is locked/expired
+        if (user?.role === 'admin' || access.allowed) {
             const home = user?.role === 'admin' ? '/admin' : 
                         user?.role === 'contractor' ? '/contractor' : 
                         user?.role === 'consultant' ? '/consultant' : '/';

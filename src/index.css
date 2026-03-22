@@ -265,8 +265,7 @@ h6 {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-  max-width: 180px;
+  max-width: 400px;
 }
 
 .header-project-selector-pill:hover {
@@ -304,7 +303,7 @@ h6 {
   top: calc(100% + 8px);
   right: 0;
   left: auto;
-  width: 150px;
+  width: 280px;
   max-width: calc(100vw - 1.5rem);
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(12px);

@@ -258,6 +258,7 @@ export default function Header() {
                     )}
 
                     <div className="header-user-info" ref={notifRef}>
+                        <span className="header-username">{user?.name}</span>
                         <NotificationCenter 
                             isOpen={notifMenuOpen} 
                             onToggle={(val) => {
@@ -405,14 +406,16 @@ export default function Header() {
                                     </label>
                                 </div>
                                 
-                                <button
-                                    onClick={() => handleMenuNavigation('/subscription')}
-                                    className={`header-dropdown-item-premium ${location.pathname === '/subscription' ? 'active' : ''}`}
-                                >
-                                    <div className="menu-icon-box"><ShieldCheck size={18} strokeWidth={1.5} /></div>
-                                    <span>Subscription</span>
-                                    <span className="menu-badge-pro">PRO Tier</span>
-                                </button>
+                                {!isAdmin && (
+                                    <button
+                                        onClick={() => handleMenuNavigation('/subscription')}
+                                        className={`header-dropdown-item-premium ${location.pathname === '/subscription' ? 'active' : ''}`}
+                                    >
+                                        <div className="menu-icon-box"><ShieldCheck size={18} strokeWidth={1.5} /></div>
+                                        <span>Subscription</span>
+                                        <span className="menu-badge-pro">PRO Tier</span>
+                                    </button>
+                                )}
 
                                 <button
                                     onClick={() => handleMenuNavigation('/settings')}
@@ -432,7 +435,7 @@ export default function Header() {
                                     className={`header-dropdown-item-premium ${location.pathname === '/support' ? 'active' : ''}`}
                                 >
                                     <div className="menu-icon-box"><LifeBuoy size={18} strokeWidth={1.5} /></div>
-                                    <span>Help & Support</span>
+                                    <span>{isAdmin ? 'Support' : 'Help & Support'}</span>
                                 </button>
 
                                 <button onClick={() => { logout(); navigate('/'); }} className="header-dropdown-item-premium logout">

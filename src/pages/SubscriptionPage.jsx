@@ -15,6 +15,13 @@ export default function SubscriptionPage() {
 
     if (!user || !activeProject) return null;
 
+    // Admins manage subscriptions in the Admin Dashboard, not here.
+    if (user.role === 'admin') {
+        const dashboardTab = '/admin?tab=projects';
+        navigate(dashboardTab, { replace: true });
+        return null;
+    }
+
     const status = activeProject.subscription_status || 'trial';
     const isLocked = activeProject.is_locked;
     const expiryDate = activeProject.subscription_end

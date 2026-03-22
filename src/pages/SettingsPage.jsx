@@ -78,7 +78,8 @@ export default function SettingsPage() {
     return (
         <>
             <Header />
-            <div className="settings-container">
+            <main className={user.role === 'admin' ? 'admin-page' : 'dashboard-page'}>
+                <div className="settings-container" style={{ maxWidth: 'none', margin: '0', padding: '0' }}>
                 <div className="settings-breadcrumb" onClick={() => navigate(dashPath)}>
                     <ChevronLeft size={16} />
                     <span>Back to Dashboard</span>
@@ -168,7 +169,8 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </section>
-            </div>
+                </div>
+            </main>
 
             <MFAEnrollmentModal isOpen={mfaModalOpen} onClose={() => setMfaModalOpen(false)} />
         </>

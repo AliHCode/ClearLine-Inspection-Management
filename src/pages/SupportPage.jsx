@@ -4,6 +4,7 @@ import { useProject } from '../context/ProjectContext';
 import { supabase } from '../utils/supabaseClient';
 import Header from '../components/Header';
 import { toast } from 'react-hot-toast';
+import AdminSupportQueue from '../components/AdminSupportQueue';
 import {
     Send, LifeBuoy, Clock, CheckCircle, AlertCircle,
     ChevronDown, MessageSquare, Sparkles, Tag,
@@ -126,10 +127,27 @@ export default function SupportPage() {
 
     if (!user) return null;
 
+    if (user.role === 'admin') {
+        return (
+            <div className="page-wrapper premium-dashboard">
+                <Header />
+                <main className="admin-page">
+                    <header className="premium-header" style={{ marginBottom: '1.5rem' }}>
+                        <div className="welcome-monochrome-container">
+                            <span className="welcome-label-mono">Management</span>
+                            <h1 className="welcome-user-mono" style={{ fontSize: '1.6rem' }}>Support Queue</h1>
+                        </div>
+                    </header>
+                    <AdminSupportQueue />
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="page-wrapper premium-dashboard">
             <Header />
-            <main className="dashboard-page" style={{ maxWidth: '860px', margin: '0 auto' }}>
+            <main className="dashboard-page">
                 {/* Page Header */}
                 <header className="premium-header" style={{ marginBottom: '1.5rem' }}>
                     <div className="welcome-monochrome-container">
