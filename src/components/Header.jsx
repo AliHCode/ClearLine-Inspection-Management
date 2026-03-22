@@ -163,7 +163,7 @@ export default function Header() {
                     else toast.error("Failed to subscribe: " + res.status);
                 } catch (error) {
                     console.error('Error syncing push subscription:', error);
-                    toast.error("Failed to sync push subscription.");
+                    toast.error(`Failed to sync: ${error.message || error.statusText || 'Unknown error'}`);
                 }
             }
             await refreshPushBadge();
@@ -181,7 +181,7 @@ export default function Header() {
                 else toast.error("Failed to subscribe: " + res.status);
             } catch (error) {
                 console.error('Error syncing push subscription:', error);
-                toast.error("Failed to subscribe to push notifications.");
+                toast.error(`Failed to subscribe: ${error.message || error.statusText || 'Unknown error'}`);
             }
             await refreshPushBadge();
             return;
