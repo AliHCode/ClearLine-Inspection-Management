@@ -323,20 +323,7 @@ export default function LoginPage() {
             </div>
 
             <div className="auth-branding-section">
-                <img 
-                    src="https://images.unsplash.com/photo-1541888946425-d81bb19480c5?q=80&w=2070&auto=format&fit=crop" 
-                    alt="Construction Site" 
-                    className="auth-branding-image" 
-                />
-                <div className="auth-branding-content">
-                    <h1 className="auth-hero-title">
-                        The Future of<br/>Inspection Management
-                    </h1>
-                    <p className="auth-hero-description">
-                        Streamline your RFI workflows, automate inspections, 
-                        and track project progress with our all-in-one suite.
-                    </p>
-                </div>
+                {/* Image only branding */}
             </div>
         </div>
     );

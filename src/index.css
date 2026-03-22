@@ -3095,8 +3095,7 @@ input:checked+.premium-slider:before {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: #f9f7f2;
-  /* Warm Editorial Cream */
+  background-color: #f9f7f2; /* Seamless Editorial Cream */
   overflow-x: hidden;
   font-family: var(--font-sans);
   transition: flex-direction 0.5s ease-in-out;
@@ -3125,8 +3124,8 @@ input:checked+.premium-slider:before {
   display: flex;
   justify-content: center;
   /* Center logo to avoid overlap with centered text */
-  margin-bottom: 3.5rem;
-  /* Increased margin */
+  margin-bottom: 0.5rem;
+  /* Reduced from 3.5rem */
   width: 100%;
 }
 
@@ -3145,7 +3144,7 @@ input:checked+.premium-slider:before {
 
 .auth-form-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 1.25rem; /* Reduced from 3rem */
 }
 
 .auth-form-title {
@@ -3154,7 +3153,7 @@ input:checked+.premium-slider:before {
   /* Reduced from 800 */
   color: #111827;
   /* Dark Navy/Black */
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.25rem; /* Reduced from 0.75rem */
   letter-spacing: -0.02em;
   font-family: var(--font-sans);
 }
@@ -3169,16 +3168,13 @@ input:checked+.premium-slider:before {
 .auth-branding-section {
   position: relative;
   flex: 1.2;
-  /* Make the image area slightly wider */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem;
-  background-color: var(--clr-brand-secondary);
-  /* Use a placeholder image similar to the reference's interior/architecture vibe */
-  background-image: url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop');
-  background-size: cover;
+  /* Pure image branding - no content padding or flex center */
+  padding: 0;
+  background-image: url('/authpage.png');
+  background-size: contain; /* Don't zoom - make it fit */
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #f9f7f2; /* Matches container - no blue edges */
   color: #ffffff;
   overflow: hidden;
   /* Specific rounded corners mimicking the reference */
@@ -3190,14 +3186,7 @@ input:checked+.premium-slider:before {
   /* Subtle shadow on the left edge */
 }
 
-/* Dark overlay for text readability */
-.auth-branding-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
-  z-index: 1;
-}
+/* Overlay block removed for clean image-only display */
 
 .auth-branding-content {
   position: relative;
@@ -3337,19 +3326,19 @@ input:checked+.premium-slider:before {
 .auth-form-premium {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.25rem; /* Reduced from 1.75rem */
 }
 
 .auth-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  gap: 0.75rem; /* Reduced from 1.25rem */
 }
 
 .auth-input-group {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.4rem; /* Reduced from 0.6rem */
 }
 
 .auth-input-group label {
@@ -3443,8 +3432,7 @@ input:checked+.premium-slider:before {
   gap: 0.75rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-top: 2.5rem;
-  /* Increased spacing */
+  margin-top: 1.25rem; /* Reduced from 2.5rem */
 }
 
 
@@ -3456,7 +3444,7 @@ input:checked+.premium-slider:before {
 
 .auth-switch-view {
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 1.25rem; /* Reduced from 2rem */
   font-size: 1rem;
   color: #6b7280;
 }
@@ -3474,7 +3462,7 @@ input:checked+.premium-slider:before {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem; /* Reduced from 1rem */
 }
 
 .auth-checkbox-row input[type="checkbox"] {
@@ -3494,49 +3482,7 @@ input:checked+.premium-slider:before {
 
 
 /* --- Branding Section --- */
-.auth-branding-section {
-  flex: 1.2;
-  position: relative;
-  background-color: #111827;
-  overflow: hidden;
-}
-
-.auth-branding-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.6;
-}
-
-.auth-branding-content {
-  position: absolute;
-  inset: 0;
-  padding: 6rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: #ffffff;
-  z-index: 2;
-}
-
-.auth-hero-title {
-  font-size: clamp(2.5rem, 4vw, 3.5rem);
-  line-height: 1.1;
-  font-weight: 600;
-  /* Reduced from 800 */
-  margin-bottom: 2rem;
-  letter-spacing: -0.02em;
-  font-family: var(--font-sans);
-}
-
-.auth-hero-description {
-  font-size: 1.25rem;
-  line-height: 1.6;
-  opacity: 0.8;
-  max-width: 500px;
-}
+/* Redundant branding section overrides removed to ensure consistent theme */
 
 @keyframes authFadeInRight {
   from {

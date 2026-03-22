@@ -40,22 +40,7 @@ export default function PendingApproval() {
             </div>
 
             <div className="auth-branding-section">
-                <img 
-                    src="https://images.unsplash.com/photo-1541888946425-d81bb19480c5?q=80&w=2070&auto=format&fit=crop" 
-                    alt="Construction Site" 
-                    className="auth-branding-image" 
-                />
-                <div className="auth-branding-content">
-                    <h1 className="auth-hero-title">
-                        {isRejected ? "Access Declined" : "Review in Progress"}
-                    </h1>
-                    <p className="auth-hero-description">
-                        {isRejected 
-                            ? "Your application for workspace access could not be approved at this time. Please check your email for details."
-                            : `Welcome, ${firstName}. Your credentials have been received and are currently being verified by our team.`
-                        }
-                    </p>
-                </div>
+                {/* Image only branding */}
             </div>
         </div>
     );
