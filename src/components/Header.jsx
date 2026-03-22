@@ -412,7 +412,12 @@ export default function Header() {
                                     >
                                         <div className="menu-icon-box"><ShieldCheck size={18} strokeWidth={1.5} /></div>
                                         <span>Subscription</span>
-                                        <span className="menu-badge-pro">PRO Tier</span>
+                                        <div className="menu-badge-group">
+                                            <span className={`menu-badge-status ${activeProject?.subscription_status || 'trial'}`}>
+                                                {activeProject?.subscription_status || 'trial'}
+                                            </span>
+                                            <span className="menu-badge-pro">PRO Tier</span>
+                                        </div>
                                     </button>
                                 )}
 

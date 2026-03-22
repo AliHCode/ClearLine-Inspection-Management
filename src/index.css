@@ -1054,16 +1054,51 @@ input:checked + .premium-slider:before {
   border: 1px solid var(--clr-border);
 }
 
-.menu-badge-pro {
+.menu-badge-group {
   margin-left: auto;
-  background: #dcfce7;
-  color: #15803d;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.menu-badge-status {
   font-size: 0.65rem;
   font-weight: 800;
   padding: 0.1rem 0.5rem;
   border-radius: 0.4rem;
-  border: 1px solid #bbf7d0;
+  border: 1px solid transparent;
+  text-transform: capitalize;
   letter-spacing: 0.02em;
+}
+
+.menu-badge-status.trial {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.menu-badge-status.active {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.menu-badge-status.expired {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.menu-badge-pro {
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid #e5e7eb;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .header-dropdown-item-premium.logout {
