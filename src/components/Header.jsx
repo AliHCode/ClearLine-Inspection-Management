@@ -416,7 +416,6 @@ export default function Header() {
                                             <span className={`menu-badge-status ${activeProject?.subscription_status || 'trial'}`}>
                                                 {activeProject?.subscription_status || 'trial'}
                                             </span>
-                                            <span className="menu-badge-pro">PRO Tier</span>
                                         </div>
                                     </button>
                                 )}
