@@ -67,8 +67,8 @@ export default function NotificationPrompt() {
         <div className="notif-overlay-v2">
             <div className="notif-modal-v2">
                 <div className="notif-modal-header">
-                    <div className="notif-modal-icon">
-                        <BellRing className="pulse-icon" size={32} />
+                    <div className="notif-modal-icon-container">
+                        <img src="/notifications.png" alt="Stay in the Loop" className="notif-modal-img" />
                     </div>
                     <button className="notif-modal-close" onClick={handleDismiss}>
                         <X size={20} />
@@ -78,9 +78,8 @@ export default function NotificationPrompt() {
                 <div className="notif-modal-body">
                     <h2>Stay in the Loop</h2>
                     <p>
-                        Enable real-time push notifications to receive instant updates on 
-                        RFI approvals, rejections, and direct mentions even when you're 
-                        not actively using the app.
+                        Enable push notifications to receive real-time updates on 
+                        RFI approvals and direct mentions.
                     </p>
                 </div>
 
