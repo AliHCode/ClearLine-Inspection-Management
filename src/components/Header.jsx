@@ -232,12 +232,20 @@ export default function Header() {
                         )}
 
                         {isConsultant && (
-                            <button
-                                onClick={() => handleMenuNavigation('/consultant/review')}
-                                className={`desktop-nav-link ${location.pathname.includes('review') ? 'active' : ''}`}
-                            >
-                                Review RFI
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => handleMenuNavigation('/consultant/review')}
+                                    className={`desktop-nav-link ${location.pathname.includes('review') ? 'active' : ''}`}
+                                >
+                                    Review RFI
+                                </button>
+                                <button
+                                    onClick={() => handleMenuNavigation('/consultant/rejection-journey')}
+                                    className={`desktop-nav-link ${location.pathname.includes('rejection-journey') ? 'active' : ''}`}
+                                >
+                                    Rejection Journey
+                                </button>
+                            </>
                         )}
 
                         {(isConsultant || isContractor) && (
@@ -253,12 +261,26 @@ export default function Header() {
                         )}
 
                         {isAdmin && (
-                            <button
-                                onClick={() => handleMenuNavigation('/admin/users')}
-                                className={`desktop-nav-link ${location.pathname === '/admin/users' ? 'active' : ''}`}
-                            >
-                                Users
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => handleMenuNavigation('/admin/users')}
+                                    className={`desktop-nav-link ${location.pathname === '/admin/users' ? 'active' : ''}`}
+                                >
+                                    Users
+                                </button>
+                                <button
+                                    onClick={() => handleMenuNavigation('/admin/export-format')}
+                                    className={`desktop-nav-link ${location.pathname === '/admin/export-format' ? 'active' : ''}`}
+                                >
+                                    Export Format
+                                </button>
+                                <button
+                                    onClick={() => handleMenuNavigation('/admin/registered-devices')}
+                                    className={`desktop-nav-link ${location.pathname === '/admin/registered-devices' ? 'active' : ''}`}
+                                >
+                                    Devices
+                                </button>
+                            </>
                         )}
                     </nav>
                 </div>
