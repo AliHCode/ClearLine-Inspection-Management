@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { useAuth } from '../context/AuthContext';
 import InstallAppPrompt from './InstallAppPrompt';
+import NotificationPrompt from './NotificationPrompt';
 
 function ConnectivityBanner() {
     const [isOnline, setIsOnline] = useState(window.navigator.onLine);
@@ -184,6 +185,7 @@ export default function AppExperienceEnhancements() {
         <>
             <ConnectivityBanner />
             <InstallAppPrompt />
+            <NotificationPrompt />
         </>
     );
 }

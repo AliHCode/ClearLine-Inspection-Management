@@ -198,25 +198,69 @@ export default function Header() {
             return;
         }
 
-        const isCurrentlyDashboard = location.pathname === dashPath;
-
-        if (isCurrentlyDashboard) {
-            // Dashboard -> Spoke: PUSH
-            navigate(targetPath);
-        } else {
-            // Spoke -> Spoke: REPLACE
-            // Spoke -> Dashboard: REPLACE (so back button doesn't trap you in Spokes)
-            navigate(targetPath, { replace: true });
-        }
+        navigate(targetPath);
         setMenuOpen(false);
     };
 
     return (
         <>
             <header className="app-header">
-                <div className="header-left" onClick={() => handleMenuNavigation(dashPath)} style={{ padding: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <img src="/dashboardlogo.png" alt="ProWay Logo" className="header-logo-img" style={{ height: '38px', objectFit: 'contain' }} />
+                <div className="header-left">
+                    <img 
+                        src="/dashboardlogo.png" 
+                        alt="ProWay Logo" 
+                        className="header-logo-img" 
+                        onClick={() => handleMenuNavigation(dashPath)}
+                    />
                     
+                    {/* Desktop Horizontal Navigation */}
+                    <nav className="header-desktop-nav">
+                        <button
+                            onClick={() => handleMenuNavigation(dashPath)}
+                            className={`desktop-nav-link ${location.pathname === dashPath ? 'active' : ''}`}
+                        >
+                            Dashboard
+                        </button>
+
+                        {isContractor && (
+                            <button
+                                onClick={() => handleMenuNavigation('/contractor/rfi-sheet')}
+                                className={`desktop-nav-link ${location.pathname.includes('rfi-sheet') ? 'active' : ''}`}
+                            >
+                                Daily RFI Sheet
+                            </button>
+                        )}
+
+                        {isConsultant && (
+                            <button
+                                onClick={() => handleMenuNavigation('/consultant/review')}
+                                className={`desktop-nav-link ${location.pathname.includes('review') ? 'active' : ''}`}
+                            >
+                                Review RFI
+                            </button>
+                        )}
+
+                        {(isConsultant || isContractor) && (
+                            <button
+                                onClick={() => { 
+                                    const path = isContractor ? '/contractor/summary' : '/consultant/summary';
+                                    handleMenuNavigation(path); 
+                                }}
+                                className={`desktop-nav-link ${location.pathname.includes('summary') ? 'active' : ''}`}
+                            >
+                                Summary
+                            </button>
+                        )}
+
+                        {isAdmin && (
+                            <button
+                                onClick={() => handleMenuNavigation('/admin/users')}
+                                className={`desktop-nav-link ${location.pathname === '/admin/users' ? 'active' : ''}`}
+                            >
+                                Users
+                            </button>
+                        )}
+                    </nav>
                 </div>
 
                 <div className="header-right-group">
@@ -271,7 +315,8 @@ export default function Header() {
                     </div>
 
                     <div className="header-menu-wrap" ref={menuRef}>
-                        <button className="header-menu-btn" onClick={() => { 
+                        {/* Mobile Hamburger Button */}
+                        <button className="header-menu-btn mobile-only" onClick={() => { 
                             const newState = !menuOpen;
                             setMenuOpen(newState); 
                             setProjectMenuOpen(false); 
@@ -279,8 +324,27 @@ export default function Header() {
                         }}>
                             {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
                         </button>
-                    {menuOpen && (
-                        <div className="header-dropdown premium-menu">
+
+                        {/* Desktop User Identity Trigger (Avatar + Name) */}
+                        <button className="header-user-trigger desktop-only" onClick={() => {
+                            const newState = !menuOpen;
+                            setMenuOpen(newState);
+                            setProjectMenuOpen(false);
+                            setNotifMenuOpen(false);
+                        }}>
+                            <div className="header-avatar-mini">
+                                {user.avatar_url ? (
+                                    <img src={user.avatar_url} alt={user.name} />
+                                ) : (
+                                    nameInitials
+                                )}
+                            </div>
+                            <span className="header-user-name">{user.name || 'User'}</span>
+                            <ChevronDown size={14} className={`chevron-icon ${menuOpen ? 'open' : ''}`} />
+                        </button>
+
+                        {menuOpen && (
+                            <div className="header-dropdown premium-menu">
                             <div className="header-dropdown-info">
                                 <div 
                                     className="header-identity-card-premium" 
@@ -306,8 +370,8 @@ export default function Header() {
                                 </div>
                             </div>
                             
-                            {/* Section 1: Core Navigation */}
-                            <div className="menu-section">
+                            {/* Section 1: Core Navigation (Mobile Only) */}
+                            <div className="menu-section mobile-nav-items">
                                 <button
                                     onClick={() => handleMenuNavigation(dashPath)}
                                     className={`header-dropdown-item-premium ${location.pathname === dashPath ? 'active' : ''}`}
@@ -445,12 +509,12 @@ export default function Header() {
                                     <div className="menu-icon-box"><Power size={18} strokeWidth={1.5} /></div>
                                     <span>Sign Out</span>
                                 </button>
-                            </div>
                         </div>
-                    )}
                     </div>
+                )}
                 </div>
-            </header>
+            </div>
+        </header>
             <div className="app-header-spacer"></div>
             <MFAEnrollmentModal isOpen={mfaModalOpen} onClose={() => setMfaModalOpen(false)} />
         </>
