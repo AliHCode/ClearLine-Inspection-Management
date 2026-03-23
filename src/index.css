@@ -10585,10 +10585,8 @@ body,
 }
 
 .notif-modal-img {
-  width: 120px;
+  width: 180px;
   height: auto;
-  border-radius: 28px;
-  box-shadow: var(--shadow-md);
   margin-bottom: 0.5rem;
 }
 
