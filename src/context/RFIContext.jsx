@@ -951,17 +951,18 @@ export function RFIProvider({ children }) {
                         ];
 
                         const { error } = await supabase.from('rfis').update({
-                            status: RFI_STATUS.APPROVED,
+                            status: payload.status || RFI_STATUS.APPROVED,
                             reviewed_by: payload.reviewedBy,
                             reviewed_at: getNowLocalISO(),
                             remarks: payload.remarks?.trim() ? payload.remarks.trim() : null,
                             carryover_to: null,
                             images: mergedImages,
+                            assigned_to: payload.assignedTo || targetRfi?.assignedTo
                         }).eq('id', payload.rfiId);
                         if (error) throw error;
 
                         if (targetRfi) {
-                            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.APPROVED, payload.remarks);
+                            await notifyContractorAboutStatusChange(targetRfi, payload.status || RFI_STATUS.APPROVED, payload.remarks);
                         }
                     }
 
@@ -1003,7 +1004,7 @@ export function RFIProvider({ children }) {
     }, [activeProject, fetchAllRFIs, normalizeImagesForSubmission, rfis]);
 
     /** Approve an RFI */
-    async function approveRFI(rfiId, reviewedBy, remarks = '', consultantAttachments = []) {
+    async function approveRFI(rfiId, reviewedBy, remarks = '', consultantAttachments = [], assignedTo = null) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
@@ -1022,6 +1023,7 @@ export function RFIProvider({ children }) {
                     reviewedBy,
                     remarks,
                     consultantAttachments: queuedAttachments,
+                    assignedTo
                 },
             });
 
@@ -1033,6 +1035,7 @@ export function RFIProvider({ children }) {
                         reviewedBy,
                         reviewedAt: getNowLocalISO(),
                         remarks: remarks?.trim() ? remarks.trim() : null,
+                        assignedTo: assignedTo || r.assignedTo
                       }
                     : r
             )));
@@ -1053,6 +1056,7 @@ export function RFIProvider({ children }) {
                 remarks: remarks?.trim() ? remarks.trim() : null,
                 carryover_to: null,
                 images: mergedImages,
+                assigned_to: assignedTo || targetRfi.assignedTo
             }).eq('id', rfiId);
             if (error) throw error;
 
@@ -1133,7 +1137,7 @@ export function RFIProvider({ children }) {
     }
 
     /** Cancel an RFI with mandatory reason */
-    async function cancelRFI(rfiId, reviewedBy, reason) {
+    async function cancelRFI(rfiId, reviewedBy, reason, assignedTo = null) {
         const targetRfi = rfis.find(r => r.id === rfiId);
         if (!targetRfi) return;
 
@@ -1153,7 +1157,7 @@ export function RFIProvider({ children }) {
                         reviewed_by: reviewedBy,
                         reviewed_at: getNowLocalISO(),
                         remarks: reason,
-                        assigned_to: targetRfi.assignedTo,
+                        assigned_to: assignedTo || targetRfi.assignedTo,
                     }
                 },
             });
@@ -1166,6 +1170,7 @@ export function RFIProvider({ children }) {
                         reviewedBy,
                         reviewedAt: getNowLocalISO(),
                         remarks: reason,
+                        assignedTo: assignedTo || r.assignedTo
                       }
                     : r
             )));
@@ -1178,7 +1183,8 @@ export function RFIProvider({ children }) {
                 status: RFI_STATUS.CANCELLED,
                 reviewed_by: reviewedBy,
                 reviewed_at: getNowLocalISO(),
-                remarks: reason
+                remarks: reason,
+                assigned_to: assignedTo || targetRfi.assignedTo
             }).eq('id', rfiId);
             
             if (error) throw error;
@@ -1522,6 +1528,7 @@ export function RFIProvider({ children }) {
             if (updates.status !== undefined) dbUpdates.status = updates.status;
             if (updates.reviewedBy !== undefined) dbUpdates.reviewed_by = updates.reviewedBy;
             if (updates.reviewedAt !== undefined) dbUpdates.reviewed_at = updates.reviewedAt;
+            if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
             if (updates.carryoverTo !== undefined || updates.carryover_to !== undefined) {
                 dbUpdates.carryover_to = updates.carryoverTo !== undefined ? updates.carryoverTo : updates.carryover_to;
             }
@@ -1568,6 +1575,7 @@ export function RFIProvider({ children }) {
                         status: updates.status !== undefined ? updates.status : r.status,
                         reviewedBy: updates.reviewedBy !== undefined ? updates.reviewedBy : r.reviewedBy,
                         reviewedAt: updates.reviewedAt !== undefined ? updates.reviewedAt : r.reviewedAt,
+                        assignedTo: updates.assignedTo !== undefined ? updates.assignedTo : r.assignedTo,
                         carryoverTo: (updates.carryoverTo !== undefined) ? updates.carryoverTo : (updates.carryover_to !== undefined ? updates.carryover_to : r.carryoverTo),
                     };
                 }));
@@ -1597,7 +1605,7 @@ export function RFIProvider({ children }) {
 
             await logAuditEvent(rfiId, 'updated', { 
                 updates: Object.keys(dbUpdates),
-                statusChanged: statusChanged ? updates.status : null 
+                statusChanged: statusChangedForNotification ? updates.status : null 
             });
 
             await fetchAllRFIs();

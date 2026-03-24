@@ -253,11 +253,12 @@ export default function ReviewQueue() {
         }
     };
 
-    async function handleApprove(rfiId, remarks, files = [], status = 'approved') {
+    async function handleApprove(rfiId, remarks, files = [], status = 'approved', assignedTo) {
         const updatePayload = {
             status,
             reviewedBy: user.id,
             reviewedAt: getNowLocalISO(),
+            assignedTo,
             carryoverTo: null,
             remarks: remarks?.trim() || ''
         };
@@ -275,8 +276,8 @@ export default function ReviewQueue() {
         setTimeout(() => setActionMessage(''), 3000);
     }
 
-    async function handleCancel(rfiId, reason) {
-        await cancelRFI(rfiId, user.id, reason);
+    async function handleCancel(rfiId, reason, assignedTo) {
+        await cancelRFI(rfiId, user.id, reason, assignedTo);
         setCancelTarget(null);
         setActionMessage('🚫 RFI Cancelled (Terminal State)');
         setTimeout(() => setActionMessage(''), 3000);
@@ -979,7 +980,8 @@ export default function ReviewQueue() {
                     key={cancelTarget.id}
                     isOpen={!!cancelTarget}
                     rfi={cancelTarget}
-                    onConfirm={(reason) => handleCancel(cancelTarget.id, reason)}
+                    contractors={contractors}
+                    onConfirm={(reason, assignedTo) => handleCancel(cancelTarget.id, reason, assignedTo)}
                     onClose={() => setCancelTarget(null)}
                 />
             )}

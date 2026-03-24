@@ -49,6 +49,7 @@ function PillTag({ children }) {
 export default function ApproveModal({ rfi, onApprove, onClose, contractors = [], mode = 'full' }) {
     const [remarks, setRemarks] = useState('');
     const [files, setFiles] = useState([]);
+    const [assignedTo, setAssignedTo] = useState(rfi.filedBy || '');
     const [markupIndex, setMarkupIndex] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
@@ -60,7 +61,7 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
     }
     function handleSubmit(e) {
         e?.preventDefault();
-        onApprove(rfi.id, remarks.trim(), files, mode === 'conditional' ? 'conditional_approve' : 'approved');
+        onApprove(rfi.id, remarks.trim(), files, mode === 'conditional' ? 'conditional_approve' : 'approved', assignedTo);
         onClose();
     }
     function getPreviewUrl(file) { return typeof file === 'string' ? file : URL.createObjectURL(file); }
@@ -75,6 +76,7 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
     const focusShadow = isConditional ? 'rgba(249,115,22,0.15)' : 'rgba(5,150,105,0.15)';
     const title = isConditional ? 'Conditionally Approve' : 'Approve Inspection';
     const confirmLabel = isConditional ? 'Confirm Conditions' : 'Confirm Approval';
+    const canSubmit = isConditional ? (remarks.trim() && assignedTo) : assignedTo;
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
@@ -103,6 +105,23 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
                     <div className="ram-pills">
                         <PillTag><span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>TYPE</span> {rfi.inspectionType}</PillTag>
                         <PillTag><span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>FILED BY</span> <span style={{ width:20, height:20, borderRadius:'50%', background:'#3b82f6', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', color:'#fff', fontWeight:700 }}>{(rfi.filerName||'?')[0].toUpperCase()}</span>{rfi.filerName}</PillTag>
+                    </div>
+
+                    {/* Assign To */}
+                    <div className="ram-field">
+                        <SectionLabel>Action Assigned To <span style={{ color: '#ef4444' }}>*</span></SectionLabel>
+                        <select
+                            className="ram-select"
+                            value={assignedTo}
+                            onChange={e => setAssignedTo(e.target.value)}
+                            onFocus={e => { e.target.style.borderColor = accentColor; e.target.style.boxShadow = `0 0 0 3px ${focusShadow}`; }}
+                            onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                        >
+                            <option value="" disabled>Select Contractor to Notify</option>
+                            {contractors.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.company})</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Remarks */}
