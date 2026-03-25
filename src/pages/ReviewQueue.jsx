@@ -597,7 +597,7 @@ export default function ReviewQueue() {
                             onMouseEnter={e => { e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#f9fafb'; }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
                         >
-                            <MessageSquare size={15} />
+                            <ClipboardList size={15} />
                         </button>
                     )}
                 </div>
@@ -872,7 +872,7 @@ export default function ReviewQueue() {
                                             <th key={col.id || col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
                                         ))}
                                         <th className="col-assign">Assigned To</th>
-                                        <th className="col-status">Filed</th>
+                                        <th className="col-status">SUBMISSION DATE</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -911,7 +911,7 @@ export default function ReviewQueue() {
                                                         <span className="text-muted">— Auto —</span>
                                                     )}
                                                 </td>
-                                                <td className="col-status" data-label="Filed Date">{formatDateDisplay(rfi.originalFiledDate)}</td>
+                                                <td className="col-status" data-label="Submission Date">{formatDateDisplay(rfi.originalFiledDate)}</td>
                                             </tr>
                                         );
                                     })}

@@ -2830,9 +2830,15 @@ input:checked+.premium-slider:before {
    MOBILE LANDSCAPE FULLSCREEN (V74)
    ============================================ */
 .is-fullscreen-page {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
   background: var(--clr-bg) !important;
-  width: 100vw !important;
-  height: 100vh !important;
+  width: 100% !important;
+  height: 100% !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   display: flex !important;
@@ -2842,13 +2848,22 @@ input:checked+.premium-slider:before {
 .is-fullscreen-page .sheet-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   background: var(--clr-bg);
-  padding: 1rem 1.5rem 0.5rem 1.5rem;
-  /* Match typical sheet padding */
+  padding: 1rem 1.5rem 0.55rem;
+  /* Match typical sheet padding but ensure it's tight */
   margin: 0;
-  /* Remove default top margin inside fullscreen to avoid gap */
   border-bottom: 1px solid var(--clr-border);
+}
+
+@media (max-width: 768px) {
+  .is-fullscreen-page .sheet-header {
+    padding: 0.75rem 0.5rem 0.5rem !important;
+  }
+  
+  .is-fullscreen-page .rfi-table-wrapper {
+    padding: 0 !important;
+  }
 }
 
 .is-fullscreen-page .rfi-table-wrapper {

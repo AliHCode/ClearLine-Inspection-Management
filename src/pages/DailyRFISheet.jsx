@@ -402,7 +402,7 @@ export default function DailyRFISheet() {
     const newEntryColumns = orderedTableColumns.filter(col => !NEW_ENTRY_SKIP_COLS.includes(col.field_key));
 
     const displayTableColumns = (() => {
-        const cols = activeTab === 'rejected' ? (() => {
+        let cols = activeTab === 'rejected' ? (() => {
             const list = [...orderedTableColumns];
             const actionsIdx = list.findIndex(c => c.field_key === 'actions');
             if (actionsIdx !== -1) {
@@ -418,6 +418,11 @@ export default function DailyRFISheet() {
             }
             return list;
         })() : [...orderedTableColumns];
+
+        // Filter out remarks and attachments for the 'daily' (Filed RFIs) tab as requested
+        if (activeTab === 'daily') {
+            cols = cols.filter(c => c.field_key !== 'remarks' && c.field_key !== 'attachments');
+        }
 
         // Add "Assigned To" at the very end if not already present
         if (!cols.find(c => c.field_key === 'assigned_to')) {
@@ -507,7 +512,7 @@ export default function DailyRFISheet() {
                                     </button>
                                 )}
                                 <button className="btn btn-sm btn-ghost" onClick={() => { setDetailTarget(rfi); setEditTarget(null); setMarkupTarget(null); scrollToPageBottom(); }} title="Open Discussion">
-                                    <MessageSquare size={14} />
+                                    <ClipboardList size={14} />
                                 </button>
                             </div>
                         </td>
@@ -518,7 +523,7 @@ export default function DailyRFISheet() {
                     <td key={col.field_key} style={style}>
                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                             <button className="btn btn-sm btn-ghost" onClick={() => { setDetailTarget(rfi); setEditTarget(null); setMarkupTarget(null); scrollToPageBottom(); }} title="Open Discussion">
-                                <MessageSquare size={14} />
+                                <ClipboardList size={14} />
                             </button>
                             {rfi.status === RFI_STATUS.REJECTED && (
                                 <button className="btn btn-sm btn-action" onClick={(e) => handleCreateRevision(rfi, e)} title="Create new revision from this rejected RFI" style={{ backgroundColor: 'var(--clr-brand-primary)', color: 'white', borderColor: 'var(--clr-brand-primary)' }}>

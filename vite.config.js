@@ -25,13 +25,13 @@ export default defineConfig({
                 name: 'ProWay Inspections',
                 short_name: 'ProWay',
                 description: 'RFI Management System for Construction',
-                theme_color: '#111827',
+                theme_color: '#FAFAFA',
                 background_color: '#FAFAFA',
                 display: 'standalone',
                 display_override: ['standalone', 'minimal-ui', 'browser'],
                 icons: [
-                    { src: '/favicon.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-                    { src: '/dashboardlogo.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                    { src: '/favicon.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: '/dashboardlogo.png', sizes: '512x512', type: 'image/png', purpose: 'any' }
                 ]
             }
         })
