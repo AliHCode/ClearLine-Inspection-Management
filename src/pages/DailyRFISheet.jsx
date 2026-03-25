@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import { getToday, formatDateDisplay } from '../utils/rfiLogic';
@@ -12,12 +12,13 @@ import RFIDetailModal from '../components/RFIDetailModal';
 import EditRFIModal from '../components/EditRFIModal';
 import FieldMarkupStudio from '../components/FieldMarkupStudio';
 import CreateRevisionModal from '../components/CreateRevisionModal';
-import { Plus, Trash2, Send, RefreshCw, X, MessageSquare, FileDown, Table, ClipboardList, Brush, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Send, RefreshCw, X, MessageSquare, FileDown, Table, ClipboardList, Brush, Maximize2, Minimize2, RotateCcw, List } from 'lucide-react';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
 import { useProject } from '../context/ProjectContext';
 
 export default function DailyRFISheet() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const { activeProject, projectFields, orderedTableColumns, getTableColumnStyle, columnWidthMap } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
@@ -47,17 +48,24 @@ export default function DailyRFISheet() {
 
     const [activeTab, setActiveTab] = useState('daily');
     const [revisionTarget, setRevisionTarget] = useState(null);
+    const [showAllRejected, setShowAllRejected] = useState(false);
 
     const { newRfis } = getRFIsForDate(currentDate);
 
-    // Gather all actionable rejected or conditionally approved RFIs (no child revision/resolution)
-    const actionableRfis = (rfis || []).filter(r => 
-        r.filedBy === user.id && 
-        (r.status === RFI_STATUS.REJECTED || r.status === RFI_STATUS.CONDITIONAL_APPROVE)
-    );
-    const activeRejectedRfis = actionableRfis.filter(
-        item => !rfis.some(r => r.parentId === item.id)
-    ).sort((a, b) => new Date(a.filedDate) - new Date(b.filedDate)); // Oldest first
+    const activeRejectedRfis = useMemo(() => {
+        let items = (rfis || []).filter(r => 
+            r.filedBy === user.id && 
+            (r.status === RFI_STATUS.REJECTED || r.status === RFI_STATUS.CONDITIONAL_APPROVE) &&
+            !rfis.some(child => child.parentId === r.id)
+        );
+
+        if (!showAllRejected) {
+            // Default: Only show items reviewed/rejected on the selected timeline date
+            items = items.filter(r => r.reviewedAt && r.reviewedAt.startsWith(currentDate));
+        }
+
+        return items.sort((a, b) => new Date(a.filedDate) - new Date(b.filedDate));
+    }, [rfis, user.id, currentDate, showAllRejected]);
 
     // Current date's new RFIs (exclude superseded/revised ones)
     const dailyRfis = newRfis.filter(r => 
@@ -273,6 +281,7 @@ export default function DailyRFISheet() {
     useEffect(() => {
         // If the timeline date changes, close any previously opened discussion modal.
         setDetailTarget(null);
+        setShowAllRejected(false); // Default back to today's view on date change
     }, [currentDate]);
 
     useEffect(() => {
@@ -419,8 +428,8 @@ export default function DailyRFISheet() {
             return list;
         })() : [...orderedTableColumns];
 
-        // Filter out remarks and attachments for the 'daily' (Filed RFIs) tab as requested
-        if (activeTab === 'daily') {
+        // Filter out remarks and attachments for both Daily and Rejected as they are in the Discussion modal
+        if (activeTab === 'daily' || activeTab === 'rejected') {
             cols = cols.filter(c => c.field_key !== 'remarks' && c.field_key !== 'attachments');
         }
 
@@ -707,6 +716,30 @@ export default function DailyRFISheet() {
                                 {pendingSyncCount} offline
                             </span>
                         )}
+
+                        {activeTab === 'rejected' && (
+                            <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button
+                                    className={`btn btn-sm ${showAllRejected ? 'btn-primary' : ''}`}
+                                    style={{ 
+                                        borderRadius: '0.6rem', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.45rem', 
+                                        fontWeight: '600', 
+                                        padding: '0.4rem 0.85rem',
+                                        backgroundColor: showAllRejected ? 'var(--clr-brand-primary)' : '#f8fafc',
+                                        color: showAllRejected ? 'white' : '#1e293b',
+                                        border: '1px solid #e2e8f0'
+                                    }}
+                                    onClick={() => setShowAllRejected(!showAllRejected)}
+                                    title={showAllRejected ? "Showing All History" : "Show All Rejected RFIs"}
+                                >
+                                    <List size={17} /> {showAllRejected ? 'Showing All' : 'All RFI'}
+                                </button>
+                            </div>
+                        )}
+
                         {currentRfis.length > 0 && (
                             <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button
@@ -734,7 +767,7 @@ export default function DailyRFISheet() {
                                 </button>
                             </div>
                         )}
-                        <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} showArrows={true} />
+                        <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} showArrows={true} disabled={activeTab === 'rejected' && showAllRejected} />
                     </div>
                 </div>
 

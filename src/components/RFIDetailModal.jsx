@@ -314,13 +314,17 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                                                     <StatusBadge status={item.status} />
                                                 </div>
                                                 <div className="revision-card-meta">
-                                                    <span>{formatDateDisplay(item.filedDate)}</span>
-                                                    {item.filedBy === rfi.filedBy && <span>• Same Filer</span>}
+                                                    <span>
+                                                        {item.status === 'pending' 
+                                                            ? `Filed on ${formatDateDisplay(item.filedDate)}` 
+                                                            : `${item.status === 'rejected' ? 'Rejected' : 'Approved'} on ${formatDateDisplay(item.reviewedAt?.split('T')[0] || item.filedDate)}`}
+                                                    </span>
+                                                    {item.filedBy === rfi.filedBy && <span> • Same Filer</span>}
                                                 </div>
                                                 <div className="revision-card-desc">{item.description}</div>
                                                 {item.remarks && (
                                                     <div className="revision-card-remarks">
-                                                        <strong>Remarks:</strong> {item.remarks}
+                                                        <strong>Feedback:</strong> {item.remarks}
                                                     </div>
                                                 )}
                                                 {item.id === rfi.id && <div className="current-badge">Currently Viewing</div>}

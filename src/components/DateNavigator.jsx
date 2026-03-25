@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { formatDateDisplay, getToday } from '../utils/rfiLogic';
 
-export default function DateNavigator({ currentDate, onDateChange, showArrows = true }) {
+export default function DateNavigator({ currentDate, onDateChange, showArrows = true, disabled = false }) {
     const today = getToday();
     const isToday = currentDate === today;
     const dateInputRef = useRef(null);
@@ -40,7 +40,7 @@ export default function DateNavigator({ currentDate, onDateChange, showArrows = 
     };
 
     return (
-        <div className="date-navigator">
+        <div className={`date-navigator ${disabled ? 'disabled' : ''}`} style={disabled ? { opacity: 0.6, pointerEvents: 'none', filter: 'grayscale(0.5)' } : {}}>
             {showArrows && (
                 <button 
                     className="integrated-nav-btn" 
