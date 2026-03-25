@@ -91,7 +91,7 @@ export default function CancelModal({ isOpen, onClose, onConfirm, rfi, contracto
 
                     {/* Assign To */}
                     <div className="ram-field">
-                        <SectionLabel>Action Assigned To <span style={{ color: '#ef4444' }}>*</span></SectionLabel>
+                        <SectionLabel>Notify Representative <span style={{ color: '#ef4444' }}>*</span></SectionLabel>
                         <select
                             className="ram-select"
                             value={assignedTo}

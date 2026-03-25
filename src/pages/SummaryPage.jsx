@@ -214,9 +214,9 @@ function DateRangePicker({ fromDate, toDate, onChange }) {
 
 // ─── Cell value renderer ───────────────────────────────────────────────────────
 
-function renderCell(rfi, fieldKey) {
+function renderCell(rfi, fieldKey, index) {
     switch (fieldKey) {
-        case 'serial':          return rfi.serialNo ?? '—';
+        case 'serial':          return index + 1;
         case 'description':     return rfi.description || '—';
         case 'location':        return rfi.location || '—';
         case 'inspection_type': return rfi.inspectionType || '—';
@@ -448,11 +448,11 @@ export default function SummaryPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filtered.map(rfi => (
+                                    {filtered.map((rfi, index) => (
                                         <tr key={rfi.id}>
                                             {cols.map(c => (
                                                 <td key={c.field_key}>
-                                                    {renderCell(rfi, c.field_key)}
+                                                    {renderCell(rfi, c.field_key, index)}
                                                 </td>
                                             ))}
                                         </tr>

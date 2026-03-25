@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, Calendar, MapPin, Tag, User, MessageSquare, History, List, Upload, CheckCircle, Ban } from 'lucide-react';
+import { X, Calendar, MapPin, Tag, User, MessageSquare, History, List, Upload, CheckCircle, Ban, ClipboardList, XCircle } from 'lucide-react';
 import ThreadedComments from './ThreadedComments';
 import AuditLog from './AuditLog';
 import StatusBadge from './StatusBadge';
@@ -99,7 +99,57 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
 
                 <div className="modal-body rfi-detail-body">
                     <aside className="rfi-details-pane">
-                        <h4 className="rfi-pane-heading">Inspection Details</h4>
+                        {/* --- NEW: Review Verdict Section (Elevated for Consultants) --- */}
+                        <div className="rfi-verdict-section">
+                            <h4 className="rfi-pane-heading">Review Verdict</h4>
+                            {rfi.status === RFI_STATUS.PENDING ? (
+                                <div className="rfi-verdict-card pending">
+                                    <div className="verdict-status">
+                                        <ClipboardList size={20} />
+                                        <span>Awaiting Review</span>
+                                    </div>
+                                    <p className="verdict-helper">This RFI is currently in the queue and has not been reviewed by a consultant yet.</p>
+                                </div>
+                            ) : (
+                                <div className={`rfi-verdict-card ${rfi.status}`}>
+                                    <div className="verdict-header">
+                                        <div className="verdict-status">
+                                            {rfi.status === RFI_STATUS.APPROVED && <CheckCircle size={20} />}
+                                            {rfi.status === RFI_STATUS.REJECTED && <XCircle size={20} />}
+                                            {rfi.status === RFI_STATUS.CONDITIONAL_APPROVE && <CheckCircle size={20} />}
+                                            <span className="verdict-label">
+                                                {rfi.status === RFI_STATUS.CONDITIONAL_APPROVE ? 'Cond. Approved' : rfi.status.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="verdict-meta">
+                                            Reviewed by {rfi.reviewerName || 'Consultant'}
+                                        </div>
+                                    </div>
+                                    
+                                    {rfi.remarks && (
+                                        <div className="rfi-verdict-remarks">
+                                            <p>"{rfi.remarks}"</p>
+                                        </div>
+                                    )}
+
+                                    {rfi.images && rfi.images.length > 0 && (
+                                        <div className="rfi-verdict-attachments">
+                                            <div className="attachment-label">Proof & Attachments ({rfi.images.length})</div>
+                                            <div className="rfi-attachments-grid mini">
+                                                {rfi.images.map((img, idx) => (
+                                                    <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="rfi-attachment-thumb">
+                                                        <img src={img} alt={`Attachment ${idx + 1}`} />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Inspection Details Section */}
+                        <h4 className="rfi-pane-heading" style={{ marginTop: '1.5rem' }}>Inspection Details</h4>
 
                         <div className="rfi-detail-list">
                             <div className="rfi-detail-item">
@@ -167,25 +217,7 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                             </div>
                         )}
 
-                        {rfi.remarks && rfi.status !== RFI_STATUS.CANCELLED && (
-                            <div className="rfi-latest-remarks">
-                                <div className="rfi-detail-label">Latest Remarks</div>
-                                <div>"{rfi.remarks}"</div>
-                            </div>
-                        )}
 
-                        {rfi.images && rfi.images.length > 0 && (
-                            <div className="rfi-attachments-pane">
-                                <h4 className="rfi-pane-heading">Attachments</h4>
-                                <div className="rfi-attachments-grid">
-                                    {rfi.images.map((img, idx) => (
-                                        <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="rfi-attachment-thumb">
-                                            <img src={img} alt={`Attachment ${idx + 1}`} />
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {rfi.status === RFI_STATUS.CONDITIONAL_APPROVE && user.role === 'contractor' && (rfi.filedBy === user.id || rfi.assignedTo === user.id) && (
                             <div className="rfi-resolve-section" style={{ marginTop: '1.5rem', padding: '1.25rem', background: 'var(--clr-warning-bg)', borderRadius: '12px', border: '1px solid var(--clr-warning-border)' }}>

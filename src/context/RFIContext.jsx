@@ -65,18 +65,33 @@ function canUserEditRfiRecord(rfi, currentUser) {
     if (!rfi || !currentUser?.id) return false;
     if (currentUser.role === 'admin') return true;
 
+    // A consultant can edit if:
+    // 1. They are explicitly assigned.
+    // 2. It's already been reviewed (to allow correction).
+    // 3. It's unassigned.
+    if (currentUser.role === 'consultant') {
+        if (rfi.status !== 'pending') return true;
+        if (!rfi.assignedTo) return true;
+        return rfi.assignedTo === currentUser.id;
+    }
+
     if (rfi.assignedTo) {
         return rfi.assignedTo === currentUser.id;
     }
 
-    if (currentUser.role === 'consultant') return true;
     return rfi.filedBy === currentUser.id;
 }
 
-function canUserDiscussRfiRecord(rfi, userId) {
-    if (!rfi || !userId) return false;
-    if (!rfi.assignedTo) return true;
-    return rfi.filedBy === userId || rfi.assignedTo === userId;
+function canUserDiscussRfiRecord(rfi, user) {
+    if (!rfi || !user?.id) return false;
+    if (user.role === 'admin') return true;
+    
+    // Consultants can discuss if assigned, if it's unassigned (pick-up), or if they reviewed it.
+    if (user.role === 'consultant') {
+        return !rfi.assignedTo || rfi.assignedTo === user.id || rfi.reviewedBy === user.id;
+    }
+
+    return rfi.filedBy === user.id || rfi.assignedTo === user.id;
 }
 
 export function RFIProvider({ children }) {
@@ -448,54 +463,6 @@ export function RFIProvider({ children }) {
         }
     }
 
-    // ── Request notification permission once when the user is logged in ───────
-    useEffect(() => {
-        if (!user) return;
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'granted') return; // already granted
-        if (Notification.permission === 'denied') return;  // user already refused
-        if (notificationPromptShownRef.current) return;
-
-        try {
-            if (localStorage.getItem(NOTIFICATION_PROMPT_SEEN_KEY) === 'true') return;
-            localStorage.setItem(NOTIFICATION_PROMPT_SEEN_KEY, 'true');
-        } catch {
-            // Ignore localStorage failures; still guard with ref for this session.
-        }
-        notificationPromptShownRef.current = true;
-
-        // Show a friendly in-app toast to prompt the user before the browser dialog
-        toast(
-            (t) => (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>Enable notifications for real-time updates?</span>
-                    <button
-                        style={{ padding: '2px 10px', borderRadius: 4, cursor: 'pointer', border: '1px solid #ccc' }}
-                        onClick={() => {
-                            toast.dismiss(t.id);
-                            Notification.requestPermission().then((permission) => {
-                                if (permission === 'granted') {
-                                    syncPushSubscriptionForUser(user.id).catch((error) => {
-                                        console.error('Error registering push subscription:', error);
-                                    });
-                                    toast.success('Notifications enabled! 🔔');
-                                }
-                            });
-                        }}
-                    >
-                        Enable
-                    </button>
-                    <button
-                        style={{ padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: '1px solid #ccc' }}
-                        onClick={() => toast.dismiss(t.id)}
-                    >
-                        Not now
-                    </button>
-                </span>
-            ),
-            { duration: 10000, icon: '🔔' }
-        );
-    }, [user]);
 
     useEffect(() => {
         if (!user) return;
@@ -949,7 +916,6 @@ export function RFIProvider({ children }) {
                             ...(targetRfi?.images || []),
                             ...uploadedUrls,
                         ];
-
                         const { error } = await supabase.from('rfis').update({
                             status: payload.status || RFI_STATUS.APPROVED,
                             reviewed_by: payload.reviewedBy,
@@ -957,12 +923,12 @@ export function RFIProvider({ children }) {
                             remarks: payload.remarks?.trim() ? payload.remarks.trim() : null,
                             carryover_to: null,
                             images: mergedImages,
-                            assigned_to: payload.assignedTo || targetRfi?.assignedTo
+                            // assigned_to: payload.assignedTo || targetRfi?.assignedTo // REMOVED: Don't overwrite consultant assignee
                         }).eq('id', payload.rfiId);
                         if (error) throw error;
 
                         if (targetRfi) {
-                            await notifyContractorAboutStatusChange(targetRfi, payload.status || RFI_STATUS.APPROVED, payload.remarks);
+                            await notifyContractorAboutStatusChange(targetRfi, payload.status || RFI_STATUS.APPROVED, payload.remarks, payload.assignedTo);
                         }
                     }
 
@@ -974,19 +940,18 @@ export function RFIProvider({ children }) {
                             ...(targetRfi?.images || []),
                             ...uploadedUrls,
                         ];
-
                         const { error } = await supabase.from('rfis').update({
                             status: RFI_STATUS.REJECTED,
                             reviewed_by: payload.reviewedBy,
                             reviewed_at: getNowLocalISO(),
                             remarks: payload.remarks || null,
                             images: mergedImages,
-                            assigned_to: payload.assignedTo || targetRfi?.assignedTo
+                            // assigned_to: payload.assignedTo || targetRfi?.assignedTo // REMOVED: Don't overwrite consultant assignee
                         }).eq('id', payload.rfiId);
                         if (error) throw error;
 
                         if (targetRfi) {
-                            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.REJECTED, payload.remarks);
+                            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.REJECTED, payload.remarks, payload.assignedTo);
                         }
                     }
 
@@ -1056,11 +1021,11 @@ export function RFIProvider({ children }) {
                 remarks: remarks?.trim() ? remarks.trim() : null,
                 carryover_to: null,
                 images: mergedImages,
-                assigned_to: assignedTo || targetRfi.assignedTo
+                // assigned_to: assignedTo || targetRfi.assignedTo // REMOVED: Don't overwrite consultant assignee
             }).eq('id', rfiId);
             if (error) throw error;
 
-            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.APPROVED, remarks);
+            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.APPROVED, remarks, assignedTo);
 
             await logAuditEvent(rfiId, 'approved', {
                 remarks: remarks?.trim() || null,
@@ -1124,11 +1089,11 @@ export function RFIProvider({ children }) {
                 reviewed_at: getNowLocalISO(),
                 remarks: remarks,
                 images: mergedImages,
-                assigned_to: assignedTo || targetRfi.assignedTo
+                // assigned_to: assignedTo || targetRfi.assignedTo // REMOVED: Don't overwrite consultant assignee
             }).eq('id', rfiId);
             if (error) throw error;
 
-            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.REJECTED, remarks);
+            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.REJECTED, remarks, assignedTo);
             await logAuditEvent(rfiId, 'rejected', { remarks });
             await fetchAllRFIs();
         } catch (error) {
@@ -1184,12 +1149,12 @@ export function RFIProvider({ children }) {
                 reviewed_by: reviewedBy,
                 reviewed_at: getNowLocalISO(),
                 remarks: reason,
-                assigned_to: assignedTo || targetRfi.assignedTo
+                // assigned_to: assignedTo || targetRfi.assignedTo // REMOVED: Don't overwrite consultant assignee
             }).eq('id', rfiId);
             
             if (error) throw error;
 
-            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.CANCELLED, reason);
+            await notifyContractorAboutStatusChange(targetRfi, RFI_STATUS.CANCELLED, reason, assignedTo);
             await logAuditEvent(rfiId, 'cancelled', { reason });
             await fetchAllRFIs();
         } catch (error) {
@@ -1825,7 +1790,7 @@ export function RFIProvider({ children }) {
     /**
      * Centralized helper to notify the contractor (and tagged users) about a status change.
      */
-    async function notifyContractorAboutStatusChange(rfi, newStatus, remarks = '') {
+    async function notifyContractorAboutStatusChange(rfi, newStatus, remarks = '', notifyTo = null) {
         if (!rfi || !newStatus) return;
 
         const rfiNo = rfi.customFields?.rfi_no || rfi.serialNo || '—';
@@ -1839,9 +1804,12 @@ export function RFIProvider({ children }) {
             case RFI_STATUS.CANCELLED: displayStatus = 'Cancelled'; break;
         }
 
-        // 1. Notify the Filer (Contractor)
-        const targetUserId = rfi.filedBy;
-        if (targetUserId) {
+        // 1. Notify the Filer (Contractor) and the selected assignee (if any)
+        const targetUserIds = new Set();
+        if (rfi.filedBy) targetUserIds.add(rfi.filedBy);
+        if (notifyTo) targetUserIds.add(notifyTo);
+
+        for (const targetUserId of targetUserIds) {
             await createNotification(
                 targetUserId,
                 `RFI ${displayStatus}: #${rfiNo}`,
@@ -1918,7 +1886,7 @@ export function RFIProvider({ children }) {
                 updateComment,
                 deleteComment,
                 canUserEditRfi: (rfi) => canUserEditRfiRecord(rfi, user),
-                canUserDiscussRfi: (rfi) => canUserDiscussRfiRecord(rfi, user?.id),
+                canUserDiscussRfi: (rfi) => canUserDiscussRfiRecord(rfi, user),
                 markNotificationRead,
                 markAllNotificationsRead,
                 deleteNotification,

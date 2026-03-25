@@ -266,7 +266,7 @@ export default function RejectionJourneyBoard() {
                             onClick={() => { setActiveTab('history'); setShowAll(false); setSearchQuery(''); }}
                         >
                             <h2>History</h2>
-                            <span className="tab-count" style={{ background: '#f1f5f9', color: '#64748b' }}>{journeys.history.length}</span>
+                            <span className="tab-count">{journeys.history.length || 0}</span>
                         </div>
                     </div>
                     <div className="rj-controls">

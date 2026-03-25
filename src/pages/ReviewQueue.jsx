@@ -13,7 +13,7 @@ import CancelModal from '../components/CancelModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, MessageSquare, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw, User } from 'lucide-react';
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -28,7 +28,10 @@ export default function ReviewQueue() {
     const [rejectTarget, setRejectTarget] = useState(null);
     const [cancelTarget, setCancelTarget] = useState(null);
     const [detailTarget, setDetailTarget] = useState(null);
-    const [filter, setFilter] = useState('to_review'); // to_review, approved, rejected, conditional, my_assigned
+    const [filterOptions, setFilterOptions] = useState({
+        status: 'all', // all, to_review, approved, conditional, rejected
+        showOnlyMe: false
+    });
     const [actionMessage, setActionMessage] = useState('');
     const [selectedImages, setSelectedImages] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
@@ -39,7 +42,6 @@ export default function ReviewQueue() {
     const [selectedFilterColumn, setSelectedFilterColumn] = useState('');
     const [columnFilterValues, setColumnFilterValues] = useState({});
     const [filterValueSearch, setFilterValueSearch] = useState('');
-    const [showAllToday, setShowAllToday] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const pageRef = useRef(null);
 
@@ -59,24 +61,44 @@ export default function ReviewQueue() {
         (r) => r.status === 'rejected' && r.reviewedAt && r.reviewedAt.startsWith(currentDate)
     );
 
-    let baseItems = queue.all;
-    if (showAllToday) {
+    const getStatusMatch = (rfi, status) => {
+        if (status === 'all') return true;
+        if (status === 'to_review') return rfi.status === 'pending';
+        if (status === 'approved') return rfi.status === 'approved';
+        if (status === 'conditional') return rfi.status === 'conditional_approve';
+        if (status === 'rejected') return rfi.status === 'rejected';
+        return true;
+    };
+
+    const baseItems = useMemo(() => {
         // Collect everything for today without duplicates
         const allSet = new Map();
-        [...queue.all, ...todayApprovedTotal, ...todayRejected].forEach(r => allSet.set(r.id, r));
-        baseItems = Array.from(allSet.values());
-    } else {
-        if (filter === 'approved') baseItems = todayApproved;
-        if (filter === 'conditional') baseItems = todayConditional;
-        if (filter === 'rejected') baseItems = todayRejected;
-        if (filter === 'my_assigned') baseItems = queue.all.filter(r => r.assignedTo === user.id);
-        // Default 'to_review' uses queue.all
-    }
+        
+        // Items filed today
+        rfis.filter(r => r.filedDate?.startsWith(currentDate))
+            .forEach(r => allSet.set(r.id, r));
+            
+        // Items reviewed today
+        rfis.filter(r => r.reviewedAt?.startsWith(currentDate))
+            .forEach(r => allSet.set(r.id, r));
+            
+        // Include pending items from getReviewQueue (handles carryovers/history if needed)
+        queue.all.forEach(r => allSet.set(r.id, r));
+        
+        return Array.from(allSet.values());
+    }, [rfis, currentDate, queue.all]);
 
     const FILTER_EXCLUDED_COLUMNS = new Set(['serial', 'actions', 'attachments']);
+    const visibleColumns = useMemo(() => {
+        if (user?.role === 'consultant') {
+            return orderedTableColumns.filter(col => col.field_key !== 'remarks' && col.field_key !== 'attachments');
+        }
+        return orderedTableColumns;
+    }, [orderedTableColumns, user?.role]);
+
     const filterableColumns = useMemo(
-        () => orderedTableColumns.filter((col) => !FILTER_EXCLUDED_COLUMNS.has(col.field_key)),
-        [orderedTableColumns]
+        () => visibleColumns.filter((col) => !FILTER_EXCLUDED_COLUMNS.has(col.field_key)),
+        [visibleColumns]
     );
 
     const getColumnRawValue = (rfi, fieldKey) => {
@@ -107,12 +129,66 @@ export default function ReviewQueue() {
         [columnFilterValues]
     );
 
-    const filteredItems = baseItems.filter((rfi) => {
-        return activeFilterEntries.every(([fieldKey, selectedValues]) => {
-            const rfiValue = normalizeFilterValue(getColumnRawValue(rfi, fieldKey));
-            return selectedValues.includes(rfiValue);
+    const filteredItems = useMemo(() => {
+        const filtered = baseItems.filter((rfi) => {
+            // 1. Status Filter
+            if (!getStatusMatch(rfi, filterOptions.status)) return false;
+
+            // 2. Assignment Filter
+            if (filterOptions.showOnlyMe) {
+                const isAssignedToMe = rfi.assignedTo === user.id;
+                const wasReviewedByMe = rfi.reviewedBy === user.id;
+                if (!isAssignedToMe && !wasReviewedByMe) return false;
+            }
+
+            // 3. Column (Advanced) Filters
+            return activeFilterEntries.every(([fieldKey, selectedValues]) => {
+                const rfiValue = normalizeFilterValue(getColumnRawValue(rfi, fieldKey));
+                return selectedValues.includes(rfiValue);
+            });
         });
-    });
+
+        // 4. SORTING: Prioritize "Carryover" (older than today) at the top of the queue
+        return filtered.sort((a, b) => {
+            const aDate = a.originalFiledDate || a.filedDate || '';
+            const bDate = b.originalFiledDate || b.filedDate || '';
+            const aIsToday = aDate.startsWith(currentDate);
+            const bIsToday = bDate.startsWith(currentDate);
+
+            // If one is carryover and the other is today, carryover comes first
+            if (!aIsToday && bIsToday) return -1;
+            if (aIsToday && !bIsToday) return 1;
+
+            // Stable secondary sort (older filing date first within the same group)
+            return aDate.localeCompare(bDate);
+        });
+    }, [baseItems, filterOptions, user, activeFilterEntries, currentDate]);
+
+    const statusCounts = useMemo(() => {
+        // Calculate counts based on current scope (showOnlyMe) and column filters
+        // but NOT the status filter itself (to show potential results in current scope)
+        const scopedItems = baseItems.filter((rfi) => {
+            if (filterOptions.showOnlyMe) {
+                const isAssignedToMe = rfi.assignedTo === user.id;
+                const wasReviewedByMe = rfi.reviewedBy === user.id;
+                if (!isAssignedToMe && !wasReviewedByMe) return false;
+            }
+            return activeFilterEntries.every(([fieldKey, selectedValues]) => {
+                const rfiValue = normalizeFilterValue(getColumnRawValue(rfi, fieldKey));
+                return selectedValues.includes(rfiValue);
+            });
+        });
+
+        return {
+            total: scopedItems.length,
+            all_today: baseItems.length,
+            my_queue: baseItems.filter(r => r.assignedTo === user.id || r.reviewedBy === user.id).length,
+            pending: scopedItems.filter(r => r.status === 'pending').length,
+            approved: scopedItems.filter(r => r.status === 'approved').length,
+            conditional: scopedItems.filter(r => r.status === 'conditional_approve').length,
+            rejected: scopedItems.filter(r => r.status === 'rejected').length
+        };
+    }, [baseItems, filterOptions.showOnlyMe, user.id, activeFilterEntries]);
 
     const availableValuesForSelectedColumn = useMemo(() => {
         if (!selectedFilterColumn) return [];
@@ -312,27 +388,32 @@ export default function ReviewQueue() {
     }, [currentDate]);
 
     useEffect(() => {
-        const targetRfiId = searchParams.get('rfi');
-        if (!targetRfiId || !rfis?.length || !user?.id) return;
+          // Handle Deep Linking from Shared URL or Notification
+        const rfiId = searchParams.get('rfi');
+        if (!rfiId || rfis.length === 0) return;
 
-        const targetRfi = rfis.find((rfi) => rfi.id === targetRfiId);
+        const targetRfi = rfis.find((r) => r.id === rfiId);
         if (!targetRfi) return;
 
-        const targetFilter =
-            targetRfi.status === 'approved'
-                ? 'approved'
-                : targetRfi.status === 'rejected'
-                    ? 'rejected'
-                    : targetRfi.assignedTo === user.id
-                        ? 'my_assigned'
+        // Map status for additive filtering system
+        const targetStatus =
+            targetRfi.status === 'conditional_approve'
+                ? 'conditional'
+                : targetRfi.status === 'approved'
+                    ? 'approved'
+                    : targetRfi.status === 'rejected'
+                        ? 'rejected'
                         : 'to_review';
 
-        const targetDate = targetRfi.reviewedAt?.slice(0, 10) || targetRfi.carryoverTo || targetRfi.originalFiledDate || targetRfi.filedDate;
+        const targetShowOnlyMe = targetRfi.assignedTo === user.id;
 
-        if (filter !== targetFilter) {
-            setFilter(targetFilter);
+        // Ensure filter and date match the target RFI
+        if (filterOptions.status !== targetStatus || filterOptions.showOnlyMe !== targetShowOnlyMe) {
+            setFilterOptions({ status: targetStatus, showOnlyMe: targetShowOnlyMe });
             return;
         }
+
+        const targetDate = targetRfi.reviewedAt?.slice(0, 10) || targetRfi.carryoverTo || targetRfi.originalFiledDate || targetRfi.filedDate;
 
         if (targetDate && currentDate !== targetDate) {
             setCurrentDate(targetDate);
@@ -358,7 +439,7 @@ export default function ReviewQueue() {
             window.clearTimeout(scrollTimer);
             window.clearTimeout(clearTimer);
         };
-    }, [searchParams, setSearchParams, rfis, user, currentDate, filter]);
+    }, [searchParams, setSearchParams, rfis, user, currentDate, filterOptions]);
 
     // Background Scroll Locking
     useEffect(() => {
@@ -398,60 +479,64 @@ export default function ReviewQueue() {
     function renderReviewActionCell(rfi) {
         const canEditThisRfi = canUserEditRfi(rfi);
         const canChatThisRfi = canUserDiscussRfi(rfi);
-        const showApproveAction = filter !== 'approved';
-        const showRejectAction = filter !== 'rejected';
+        const showFullApprove = rfi.status !== 'approved';
+        const showConditionalApprove = rfi.status !== 'conditional_approve';
+        const showRejectAction = rfi.status !== 'rejected';
+        const showCancelAction = rfi.status !== 'cancelled';
 
-        if (filter === 'to_review' || filter === 'my_assigned' || filter === 'approved' || filter === 'rejected' || filter === 'conditional') {
+        const isActionable = filterOptions.status === 'to_review' || filterOptions.status === 'all';
+
+        if (isActionable) {
             return (
                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                     {canEditThisRfi && (
                         <>
-                            {showApproveAction && (
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            setApproveMode('full');
-                                            setApproveTarget(rfi);
-                                            setRejectTarget(null);
-                                            setDetailTarget(null);
-                                        }}
-                                        title="Full Approve"
-                                        style={{
-                                            background: 'transparent', border: '1.5px solid #d1d5db',
-                                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: '3px',
-                                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                            fontFamily: 'inherit', transition: 'all 0.15s',
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-success)'; e.currentTarget.style.color = 'var(--clr-success)'; e.currentTarget.style.background = 'var(--clr-success-bg)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--clr-border)'; e.currentTarget.style.color = 'var(--clr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <CheckCircle size={15} />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setApproveMode('conditional');
-                                            setApproveTarget(rfi);
-                                            setRejectTarget(null);
-                                            setDetailTarget(null);
-                                        }}
-                                        title="Conditional Approve"
-                                        style={{
-                                            background: 'transparent', border: '1.5px solid #d1d5db',
-                                            borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: '3px',
-                                            color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                                            fontFamily: 'inherit', transition: 'all 0.15s',
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-warning)'; e.currentTarget.style.color = 'var(--clr-warning)'; e.currentTarget.style.background = 'var(--clr-warning-bg)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--clr-border)'; e.currentTarget.style.color = 'var(--clr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <CheckCircle size={15} />
-                                        <span style={{ fontSize: '10px', fontWeight: 700 }}>COND.</span>
-                                    </button>
-                                </>
+                            {showFullApprove && (
+                                <button
+                                    onClick={() => {
+                                        setApproveMode('full');
+                                        setApproveTarget(rfi);
+                                        setRejectTarget(null);
+                                        setDetailTarget(null);
+                                    }}
+                                    title="Full Approve"
+                                    style={{
+                                        background: 'transparent', border: '1.5px solid #d1d5db',
+                                        borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '3px',
+                                        color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                        fontFamily: 'inherit', transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-success)'; e.currentTarget.style.color = 'var(--clr-success)'; e.currentTarget.style.background = 'var(--clr-success-bg)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--clr-border)'; e.currentTarget.style.color = 'var(--clr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <CheckCircle size={15} />
+                                </button>
                             )}
-                            {showRejectAction && (
+                            {showConditionalApprove && (
+                                <button
+                                    onClick={() => {
+                                        setApproveMode('conditional');
+                                        setApproveTarget(rfi);
+                                        setRejectTarget(null);
+                                        setDetailTarget(null);
+                                    }}
+                                    title="Conditional Approve"
+                                    style={{
+                                        background: 'transparent', border: '1.5px solid #d1d5db',
+                                        borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '3px',
+                                        color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
+                                        fontFamily: 'inherit', transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--clr-warning)'; e.currentTarget.style.color = 'var(--clr-warning)'; e.currentTarget.style.background = 'var(--clr-warning-bg)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--clr-border)'; e.currentTarget.style.color = 'var(--clr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <CheckCircle size={15} />
+                                    <span style={{ fontSize: '10px', fontWeight: 700 }}>COND.</span>
+                                </button>
+                            )}
+                            {showCancelAction && (
                                 <button
                                     onClick={() => {
                                         setCancelTarget(rfi);
@@ -557,7 +642,7 @@ export default function ReviewQueue() {
         return diffDays >= 2;
     }
 
-    function renderReviewOrderedCell(rfi, col, isCarryover) {
+    function renderReviewOrderedCell(rfi, col, isCarryover, index) {
         if (col.field_key === 'serial') {
             const escalated = isEscalated(rfi);
             return (
@@ -565,7 +650,7 @@ export default function ReviewQueue() {
                     <UserAvatar name={rfi.filerName} avatarUrl={rfi.filerAvatarUrl} size={32} />
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: 600 }}>#{rfi.serialNo}</span>
+                            <span style={{ fontWeight: 600 }}>#{index + 1}</span>
                             {escalated && (
                                 <span style={{
                                     backgroundColor: 'var(--clr-danger-bg)', color: 'var(--clr-danger)', fontSize: '0.65rem',
@@ -648,16 +733,25 @@ export default function ReviewQueue() {
         setFilterValueSearch('');
     };
 
+    const resetAllFilters = (e) => {
+        if (e) e.stopPropagation();
+        setFilterOptions({ status: 'all', showOnlyMe: false });
+        setColumnFilterValues({});
+        setFilterValueSearch('');
+    };
+
+    const isAnyFilterActive = activeFilterEntries.length > 0 || filterOptions.status !== 'all' || filterOptions.showOnlyMe;
+
     return (
         <div className="page-wrapper">
             <Header />
             <main className={`review-page ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
                 <div className="sheet-header">
-                    <div className="sheet-tabs-container">
+                    <div className="sheet-tabs-container">{user?.role !== 'consultant' && (
                         <div className="sheet-tab active">
                             <h2>Review Queue</h2>
                         </div>
-                    </div>
+                    )}</div>
                     <div className="review-header-controls">
                         <div className="export-actions review-export-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                             <button
@@ -686,27 +780,30 @@ export default function ReviewQueue() {
                                 >
                                     {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                                 </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-sm review-filter-btn"
-                                    style={{
-                                        backgroundColor: activeFilterEntries.length > 0 || filter !== 'to_review' || showAllToday ? 'var(--clr-brand-primary)' : 'var(--clr-bg-elevated)',
-                                        color: activeFilterEntries.length > 0 || filter !== 'to_review' || showAllToday ? '#fff' : 'var(--clr-text-main)',
-                                        border: '1px solid var(--clr-border)',
-                                        borderRadius: '0.6rem',
-                                        padding: '0.45rem 1rem',
-                                        fontWeight: '600'
-                                    }}
-                                    onClick={() => setFilterPopoverOpen((prev) => !prev)}
-                                    title="Filter table"
-                                >
-                                    <Filter size={16} /> Filters
-                                    {(activeFilterEntries.length > 0 || filter !== 'to_review') && (
-                                        <span className="review-filter-count-badge">
-                                            {activeFilterEntries.length + (filter !== 'to_review' ? 1 : 0)}
-                                        </span>
+                                <div className="review-filter-trigger-group">
+                                    <button
+                                        type="button"
+                                        className={`btn btn-sm review-filter-btn ${isAnyFilterActive ? 'active' : ''}`}
+                                        onClick={() => setFilterPopoverOpen((prev) => !prev)}
+                                        title="Filter table"
+                                    >
+                                        <Filter size={16} /> Filters
+                                        {isAnyFilterActive && (
+                                            <span className="review-filter-count-badge">
+                                                {activeFilterEntries.length + (filterOptions.status !== 'all' ? 1 : 0) + (filterOptions.showOnlyMe ? 1 : 0)}
+                                            </span>
+                                        )}
+                                    </button>
+                                    {isAnyFilterActive && (
+                                        <button 
+                                            className="filter-clear-trigger" 
+                                            onClick={resetAllFilters}
+                                            title="Clear All Filters"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     )}
-                                </button>
+                                </div>
                             </div>
                         </div>
                         <DateNavigator currentDate={currentDate} onDateChange={setCurrentDate} />
@@ -754,7 +851,7 @@ export default function ReviewQueue() {
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                             <CheckCircle size={24} color="var(--clr-success)" /> All Caught Up!
                         </h3>
-                        <p>{showAllToday ? 'No RFIs found for this date.' : (filter === 'to_review' ? 'All RFIs have been reviewed for this date.' : 'No items match this filter.')}</p>
+                        <p>{filterOptions.status === 'all' ? 'No RFIs found for this date.' : 'No items match your selected filters.'}</p>
                     </div>
                 ) : (
                     <div className="sheet-section">
@@ -763,7 +860,7 @@ export default function ReviewQueue() {
                                 <thead>
                                     <tr>
                                         <th className="col-serial" style={{ width: '40px' }}>
-                                            {(filter === 'to_review' || filter === 'my_assigned' || filter === 'conditional' || filter === 'approved' || filter === 'rejected') && (
+                                            {(filterOptions.status === 'to_review' || filterOptions.status === 'all') && (
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedRfiIds.length > 0 && selectedRfiIds.length === filteredItems.length}
@@ -771,7 +868,7 @@ export default function ReviewQueue() {
                                                 />
                                             )}
                                         </th>
-                                        {orderedTableColumns.map((col) => (
+                                        {visibleColumns.map((col) => (
                                             <th key={col.id || col.field_key} style={getTableColumnStyle(col.field_key)}>{col.field_name}</th>
                                         ))}
                                         <th className="col-assign">Assigned To</th>
@@ -779,7 +876,7 @@ export default function ReviewQueue() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredItems.map((rfi) => {
+                                    {filteredItems.map((rfi, index) => {
                                         const isCarryover = rfi.status === 'rejected' && rfi.carryoverTo === currentDate;
                                         return (
                                             <tr
@@ -788,7 +885,7 @@ export default function ReviewQueue() {
                                                 className={`${isCarryover ? 'carryover-row ' : ''}${focusedRfiId === rfi.id ? 'notification-focus-row' : ''}`.trim()}
                                             >
                                                 <td className="col-serial">
-                                                    {(filter === 'to_review' || filter === 'my_assigned' || filter === 'conditional' || filter === 'approved' || filter === 'rejected') && (
+                                                    {(filterOptions.status === 'to_review' || filterOptions.status === 'all') && (
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedRfiIds.includes(rfi.id)}
@@ -796,19 +893,19 @@ export default function ReviewQueue() {
                                                         />
                                                     )}
                                                 </td>
-                                                {orderedTableColumns.map((col) => (
+                                                {visibleColumns.map((col) => (
                                                     <td
                                                         key={`${rfi.id}_${col.field_key}`}
                                                         data-label={col.field_name}
                                                         style={getTableColumnStyle(col.field_key)}
                                                     >
-                                                        {renderReviewOrderedCell(rfi, col, isCarryover)}
+                                                        {renderReviewOrderedCell(rfi, col, isCarryover, index)}
                                                     </td>
                                                 ))}
                                                 <td className="col-assign" data-label="Assigned To">
-                                                    {rfi.assigneeName ? (
-                                                        <span className={`assign-badge ${rfi.assignedTo === user.id ? 'is-me' : ''}`}>
-                                                            {rfi.assignedTo === user.id ? '📌 You' : rfi.assigneeName}
+                                                    {(rfi.assigneeName || rfi.reviewerName) ? (
+                                                        <span className={`assign-badge ${(rfi.assignedTo === user.id || rfi.reviewedBy === user.id) ? 'is-me' : ''}`}>
+                                                            {(rfi.assignedTo === user.id || rfi.reviewedBy === user.id) ? '📌 You' : (rfi.assigneeName || rfi.reviewerName)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-muted">— Auto —</span>
@@ -825,75 +922,101 @@ export default function ReviewQueue() {
                 )}
             </main>
 
-            {/* Filter Sidebar Drawer (V44) - Moved outside main to avoid transform clipping */}
+            {/* Filter Sidebar Drawer (V100 - Premium Redesign) */}
             <div 
                 className={`filter-sidebar-overlay ${filterPopoverOpen ? 'open' : ''}`}
                 onClick={() => setFilterPopoverOpen(false)}
             />
-            <div className={`review-filter-sidebar ${filterPopoverOpen ? 'open' : ''}`}>
-                <div className="rfp-header">
-                    <h3>Filters</h3>
+            <div className={`rfp-filter-drawer review-filter-sidebar ${filterPopoverOpen ? 'open' : ''}`}>
+                <div className="rfp-filter-header">
+                    <h3 className="rfp-filter-title">Filters</h3>
                     <button type="button" className="rfp-close-btn" onClick={() => setFilterPopoverOpen(false)}>
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="rfp-body">
-                    {/* Status Quick Filters */}
-                    <div className="rfp-section">
-                        <label className="rfp-section-label">Quick Status</label>
-                        <div className="rfp-status-grid">
+                <div className="rfp-filter-body">
+                    {/* Professional Scope Toggle */}
+                    <div className="rfp-filter-section">
+                        <label className="rfp-section-label">Target Scope</label>
+                        <div className="rfp-segmented-control">
                             <button
-                                className={`rfp-status-btn ${filter === 'to_review' && !showAllToday ? 'active' : ''}`}
-                                onClick={() => { setFilter('to_review'); setShowAllToday(false); }}
+                                className={`rfp-segment-btn ${!filterOptions.showOnlyMe ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, showOnlyMe: false }))}
                             >
-                                <span className="dot pending"></span> To Review ({queue.all.length})
+                                All Activity <span className="count-pill">{statusCounts.all_today}</span>
                             </button>
                             <button
-                                className={`rfp-status-btn ${filter === 'approved' && !showAllToday ? 'active' : ''}`}
-                                onClick={() => { setFilter('approved'); setShowAllToday(false); }}
+                                className={`rfp-segment-btn ${filterOptions.showOnlyMe ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, showOnlyMe: true }))}
                             >
-                                <span className="dot approved"></span> Approved ({todayApproved.length})
-                            </button>
-                            <button
-                                className={`rfp-status-btn ${filter === 'conditional' && !showAllToday ? 'active' : ''}`}
-                                onClick={() => { setFilter('conditional'); setShowAllToday(false); }}
-                            >
-                                <span className="dot warning"></span> Conditional ({todayConditional.length})
-                            </button>
-                            <button
-                                className={`rfp-status-btn ${filter === 'rejected' && !showAllToday ? 'active' : ''}`}
-                                onClick={() => { setFilter('rejected'); setShowAllToday(false); }}
-                            >
-                                <span className="dot rejected"></span> Rejected ({todayRejected.length})
+                                <User size={14} /> My Queue <span className="count-pill">{statusCounts.my_queue}</span>
                             </button>
                         </div>
                     </div>
 
-                    {/* Advanced Toggles */}
-                    <div className="rfp-section">
-                        <label className="rfp-section-label">Options</label>
-                        <div className="rfp-toggle-row">
+                    {/* Refined Status List */}
+                    <div className="rfp-filter-section">
+                        <label className="rfp-section-label">Filter by Status</label>
+                        <div className="rfp-status-list">
                             <button
-                                className={`rfp-toggle-btn ${filter === 'my_assigned' ? 'active' : ''}`}
-                                onClick={() => setFilter(prev => prev === 'my_assigned' ? 'to_review' : 'my_assigned')}
+                                className={`rfp-status-btn ${filterOptions.status === 'all' ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, status: 'all' }))}
                             >
-                                <span>Assigned to Me ({queue.all.filter(r => r.assignedTo === user.id).length})</span>
+                                <div className="status-info">
+                                    <ClipboardList size={16} color="#64748b" /> <span>All Statuses</span>
+                                </div>
+                                <span className="status-count">{statusCounts.total}</span>
                             </button>
+
                             <button
-                                className={`rfp-toggle-btn ${showAllToday ? 'active' : ''}`}
-                                onClick={() => setShowAllToday(prev => !prev)}
+                                className={`rfp-status-btn ${filterOptions.status === 'to_review' ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, status: prev.status === 'to_review' ? 'all' : 'to_review' }))}
                             >
-                                <span>Show All for Today</span>
+                                <div className="status-info">
+                                    <span className="dot pending"></span> <span>Pending Review</span>
+                                </div>
+                                <span className="status-count">{statusCounts.pending}</span>
+                            </button>
+
+                            <button
+                                className={`rfp-status-btn ${filterOptions.status === 'approved' ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, status: prev.status === 'approved' ? 'all' : 'approved' }))}
+                            >
+                                <div className="status-info">
+                                    <span className="dot approved"></span> <span>Approved</span>
+                                </div>
+                                <span className="status-count">{statusCounts.approved}</span>
+                            </button>
+
+                            <button
+                                className={`rfp-status-btn ${filterOptions.status === 'conditional' ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, status: prev.status === 'conditional' ? 'all' : 'conditional' }))}
+                            >
+                                <div className="status-info">
+                                    <span className="dot warning"></span> <span>Cond. Approved</span>
+                                </div>
+                                <span className="status-count">{statusCounts.conditional}</span>
+                            </button>
+
+                            <button
+                                className={`rfp-status-btn ${filterOptions.status === 'rejected' ? 'active' : ''}`}
+                                onClick={() => setFilterOptions(prev => ({ ...prev, status: prev.status === 'rejected' ? 'all' : 'rejected' }))}
+                            >
+                                <div className="status-info">
+                                    <span className="dot rejected"></span> <span>Rejected</span>
+                                </div>
+                                <span className="status-count">{statusCounts.rejected}</span>
                             </button>
                         </div>
                     </div>
 
                     {/* Column Filters */}
-                    <div className="rfp-section">
-                        <label className="rfp-section-label">Filter by Column</label>
+                    <div className="rfp-filter-section" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.65rem' }}>
+                        <label className="rfp-section-label">Column Specific Filters</label>
                         <select
                             className="rfp-select"
+                            style={{ width: '100%', marginBottom: '1rem' }}
                             value={selectedFilterColumn}
                             onChange={(e) => {
                                 setSelectedFilterColumn(e.target.value);
@@ -905,37 +1028,34 @@ export default function ReviewQueue() {
                             ))}
                         </select>
 
-                        <div className="rfp-search-wrap">
+                        <div className="rfp-search-wrap" style={{ marginBottom: '1rem' }}>
                             <input
                                 type="text"
                                 className="rfp-search-input"
-                                placeholder="Search values..."
+                                placeholder={`Search ${columnLabelMap[selectedFilterColumn]}...`}
                                 value={filterValueSearch}
                                 onChange={(e) => setFilterValueSearch(e.target.value)}
                             />
                         </div>
 
-                        <div className="rfp-values-list">
+                        <div className="rfp-values-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                             {availableValuesForSelectedColumn.length === 0 ? (
                                 <div className="rfp-empty">No values found</div>
                             ) : availableValuesForSelectedColumn.map((value) => (
-                                <label key={`${selectedFilterColumn}_${value}`} className="rfp-value-item">
+                                <label key={`${selectedFilterColumn}_${value}`} className="rfp-value-item" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.5rem', cursor: 'pointer', borderRadius: '8px' }}>
                                     <input
                                         type="checkbox"
                                         checked={selectedValuesForColumn.includes(value)}
                                         onChange={() => toggleColumnFilterValue(selectedFilterColumn, value)}
                                     />
-                                    <span>{value}</span>
+                                    <span style={{ fontSize: '0.82rem', color: '#4b5563' }}>{value}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                <div className="rfp-footer">
-                    <button type="button" className="btn btn-sm btn-ghost" style={{ width: '100%' }} onClick={clearAllColumnFilters}>Clear All Column Filters</button>
-                    <button type="button" className="btn btn-primary" style={{ borderRadius: '12px', padding: '0.85rem' }} onClick={() => setFilterPopoverOpen(false)}>Apply Filters</button>
-                </div>
+                {/* Footer removed per user request (Reset moved to main trigger) */}
             </div>
 
             {isFullscreen && (

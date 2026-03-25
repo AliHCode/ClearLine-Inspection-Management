@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
@@ -41,9 +41,20 @@ export default function ContractorDashboard() {
     };
 
     // Get all RFIs by this contractor (latest thread version only)
-    const allMyRfis = rfis
-        .filter((r) => r.filedBy === user.id && !rfis.some(child => child.parentId === r.id))
-        .sort((a, b) => b.filedDate.localeCompare(a.filedDate) || b.serialNo - a.serialNo);
+    const allMyRfis = useMemo(() => {
+        const filtered = rfis.filter((r) => r.filedBy === user.id && !rfis.some(child => child.parentId === r.id));
+        return filtered.sort((a, b) => {
+            const aIsToday = a.filedDate === today || a.carryoverTo === today;
+            const bIsToday = b.filedDate === today || b.carryoverTo === today;
+
+            // Prioritize today/carryover scope for sorting
+            if (aIsToday && !bIsToday) return -1;
+            if (!aIsToday && bIsToday) return 1;
+
+            // Standard descending date sort within groups
+            return b.filedDate.localeCompare(a.filedDate);
+        });
+    }, [rfis, user.id, today]);
 
     // Get recent RFIs by this contractor for display
     const myRfis = allMyRfis.slice(0, 10);
@@ -97,12 +108,12 @@ export default function ContractorDashboard() {
         return diffDays >= 2;
     }
 
-    function renderContractorCell(rfi, col) {
+    function renderContractorCell(rfi, col, index) {
         if (col.field_key === 'serial') {
             const escalated = isEscalated(rfi);
             return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    #{rfi.serialNo}
+                    #{index + 1}
                     {escalated && (
                         <span style={{
                             backgroundColor: 'var(--clr-danger-bg)', color: 'var(--clr-danger)', fontSize: '0.65rem',
@@ -252,11 +263,11 @@ export default function ContractorDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {myRfis.slice(0, 5).map((rfi) => (
+                                        {myRfis.slice(0, 5).map((rfi, index) => (
                                             <tr key={rfi.id} style={{ borderBottom: '1px solid var(--clr-border)' }}>
                                                 {contractorVisibleColumns.slice(0, 4).map((col) => (
                                                     <td key={`${rfi.id}_${col.field_key}`} style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem' }}>
-                                                        {renderContractorCell(rfi, col)}
+                                                        {renderContractorCell(rfi, col, index)}
                                                     </td>
                                                 ))}
                                                 <td style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem', color: 'var(--clr-text-secondary)' }}>{rfi.filedDate}</td>

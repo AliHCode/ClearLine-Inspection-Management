@@ -152,11 +152,15 @@ h6 {
   align-items: center;
 }
 
+.sheet-tabs-container:empty {
+    display: none;
+}
+
 .sheet-tab {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 24px;
+  padding: 8px 18px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: none !important; /* Remove underline */
@@ -164,6 +168,7 @@ h6 {
   user-select: none;
   color: var(--clr-text-secondary);
   background: transparent;
+  gap: 0.5rem;
 }
 
 .sheet-tab h2 {
@@ -172,6 +177,20 @@ h6 {
   font-weight: 600;
   color: inherit;
   white-space: nowrap;
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: var(--clr-brand-primary);
+  color: #fff;
+  min-width: 1.5rem;
+  height: 1.15rem;
 }
 
 .sheet-tab.active {
@@ -216,13 +235,15 @@ h6 {
   .sheet-header {
     flex-direction: column !important;
     align-items: flex-start !important;
-    padding-bottom: 15px !important;
+    padding-bottom: 8px !important; /* Slightly relaxed */
+    margin-bottom: 0.5rem !important;
+    gap: 0.75rem !important;
   }
 
   .review-header-controls {
     width: 100%;
     justify-content: flex-start !important;
-    margin-top: 0.5rem;
+    margin-top: 0rem; /* Eliminated redundant top margin */
   }
 }
 
@@ -4131,10 +4152,21 @@ input:checked+.premium-slider:before {
   margin-bottom: 0.25rem;
 }
 
-.rfp-status-grid {
+.rfp-status-grid, .rfp-unified-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.65rem;
+}
+
+.rfp-divider-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.05em;
+  padding: 1rem 0 0.25rem;
+  border-top: 1px solid var(--clr-border-faint);
+  margin-top: 0.5rem;
 }
 
 .rfp-status-btn {
@@ -4159,10 +4191,17 @@ input:checked+.premium-slider:before {
 }
 
 .rfp-status-btn.active {
-  background: var(--clr-brand-primary);
+  background: var(--clr-bg-elevated);
   border-color: var(--clr-brand-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px var(--clr-brand-primary-light);
+  color: var(--clr-brand-primary);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+}
+
+.rfp-status-btn.primary.active {
+  background: #f0fdf4;
+  border-color: var(--clr-success);
+  color: #166534;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
 }
 
 .rfp-status-btn .dot {
@@ -4422,6 +4461,19 @@ input:checked+.premium-slider:before {
   background: #f8fafc;
 }
 
+/* Unified Header Control Heights */
+.review-header-controls .btn {
+    height: 38px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.review-header-controls .btn-icon {
+    padding-left: 0;
+    padding-right: 0;
+    width: 38px;
+}
+
 .recent-rfi-view-all-btn {
   border: 1px solid var(--clr-border-dark) !important;
   border-radius: 0.5rem !important;
@@ -4635,6 +4687,384 @@ input:checked+.premium-slider:before {
 
 .detail-item.full-width {
   grid-column: 1 / -1;
+}
+
+/* --- Review Queue Filter Redesign --- */
+.review-filter-trigger-group {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--clr-border);
+    border-radius: 0.6rem;
+    overflow: hidden;
+    background: var(--clr-bg-elevated);
+    transition: all 0.2s;
+    height: 38px; /* Standardize with Date Navigator & Buttons */
+}
+
+.review-filter-trigger-group:has(.review-filter-btn.active) {
+    border-color: var(--clr-brand-primary);
+}
+
+.review-filter-btn {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--clr-text-main) !important;
+    padding: 0.45rem 0.85rem !important;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 600;
+}
+
+.review-filter-btn.active {
+    background: var(--clr-brand-primary) !important;
+    color: #fff !important;
+}
+
+.filter-clear-trigger {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--clr-border);
+    color: var(--clr-text-muted);
+    padding: 0 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.review-filter-btn.active + .filter-clear-trigger {
+    background: var(--clr-brand-primary);
+    color: rgba(255, 255, 255, 0.8);
+    border-left-color: rgba(255, 255, 255, 0.2);
+}
+
+.filter-clear-trigger:hover {
+    background: #f1f5f9;
+    color: var(--clr-danger);
+}
+
+.review-filter-btn.active + .filter-clear-trigger:hover {
+    background: #0f172a;
+    color: #fff;
+}
+
+/* RFI Verdict Card (Executive Overlay) */
+.rfi-verdict-card {
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    background: #fff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rfi-verdict-card.pending {
+    background: rgba(241, 245, 249, 0.5);
+    border-style: dashed;
+}
+
+.rfi-verdict-card.approved {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.03) 0%, rgba(255, 255, 255, 1) 100%);
+    border-left: 4px solid #22c55e;
+}
+
+.rfi-verdict-card.conditional_approve {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(255, 255, 255, 1) 100%);
+    border-left: 4px solid #f59e0b;
+}
+
+.rfi-verdict-card.rejected {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(255, 255, 255, 1) 100%);
+    border-left: 4px solid #ef4444;
+}
+
+.verdict-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.verdict-status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.verdict-label {
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    color: #1e293b;
+}
+
+.verdict-meta {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.rfi-verdict-remarks {
+    background: rgba(248, 250, 252, 0.8);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    position: relative;
+    border-left: 2px solid #e2e8f0;
+}
+
+.rfi-verdict-remarks p {
+    margin: 0;
+    font-style: italic;
+    color: #475569;
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+.rfi-verdict-attachments {
+    margin-top: 1rem;
+}
+
+.attachment-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.rfi-attachments-grid.mini {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+}
+
+.rfi-attachments-grid.mini .rfi-attachment-thumb {
+    height: 60px;
+    border-radius: 8px;
+}
+
+.verdict-helper {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0.75rem 0 0;
+    line-height: 1.5;
+}
+
+.rfp-filter-drawer {
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.92);
+    border-left: 1px solid rgba(226, 232, 240, 0.8);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.rfp-filter-header {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rfp-filter-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.rfp-filter-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+}
+
+.rfp-filter-section {
+    margin-bottom: 1.25rem;
+}
+
+.rfp-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.65rem;
+    display: block;
+}
+
+/* Elite Segmented Control */
+.rfp-segmented-control {
+    display: flex;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.rfp-segment-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.6rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.rfp-segment-btn.active {
+    background: #fff;
+    color: #1e293b;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.rfp-segment-btn .count-pill {
+    font-size: 0.7rem;
+    background: #e2e8f0;
+    padding: 1px 6px;
+    border-radius: 999px;
+    color: #475569;
+}
+
+.rfp-segment-btn.active .count-pill {
+    background: #0f172a;
+    color: #fff;
+}
+
+.rfp-unified-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.rfp-status-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+}
+
+.rfp-status-btn:hover {
+    border-color: var(--clr-brand-primary);
+    background: #f8fafc;
+}
+
+.rfp-status-btn.active {
+    background: var(--clr-bg-elevated);
+    border-color: #0f172a;
+    color: #0f172a;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.rfp-status-btn .status-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.rfp-status-btn .status-count {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.rfp-status-btn.active .status-count {
+    color: #0f172a;
+}
+
+.rfp-divider-title {
+    grid-column: 1 / -1;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 1rem 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.rfp-divider-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #f1f5f9;
+}
+
+.rfp-footer-actions {
+    padding: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rfp-btn-apply {
+    background: #0f172a;
+    color: #fff;
+    border: none;
+    padding: 0.9rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.rfp-btn-apply:hover {
+    background: #1e293b;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.rfp-btn-clear {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rfp-btn-clear:hover {
+    background: #f8fafc;
+    color: #1e293b;
 }
 
 .detail-label {
@@ -5527,6 +5957,13 @@ input:checked+.premium-slider:before {
   .sheet-section {
     margin-bottom: 1rem;
     border-radius: var(--radius-md);
+  }
+
+  /* Specific cleanup for Review Queue on mobile */
+  .review-page .sheet-section {
+    border-top: none !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
   }
 
   .section-header {
@@ -7609,7 +8046,11 @@ body,
     min-width: 700px;
   }
 
-  .rfi-table th,
+  .rfi-table th {
+    padding: 0.45rem 0.75rem !important; /* Calibrated to "Reduced" desktop height */
+    font-size: 0.75rem !important; /* Match desktop font size for clean look */
+  }
+
   .rfi-table td {
     padding: 0.7rem 0.75rem;
     font-size: 0.82rem;
