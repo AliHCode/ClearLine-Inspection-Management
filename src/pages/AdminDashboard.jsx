@@ -167,6 +167,7 @@ export default function AdminDashboard() {
         projects, activeProject, fetchProjects, createProject, updateProject, deleteProject, changeActiveProject,
         projectFields, addProjectField, updateProjectField, deleteProjectField,
         assignUserToProject, removeUserFromProject, fetchProjectMembers,
+        loadingFields, fieldsResolvedProjectId,
     } = useProject();
 
     const [activeTab, setActiveTab] = useState('projects');
