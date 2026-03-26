@@ -658,7 +658,7 @@ export default function DailyRFISheet() {
                         <td key={col.field_key} style={style}>
                             <input 
                                 type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'} 
-                                list={`custom-${f.field_key}-suggestions`}
+                                list={f.field_type !== 'date' ? `custom-${f.field_key}-suggestions` : undefined}
                                 className="cell-input" 
                                 value={row.customFields?.[f.field_key] || ''} 
                                 onChange={e => { const updated = { ...row.customFields, [f.field_key]: e.target.value }; updateRow(row.tempId, 'customFields', updated); }} 
