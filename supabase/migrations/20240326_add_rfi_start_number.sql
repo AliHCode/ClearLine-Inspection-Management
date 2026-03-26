@@ -1,7 +1,8 @@
 -- Migration: Add rfi_start_number to projects and update numbering logic
 
--- 1. Add the missing column to projects
+-- 1. Add the missing columns
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS rfi_start_number integer DEFAULT 1;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS current_session_id text;
 
 -- 2. Update the trigger function to respect the start number
 CREATE OR REPLACE FUNCTION public.generate_rfi_serial_no()

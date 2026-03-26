@@ -8,6 +8,16 @@ const AuthContext = createContext(null);
 // Cache key for offline-resilient profile storage
 const PROFILE_CACHE_KEY = 'saa_user_profile_cache';
 const MANUAL_LOGOUT_KEY = 'saa_manual_logout';
+const INSTANCE_ID_KEY = 'saa_instance_id';
+
+function getLocalInstanceId() {
+    let id = localStorage.getItem(INSTANCE_ID_KEY);
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(INSTANCE_ID_KEY, id);
+    }
+    return id;
+}
 
 function wasManualLogout() {
     return localStorage.getItem(MANUAL_LOGOUT_KEY) === '1';
@@ -63,7 +73,67 @@ export function AuthProvider({ children }) {
             }
         });
 
-        return () => subscription.unsubscribe();
+        // ── Single Session Enforcement ─────────────────────────────────────────
+        // Subscribe to changes on the user's profile row.
+        // If current_session_id changes to a different device, log out.
+        let profileSubscription = null;
+        
+        const setupProfileSubscription = (userId) => {
+            if (profileSubscription) profileSubscription.unsubscribe();
+            
+            profileSubscription = supabase
+                .channel(`public:profiles:id=eq.${userId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${userId}`
+                }, payload => {
+                    const dbSessionId = payload.new.current_session_id;
+                    const localId = getLocalInstanceId();
+                    
+                    if (dbSessionId && dbSessionId !== localId) {
+                        console.warn('Session invalidated: Logged in from another device.');
+                        logout();
+                        alert('You have been logged out because your account was accessed from another device.');
+                    }
+                })
+                .subscribe();
+        };
+
+        // Listen for changes on auth state (logged in, signed out, etc.)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                setManualLogoutFlag(false);
+                setupProfileSubscription(session.user.id);
+                const restored = restoreCachedProfile(session.user.id);
+                fetchProfile(session.user.id, { allowRetry: true });
+            } else {
+                if (profileSubscription) {
+                    profileSubscription.unsubscribe();
+                    profileSubscription = null;
+                }
+
+                if (event === 'SIGNED_OUT' || wasManualLogout()) {
+                    setUser(null);
+                } else if (!restoreCachedProfile()) {
+                    setUser(null);
+                }
+                setLoading(false);
+            }
+        });
+
+        // Initialize session on mount
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                setupProfileSubscription(session.user.id);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+            if (profileSubscription) profileSubscription.unsubscribe();
+        };
     }, []);
 
     async function ensureProfileExists(authUser) {
@@ -188,6 +258,15 @@ export function AuthProvider({ children }) {
                     setLoading(false);
                     return;
                 }
+                // Ensure the database knows about our current unique instance ID
+                const localId = getLocalInstanceId();
+                if (data.current_session_id !== localId) {
+                    await supabase
+                        .from('profiles')
+                        .update({ current_session_id: localId })
+                        .eq('id', userId);
+                }
+
                 // Ensure auth.user structure is combined with profile for easy usage
                 setUser(fullUser);
             } else {
