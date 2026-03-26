@@ -172,8 +172,8 @@ export function AuthProvider({ children }) {
 
             let { data, error } = await loadProfile();
 
+            // Only retry if the first attempt genuinely returned nothing or errored
             if ((!data || error) && allowRetry && navigator.onLine) {
-                await new Promise((resolve) => setTimeout(resolve, 650));
                 const retry = await loadProfile();
                 data = retry.data;
                 error = retry.error;
@@ -226,11 +226,14 @@ export function AuthProvider({ children }) {
                 }
                 // Ensure the database knows about our current unique instance ID
                 const localId = getLocalInstanceId();
+                // Fire-and-forget: update session_id without blocking the user from seeing the dashboard
                 if (data.current_session_id !== localId) {
-                    await supabase
+                    supabase
                         .from('profiles')
                         .update({ current_session_id: localId })
-                        .eq('id', userId);
+                        .eq('id', userId)
+                        .then(() => {/* intentionally non-blocking */})
+                        .catch((e) => console.warn('session_id update failed silently:', e));
                 }
 
                 // Ensure auth.user structure is combined with profile for easy usage
