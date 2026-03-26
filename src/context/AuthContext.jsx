@@ -57,23 +57,7 @@ export function AuthProvider({ children }) {
             }
         });
 
-        // Listen for changes on auth state (logged in, signed out, etc.)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (session?.user) {
-                setManualLogoutFlag(false);
-                const restored = restoreCachedProfile(session.user.id);
-                fetchProfile(session.user.id, { allowRetry: true });
-            } else {
-                if (event === 'SIGNED_OUT' || wasManualLogout()) {
-                    setUser(null);
-                } else if (!restoreCachedProfile()) {
-                    setUser(null);
-                }
-                setLoading(false);
-            }
-        });
-
-        // ── Single Session Enforcement ─────────────────────────────────────────
+        // Single Session Enforcement ─────────────────────────────────────────
         // Subscribe to changes on the user's profile row.
         // If current_session_id changes to a different device, log out.
         let profileSubscription = null;
