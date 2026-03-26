@@ -11225,3 +11225,109 @@ body,
   animation: premiumFadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.2s;
 }
+
+/* ============================================
+   ADMIN DASHBOARD FIELD DESIGNER
+   ============================================ */
+.admin-field-designer-wrapper {
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  border: 1px solid var(--clr-border);
+  border-radius: 8px;
+  background: white;
+}
+
+.table-preview-interactive {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.preview-header-row {
+  display: flex;
+  background: #f8fafc;
+  border-bottom: 2px solid var(--clr-border-dark);
+}
+
+.preview-th {
+  position: relative;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--clr-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-right: 1px solid var(--clr-border);
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.th-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  overflow: hidden;
+}
+
+.th-label {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.th-width-tag {
+  font-size: 0.65rem;
+  background: #e2e8f0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  color: #475569;
+}
+
+.btn-remove-preview {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.btn-remove-preview:hover {
+  color: var(--clr-danger);
+}
+
+.resizer-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.resizer-handle:hover,
+.resizer-handle:active {
+  background-color: var(--clr-brand-primary);
+  opacity: 0.5;
+}
+
+.preview-data-row {
+  display: flex;
+}
+
+.preview-td {
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  border-right: 1px solid var(--clr-border);
+  border-bottom: 1px solid var(--clr-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #fafafa;
+}

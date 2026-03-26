@@ -242,9 +242,11 @@ export function ProjectProvider({ children }) {
             { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', is_builtin: true },
         ];
 
+        const validProjectFields = (projectFields || []).filter(f => !f.project_id || f.project_id === activeProject?.id);
+
         const allFields = [
             ...BUILT_IN_COLUMNS,
-            ...(projectFields || []).map(f => ({ ...f, is_builtin: false }))
+            ...validProjectFields.map(f => ({ ...f, is_builtin: false }))
         ];
 
         const mappedFields = order.map(key => allFields.find(f => f.field_key === key)).filter(Boolean);
