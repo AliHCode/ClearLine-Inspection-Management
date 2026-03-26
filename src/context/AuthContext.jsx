@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
                 setManualLogoutFlag(false);
                 setupProfileSubscription(session.user.id);
                 const restored = restoreCachedProfile(session.user.id);
-                fetchProfile(session.user.id, { allowRetry: true });
+                fetchProfile(session.user.id, { allowRetry: true, authUser: session.user });
             } else {
                 if (profileSubscription) {
                     profileSubscription.unsubscribe();
@@ -137,7 +137,7 @@ export function AuthProvider({ children }) {
         }
     }
 
-    async function fetchProfile(userId, { allowRetry = true } = {}) {
+    async function fetchProfile(userId, { allowRetry = true, authUser: paramAuthUser = null } = {}) {
         if (!userId) return;
         if (isFetchingProfileRef.current === userId) return;
         isFetchingProfileRef.current = userId;
@@ -156,8 +156,11 @@ export function AuthProvider({ children }) {
         }
 
         try {
-            const { data: authData } = await supabase.auth.getUser();
-            const authUser = authData?.user;
+            let authUser = paramAuthUser;
+            if (!authUser) {
+                const { data: authData } = await supabase.auth.getUser();
+                authUser = authData?.user;
+            }
 
             async function loadProfile() {
                 return supabase
