@@ -4,7 +4,7 @@ import ThreadedComments from './ThreadedComments';
 import AuditLog from './AuditLog';
 import StatusBadge from './StatusBadge';
 import UserAvatar from './UserAvatar';
-import { formatDateDisplay } from '../utils/rfiLogic';
+import { formatDateDisplay, getThumbnailUrl } from '../utils/rfiLogic';
 import { useRFI } from '../context/RFIContext';
 import { useAuth } from '../context/AuthContext';
 import { RFI_STATUS } from '../utils/constants';
@@ -157,7 +157,7 @@ export default function RFIDetailModal({ rfi, projectFields = [], orderedColumns
                                             <div className="rfi-attachments-grid large">
                                                 {rfi.images.map((img, idx) => (
                                                     <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="rfi-attachment-thumb">
-                                                        <img src={img} alt={`Attachment ${idx + 1}`} />
+                                                        <img src={getThumbnailUrl(img, { width: 200, height: 200 })} alt={`Attachment ${idx + 1}`} />
                                                     </a>
                                                 ))}
                                             </div>

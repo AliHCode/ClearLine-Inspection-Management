@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
-import { getToday, formatDateDisplay } from '../utils/rfiLogic';
+import { getToday, formatDateDisplay, getThumbnailUrl } from '../utils/rfiLogic';
 import { INSPECTION_TYPES, RFI_STATUS } from '../utils/constants';
 import Header from '../components/Header';
 import DateNavigator from '../components/DateNavigator';
@@ -479,7 +479,7 @@ export default function DailyRFISheet() {
                         {rfi.images && rfi.images.length > 0 ? (
                             <div className="image-preview-grid consultant-grid" onClick={() => setSelectedImages(rfi.images)} title="Click to view full size">
                                 {rfi.images.slice(0, 3).map((url, i) => (
-                                    <img key={i} src={url} alt={`Attachment ${i + 1}`} className="thumbnail" />
+                                    <img key={i} src={getThumbnailUrl(url, { width: 100, height: 100 })} alt={`Attachment ${i + 1}`} className="thumbnail" />
                                 ))}
                                 {rfi.images.length > 3 && <div className="thumbnail-more">+{rfi.images.length - 3}</div>}
                             </div>

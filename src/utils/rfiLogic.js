@@ -248,3 +248,32 @@ export async function compressImage(file, { maxWidth = 1920, maxHeight = 1920, q
         reader.onerror = reject;
     });
 }
+
+/**
+ * Get a thumbnail URL using Supabase Image Transformations.
+ * Format: /storage/v1/render/image/public/[bucket]/[path]?width=W&height=H&resize=contain
+ */
+export function getThumbnailUrl(url, { width = 200, height = 200, quality = 80 } = {}) {
+    if (!url || typeof url !== 'string') return url;
+    
+    // Only transform Supabase Storage URLs
+    if (!url.includes('supabase.co/storage/v1/object/public/')) return url;
+
+    try {
+        // Change /object/public/ to /render/image/public/
+        const baseUrl = url.replace('/object/public/', '/render/image/public/');
+        
+        // Append transformation parameters
+        const params = new URLSearchParams({
+            width: width.toString(),
+            height: height.toString(),
+            quality: quality.toString(),
+            resize: 'contain'
+        });
+
+        return `${baseUrl}?${params.toString()}`;
+    } catch (e) {
+        console.error("Error generating thumbnail URL:", e);
+        return url;
+    }
+}

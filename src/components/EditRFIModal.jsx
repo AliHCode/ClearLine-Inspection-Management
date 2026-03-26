@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { X, Upload, Brush, Save, MapPin, Tag, FileText } from 'lucide-react';
 import { INSPECTION_TYPES } from '../utils/constants';
 import FieldMarkupStudio from './FieldMarkupStudio';
+import { getThumbnailUrl } from '../utils/rfiLogic';
 
 export default function EditRFIModal({ rfi, projectFields = [], orderedColumns = [], onSave, onClose }) {
     const [remarks, setRemarks] = useState(rfi.remarks || '');
@@ -148,7 +149,7 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     {existingImages.map((img, idx) => (
                         <div key={`existing-${idx}`} style={{ position: 'relative' }}>
                             <img
-                                src={getPreviewUrl(img)}
+                                src={getThumbnailUrl(img, { width: 100, height: 100 })}
                                 alt={`Attachment ${idx + 1}`}
                                 style={{
                                     width: '90px',

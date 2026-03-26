@@ -3,7 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRFI } from '../context/RFIContext';
 import { useProject } from '../context/ProjectContext';
-import { getToday, formatDateDisplay, getNowLocalISO } from '../utils/rfiLogic';
+import { getToday, formatDateDisplay, getNowLocalISO, getThumbnailUrl } from '../utils/rfiLogic';
 import Header from '../components/Header';
 import DateNavigator from '../components/DateNavigator';
 import StatusBadge from '../components/StatusBadge';
@@ -658,7 +658,7 @@ export default function ReviewQueue() {
                         title="Click to view full size"
                     >
                         {rfi.images.slice(0, 3).map((url, idx) => (
-                            <img key={idx} src={url} alt="attachment" className="thumbnail" />
+                            <img key={idx} src={getThumbnailUrl(url, { width: 100, height: 100 })} alt="attachment" className="thumbnail" />
                         ))}
                         {rfi.images.length > 3 && (
                             <div className="thumbnail-more">
