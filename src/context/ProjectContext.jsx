@@ -31,6 +31,8 @@ export function ProjectProvider({ children }) {
 
     // Project members
     const [projectMembers, setProjectMembers] = useState([]);
+    const fetchingFieldsRef = useRef(null);
+    const fetchingMembersRef = useRef(null);
 
     const restoreProjectCache = useCallback((userId) => {
         if (!userId) return false;
@@ -156,6 +158,8 @@ export function ProjectProvider({ children }) {
             setFieldsResolvedProjectId(null);
             return;
         }
+        if (fetchingFieldsRef.current === projectId) return;
+        fetchingFieldsRef.current = projectId;
         // These keys are already rendered as hardcoded table columns everywhere —
         // keep them out of projectFields so they don't appear twice.
         // Reset state immediately for the new project to prevent stale fields from previous project
@@ -188,6 +192,9 @@ export function ProjectProvider({ children }) {
                 setProjectFields([]);
             }
         } finally {
+            if (fetchingFieldsRef.current === projectId) {
+                fetchingFieldsRef.current = null;
+            }
             setLoadingFields(false);
             setFieldsResolvedProjectId(projectId);
         }
@@ -196,6 +203,8 @@ export function ProjectProvider({ children }) {
     // ─── Fetch project members ───
     const fetchProjectMembers = useCallback(async (projectId) => {
         if (!projectId) { setProjectMembers([]); return; }
+        if (fetchingMembersRef.current === projectId) return;
+        fetchingMembersRef.current = projectId;
         try {
             const { data, error } = await supabase
                 .from('project_members')
@@ -206,6 +215,10 @@ export function ProjectProvider({ children }) {
         } catch (err) {
             console.error("Error loading members:", err);
             setProjectMembers([]);
+        } finally {
+            if (fetchingMembersRef.current === projectId) {
+                fetchingMembersRef.current = null;
+            }
         }
     }, []);
 

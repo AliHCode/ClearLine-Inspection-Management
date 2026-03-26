@@ -36,56 +36,14 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [mfaFactors, setMfaFactors] = useState([]);
     const initialized = useRef(false);
+    const isFetchingProfileRef = useRef(null); // Tracks the ID being fetched
 
     useEffect(() => {
         if (initialized.current) return;
         initialized.current = true;
 
-        // Check active sessions and sets the user
-        // getSession() reads from localStorage — works offline.
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                setManualLogoutFlag(false);
-                const restored = restoreCachedProfile(session.user.id);
-                fetchProfile(session.user.id, { allowRetry: true });
-            } else {
-                const restored = restoreCachedProfile();
-                if (!restored || wasManualLogout()) {
-                    setUser(null);
-                }
-                setLoading(false);
-            }
-        });
-
-        // Single Session Enforcement ─────────────────────────────────────────
-        // Subscribe to changes on the user's profile row.
-        // If current_session_id changes to a different device, log out.
-        let profileSubscription = null;
-        
-        const setupProfileSubscription = (userId) => {
-            if (profileSubscription) profileSubscription.unsubscribe();
-            
-            profileSubscription = supabase
-                .channel(`public:profiles:id=eq.${userId}`)
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'profiles',
-                    filter: `id=eq.${userId}`
-                }, payload => {
-                    const dbSessionId = payload.new.current_session_id;
-                    const localId = getLocalInstanceId();
-                    
-                    if (dbSessionId && dbSessionId !== localId) {
-                        console.warn('Session invalidated: Logged in from another device.');
-                        logout();
-                        alert('You have been logged out because your account was accessed from another device.');
-                    }
-                })
-                .subscribe();
-        };
-
         // Listen for changes on auth state (logged in, signed out, etc.)
+        // This also handles the INITIAL_SESSION by default.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setManualLogoutFlag(false);
@@ -107,12 +65,29 @@ export function AuthProvider({ children }) {
             }
         });
 
-        // Initialize session on mount
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                setupProfileSubscription(session.user.id);
-            }
-        });
+        let profileSubscription = null;
+        function setupProfileSubscription(userId) {
+            if (profileSubscription) profileSubscription.unsubscribe();
+            
+            profileSubscription = supabase
+                .channel(`public:profiles:id=eq.${userId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${userId}`
+                }, payload => {
+                    const dbSessionId = payload.new.current_session_id;
+                    const localId = getLocalInstanceId();
+                    
+                    if (dbSessionId && dbSessionId !== localId) {
+                        console.warn('Session invalidated: Logged in from another device.');
+                        logout();
+                        alert('You have been logged out because your account was accessed from another device.');
+                    }
+                })
+                .subscribe();
+        };
 
         return () => {
             subscription.unsubscribe();
@@ -163,6 +138,10 @@ export function AuthProvider({ children }) {
     }
 
     async function fetchProfile(userId, { allowRetry = true } = {}) {
+        if (!userId) return;
+        if (isFetchingProfileRef.current === userId) return;
+        isFetchingProfileRef.current = userId;
+
         // ── Offline guard ────────────────────────────────────────────────────
         // getUser() and DB queries need the network. When offline, serve the
         // last-known profile from localStorage so the user stays logged in.
@@ -266,6 +245,9 @@ export function AuthProvider({ children }) {
                 return;
             }
         } finally {
+            if (isFetchingProfileRef.current === userId) {
+                isFetchingProfileRef.current = null;
+            }
             setLoading(false);
             if (userId) {
                 supabase.auth.mfa.listFactors().then(({ data, error }) => {

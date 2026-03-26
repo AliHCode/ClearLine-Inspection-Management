@@ -130,6 +130,12 @@ export function RFIProvider({ children }) {
         } catch { return []; }
     });
     const [notifications, setNotifications] = useState([]);
+    const fetchingRfisRef = useRef(null);
+    const fetchingNotifsRef = useRef(null);
+    const fetchingConsultantsRef = useRef(null);
+    const fetchingContractorsRef = useRef(null);
+    const lastRfiFetchRef = useRef(0);
+
     
     // Derived filtered notifications
     const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
@@ -238,13 +244,21 @@ export function RFIProvider({ children }) {
     }, [uploadImages]);
 
     const fetchAllRFIs = useCallback(async () => {
-        if (!activeProject) {
+        if (!activeProject?.id) {
             setRfis([]);
             setLoadingRfis(false);
             return;
         }
 
-        const restored = restoreRfiCache(activeProject.id);
+        // Throttle rapid successive calls (e.g. from multiple rapid DB changes)
+        const now = Date.now();
+        if (now - lastRfiFetchRef.current < 2000) return;
+        
+        if (fetchingRfisRef.current === activeProject.id) return;
+        fetchingRfisRef.current = activeProject.id;
+        lastRfiFetchRef.current = now;
+
+        const restored = await restoreRfiCache(activeProject.id);
 
         if (restored) {
             setLoadingRfis(false);
@@ -330,6 +344,9 @@ export function RFIProvider({ children }) {
                 if (isConnectionError) setIsOffline(true);
                 if (!restored) setRfis([]);
             } finally {
+                if (fetchingRfisRef.current === activeProject.id) {
+                    fetchingRfisRef.current = null;
+                }
                 setLoadingRfis(false);
             }
         }
@@ -338,10 +355,12 @@ export function RFIProvider({ children }) {
     }, [activeProject, persistRfiCache, restoreRfiCache]);
 
     const fetchNotifications = useCallback(async () => {
-        if (!user) {
+        if (!user?.id) {
             setNotifications([]);
             return;
         }
+        if (fetchingNotifsRef.current === user.id) return;
+        fetchingNotifsRef.current = user.id;
 
         try {
             const { data, error } = await supabase
@@ -388,12 +407,18 @@ export function RFIProvider({ children }) {
                     console.error('Retry error:', retryErr);
                 }
             }
+        } finally {
+            if (fetchingNotifsRef.current === user.id) {
+                fetchingNotifsRef.current = null;
+            }
         }
     }, [user, projects]);
 
     // Fetch consultants/contractors scoped to the active project's members only
     const fetchConsultants = useCallback(async (projectId) => {
         if (!projectId) { setConsultants([]); return; }
+        if (fetchingConsultantsRef.current === projectId) return;
+        fetchingConsultantsRef.current = projectId;
         try {
             const { data, error } = await supabase
                 .from('project_members')
@@ -404,11 +429,17 @@ export function RFIProvider({ children }) {
             setConsultants((data || []).map(m => m.profiles).filter(Boolean));
         } catch (error) {
             console.error('Error fetching consultants:', error);
+        } finally {
+            if (fetchingConsultantsRef.current === projectId) {
+                fetchingConsultantsRef.current = null;
+            }
         }
     }, []);
 
     const fetchContractors = useCallback(async (projectId) => {
         if (!projectId) { setContractors([]); return; }
+        if (fetchingContractorsRef.current === projectId) return;
+        fetchingContractorsRef.current = projectId;
         try {
             const { data, error } = await supabase
                 .from('project_members')
@@ -419,6 +450,10 @@ export function RFIProvider({ children }) {
             setContractors((data || []).map(m => m.profiles).filter(Boolean));
         } catch (error) {
             console.error('Error fetching contractors:', error);
+        } finally {
+            if (fetchingContractorsRef.current === projectId) {
+                fetchingContractorsRef.current = null;
+            }
         }
     }, []);
 
@@ -555,7 +590,7 @@ export function RFIProvider({ children }) {
                 syncPendingRFIs();
                 syncPendingConsultantActions();
             }
-        }, 15000);
+        }, 60000);
 
         const handleOnline = () => {
             toast('Back online. Syncing pending work...', { icon: '🌐' });
