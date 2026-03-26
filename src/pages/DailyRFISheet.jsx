@@ -28,9 +28,6 @@ export default function DailyRFISheet() {
     const [editTarget, setEditTarget] = useState(null);
     const [newRows, setNewRows] = useState(() => [{
         tempId: Date.now() + Math.random(),
-        description: '',
-        location: '',
-        inspectionType: INSPECTION_TYPES[0],
         assignedTo: '',
         images: [],
         parentId: null,
@@ -74,30 +71,35 @@ export default function DailyRFISheet() {
         !rfis.some(child => child.parentId === r.id)
     ).sort((a,b) => a.serialNo - b.serialNo);
 
-    // Determine unique previously used locations for suggestions
-    const uniqueLocations = Array.from(new Set([
-        ...dailyRfis.map(r => r.location).filter(Boolean),
-        ...newRows.map(r => r.location).filter(Boolean)
-    ]));
+    // Determine unique previously used locations and descriptions for suggestions dynamically
+    const uniqueSuggestions = useMemo(() => {
+        const suggs = {};
+        const allBaseRfis = [...dailyRfis, ...newRows];
+        
+        // Extract from top-level properties (legacy) or customFields
+        const extract = (key) => Array.from(new Set(
+            allBaseRfis.map(r => r[key] || r.customFields?.[key]).filter(Boolean)
+        ));
 
-    // Determine unique descriptions for suggestions
-    const uniqueDescriptions = Array.from(new Set([
-        ...dailyRfis.map(r => r.description).filter(Boolean),
-        ...newRows.map(r => r.description).filter(Boolean)
-    ]));
+        ['location', 'description', 'inspection_type'].forEach(k => {
+            suggs[k] = extract(k);
+        });
 
-    // Determine unique custom field values for suggestions dynamically
-    const uniqueCustomFields = {};
-    if (projectFields) {
-        projectFields.forEach(pf => {
-            if (pf.field_type === 'text' || pf.field_type === 'number') {
-                uniqueCustomFields[pf.field_key] = Array.from(new Set([
-                    ...dailyRfis.map(r => r.customFields?.[pf.field_key]).filter(Boolean),
-                    ...newRows.map(r => r.customFields?.[pf.field_key]).filter(Boolean)
-                ]));
+        // Also extract for any other custom fields
+        (projectFields || []).forEach(pf => {
+            if (!suggs[pf.field_key]) {
+                suggs[pf.field_key] = Array.from(new Set(
+                    allBaseRfis.map(r => r.customFields?.[pf.field_key]).filter(Boolean)
+                ));
             }
         });
-    }
+
+        return suggs;
+    }, [dailyRfis, newRows, projectFields]);
+
+    const uniqueCustomFields = uniqueSuggestions;
+    const uniqueDescriptions = uniqueSuggestions.description || [];
+    const uniqueLocations = uniqueSuggestions.location || [];
 
     // Determines what to show in the table
     const currentRfis = activeTab === 'daily' ? dailyRfis : activeRejectedRfis;
@@ -115,9 +117,6 @@ export default function DailyRFISheet() {
     function createEmptyRow() {
         return {
             tempId: Date.now() + Math.random(),
-            description: '',
-            location: '',
-            inspectionType: INSPECTION_TYPES[0],
             assignedTo: '',
             images: [],
             parentId: null,
@@ -179,9 +178,13 @@ export default function DailyRFISheet() {
     }
 
     async function handleSubmit() {
-        const validRows = newRows.filter((r) => r.description.trim() && r.location.trim());
+        const validRows = newRows.filter((r) => {
+            const hasCustomData = Object.values(r.customFields).some(val => val && val.toString().trim().length > 0);
+            return hasCustomData || r.images.length > 0;
+        });
+
         if (validRows.length === 0) {
-            setSubmitMessage('Please fill in at least one RFI with description and location.');
+            setSubmitMessage('Please fill in at least one RFI column or attach a photo.');
             setTimeout(() => setSubmitMessage(''), 3000);
             return;
         }
@@ -193,9 +196,6 @@ export default function DailyRFISheet() {
         try {
             for (const row of validRows) {
                 await createRFI({
-                    description: row.description.trim(),
-                    location: row.location.trim(),
-                    inspectionType: row.inspectionType,
                     filedBy: user.id,
                     filedDate: currentDate,
                     images: row.images,
@@ -234,9 +234,6 @@ export default function DailyRFISheet() {
         if (!editTarget) return;
         const uploaded = payload.newFiles.length > 0 ? await uploadImages(payload.newFiles) : [];
         await updateRFI(editTarget.id, {
-            description: payload.description,
-            location: payload.location,
-            inspectionType: payload.inspectionType,
             remarks: payload.remarks,
             images: [...payload.existingImages, ...uploaded],
             customFields: payload.customFields || {},
@@ -265,7 +262,11 @@ export default function DailyRFISheet() {
         if (!user) return;
         const draftKey = `rfi_draft_${user.id}_${activeProject?.id || 'default'}`;
         // Only save if there's actual content to prevent overwriting with empty defaults prematurely
-        const hasContent = newRows.some(r => r.description.trim() || r.location.trim());
+        const hasContent = newRows.some(r => {
+            const hasCustomData = Object.values(r.customFields || {}).some(val => val && val.toString().trim().length > 0);
+            return hasCustomData || (r.images && r.images.length > 0);
+        });
+        
         if (hasContent) {
             // Strip images as they are File objects and can't be JSON serialized
             const toSave = newRows.map(r => {
@@ -430,7 +431,7 @@ export default function DailyRFISheet() {
 
         // Filter out remarks and attachments for both Daily and Rejected as they are in the Discussion modal
         if (activeTab === 'daily' || activeTab === 'rejected') {
-            cols = cols.filter(c => c.field_key !== 'remarks' && c.field_key !== 'attachments');
+            cols = cols.filter(c => c.field_key !== 'remarks' && c.field_key !== 'attachments' && c.field_key !== 'inspection_type');
         }
 
         // Add "Assigned To" at the very end if not already present
@@ -458,11 +459,11 @@ export default function DailyRFISheet() {
                     </td>
                 );
             case 'description':
-                return <td key={col.field_key} style={style} data-label="Description">{rfi.description}</td>;
             case 'location':
-                return <td key={col.field_key} style={style} data-label="Location">{rfi.location}</td>;
             case 'inspection_type':
-                return <td key={col.field_key} style={style} data-label="Type">{rfi.inspectionType}</td>;
+                // Handled in default via customFields for new projects
+                const val = rfi[col.field_key] || rfi.customFields?.[col.field_key] || '—';
+                return <td key={col.field_key} style={style} data-label={col.field_name}>{val}</td>;
             case 'status':
                 return (
                     <td key={col.field_key} style={style} data-label="Status">
@@ -580,31 +581,18 @@ export default function DailyRFISheet() {
                             }
                         }
                     });
-                    predictedNo = `${prefix}-${(maxB + idx + 1).toString().padStart(3, '0')}`;
+                    const sequenceStart = Math.max(maxB, (activeProject?.rfi_start_number || 1) - 1);
+                    predictedNo = `${prefix}-${(sequenceStart + idx + 1).toString().padStart(3, '0')}`;
                 } else {
                     predictedNo = row.customFields?.rfi_no || '—';
                 }
-                return <td key={col.field_key} style={style}>{predictedNo}</td>;
+                return <td key={col.field_key} style={{ ...style, whiteSpace: 'nowrap' }}>{predictedNo}</td>;
             case 'description':
-                return (
-                    <td key={col.field_key} style={style}>
-                        <input type="text" list="description-suggestions" className="cell-input" value={row.description} onChange={(e) => updateRow(row.tempId, 'description', e.target.value)} placeholder="e.g. Concrete pouring Zone B" disabled={row.isLocked} />
-                    </td>
-                );
             case 'location':
-                return (
-                    <td key={col.field_key} style={style}>
-                        <input type="text" list="location-suggestions" className="cell-input" value={row.location} onChange={(e) => updateRow(row.tempId, 'location', e.target.value)} placeholder="e.g. Floor 3, Zone A" disabled={row.isLocked} />
-                    </td>
-                );
             case 'inspection_type':
-                return (
-                    <td key={col.field_key} style={style}>
-                        <select className="cell-select" value={row.inspectionType} onChange={(e) => updateRow(row.tempId, 'inspectionType', e.target.value)} disabled={row.isLocked}>
-                            {INSPECTION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-                        </select>
-                    </td>
-                );
+                // These are no longer built-in for new projects. 
+                // We let them fall through to default where they can be configured by Admin.
+                return null; 
             case 'attachments':
                 return (
                     <td key={col.field_key} style={style}>
@@ -676,13 +664,18 @@ export default function DailyRFISheet() {
                         <td key={col.field_key} style={style}>
                             <input 
                                 type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'} 
-                                list={f.field_type !== 'date' ? `custom-${f.field_key}-suggestions` : undefined}
+                                list={`custom-${f.field_key}-suggestions`}
                                 className="cell-input" 
                                 value={row.customFields?.[f.field_key] || ''} 
                                 onChange={e => { const updated = { ...row.customFields, [f.field_key]: e.target.value }; updateRow(row.tempId, 'customFields', updated); }} 
                                 placeholder={f.field_name} 
                                 disabled={row.isLocked} 
                             />
+                            {uniqueSuggestions[f.field_key]?.length > 0 && (
+                                <datalist id={`custom-${f.field_key}-suggestions`}>
+                                    {uniqueSuggestions[f.field_key].map((s, si) => <option key={si} value={s} />)}
+                                </datalist>
+                            )}
                         </td>
                     );
                 }
@@ -843,11 +836,7 @@ export default function DailyRFISheet() {
 
                     {showNewRfiEntry && (
                         <>
-                            <datalist id="location-suggestions">
-                                {uniqueLocations.map((loc, idx) => (
-                                    <option key={idx} value={loc} />
-                                ))}
-                            </datalist>
+                            {/* Datalists are generated dynamically within the cell inputs */}
 
                             <datalist id="description-suggestions">
                                 {uniqueDescriptions.map((desc, idx) => (
@@ -872,14 +861,14 @@ export default function DailyRFISheet() {
                                                 if (!col.is_builtin && col.is_required) label += ' *';
                                                 return <th key={col.field_key} style={style}>{label}</th>;
                                             })}
-                                            <th className="col-assign">Assign To</th>
+                                            <th key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>Assign To</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {newRows.map((row, idx) => (
                                             <tr key={row.tempId}>
                                                 {newEntryColumns.map(col => renderNewEntryCell(row, col, idx))}
-                                                <td className="col-assign">
+                                                <td key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>
                                                     <select
                                                         className="cell-select"
                                                         value={row.assignedTo}
@@ -961,6 +950,8 @@ export default function DailyRFISheet() {
                 <RFIDetailModal
                     key={detailTarget.id}
                     rfi={detailTarget}
+                    projectFields={projectFields}
+                    orderedColumns={orderedTableColumns}
                     onClose={() => setDetailTarget(null)}
                 />
             )}

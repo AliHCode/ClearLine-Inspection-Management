@@ -219,20 +219,13 @@ export function ProjectProvider({ children }) {
     // Build the ordered table columns anytime fields or active project changes
     useEffect(() => {
         const order = activeProject?.column_order || [
-            'serial', 'rfi_no', 'description', 'location', 'inspection_type',
-            ...(projectFields || []).map(f => f.field_key),
-            'status', 'remarks', 'attachments', 'actions'
+            'serial', 'rfi_no', 'status', 'actions'
         ];
         
         const BUILT_IN_COLUMNS = [
             { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', is_builtin: true },
             { id: 'builtin_rfi_no', field_key: 'rfi_no', field_name: 'RFI #', is_builtin: true },
-            { id: 'builtin_description', field_key: 'description', field_name: 'Description', is_builtin: true },
-            { id: 'builtin_location', field_key: 'location', field_name: 'Location', is_builtin: true },
-            { id: 'builtin_type', field_key: 'inspection_type', field_name: 'Type', is_builtin: true },
             { id: 'builtin_status', field_key: 'status', field_name: 'Status', is_builtin: true },
-            { id: 'builtin_remarks', field_key: 'remarks', field_name: 'Remarks', is_builtin: true },
-            { id: 'builtin_attachments', field_key: 'attachments', field_name: 'Attachments', is_builtin: true },
             { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', is_builtin: true },
         ];
 
@@ -298,9 +291,11 @@ export function ProjectProvider({ children }) {
     }
 
     // ─── Create project (admin) ───
-    async function createProject(name, code = '', description = '', timezone = 'UTC') {
+    async function createProject(name, code = '', description = '', timezone = 'UTC', additionalFields = {}) {
         try {
-            const { data, error } = await supabase.from('projects').insert([{ name, code, description, timezone }]).select();
+            const { data, error } = await supabase.from('projects').insert([{ 
+                name, code, description, timezone, ...additionalFields 
+            }]).select();
             if (error) throw error;
             if (data && data[0]) {
                 setProjects(prev => [...prev, data[0]]);

@@ -1,5 +1,6 @@
 const DEFAULT_WIDTHS = {
     serial: 90,
+    rfi_no: 120,
     description: 280,
     location: 180,
     inspection_type: 150,

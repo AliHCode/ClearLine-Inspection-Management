@@ -217,12 +217,13 @@ function DateRangePicker({ fromDate, toDate, onChange }) {
 function renderCell(rfi, fieldKey, index) {
     switch (fieldKey) {
         case 'serial':          return index + 1;
-        case 'description':     return rfi.description || '—';
-        case 'location':        return rfi.location || '—';
-        case 'inspection_type': return rfi.inspectionType || '—';
+        case 'description':     
+        case 'location':        
+        case 'inspection_type': 
+            return rfi[fieldKey] || rfi.inspectionType || rfi.customFields?.[fieldKey] || '—';
         case 'status':          return <StatusBadge status={rfi.status} />;
-        case 'remarks':         return rfi.remarks || '—';
-        case 'attachments':     return rfi.images?.length ? `${rfi.images.length} file(s)` : '—';
+        case 'remarks':         return rfi.remarks || rfi.customFields?.remarks || '—';
+        case 'attachments':     return (rfi.images?.length || rfi.customFields?.attachments?.length) ? `${rfi.images?.length || rfi.customFields?.attachments?.length} file(s)` : '—';
         case 'filed_date':      return formatDateDisplay(rfi.originalFiledDate || rfi.filedDate);
         case 'review_date':     return rfi.reviewedAt
             ? formatDateDisplay(rfi.reviewedAt.split('T')[0])
@@ -290,12 +291,12 @@ export default function SummaryPage() {
 
     const defaultCols = [
         { field_key: 'serial',          field_name: '#' },
+        { field_key: 'rfi_no',          field_name: 'RFI #' },
         { field_key: 'description',     field_name: 'Description' },
         { field_key: 'location',        field_name: 'Location' },
         { field_key: 'inspection_type', field_name: 'Type' },
         { field_key: 'status',          field_name: 'Status' },
         { field_key: 'filed_date',      field_name: 'Filed Date' },
-        { field_key: 'remarks',         field_name: 'Remarks' },
     ];
 
     const cols = useMemo(() =>

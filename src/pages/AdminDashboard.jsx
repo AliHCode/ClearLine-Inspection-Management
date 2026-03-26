@@ -192,10 +192,12 @@ export default function AdminDashboard() {
     const [newProjectCode, setNewProjectCode] = useState('');
     const [newProjectDesc, setNewProjectDesc] = useState('');
     const [newProjectTimezone, setNewProjectTimezone] = useState('UTC');
+    const [newProjectStartNumber, setNewProjectStartNumber] = useState(1);
     
     const [editingProject, setEditingProject] = useState(null); // { id, name, code, description, timezone }
     const [editCode, setEditCode] = useState('');
     const [editTimezone, setEditTimezone] = useState('');
+    const [editStartNumber, setEditStartNumber] = useState(1);
     const [editSubscriptionStatus, setEditSubscriptionStatus] = useState('trial');
     const [editSubscriptionEnd, setEditSubscriptionEnd] = useState('');
     const [editIsLocked, setEditIsLocked] = useState(false);
@@ -213,20 +215,14 @@ export default function AdminDashboard() {
 
     const BUILT_IN_COLUMNS = [
         { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', field_type: 'Built-in', is_builtin: true },
-        { id: 'builtin_description', field_key: 'description', field_name: 'Description', field_type: 'Built-in', is_builtin: true },
-        { id: 'builtin_location', field_key: 'location', field_name: 'Location', field_type: 'Built-in', is_builtin: true },
-        { id: 'builtin_type', field_key: 'inspection_type', field_name: 'Type', field_type: 'Built-in', is_builtin: true },
+        { id: 'builtin_rfi_no', field_key: 'rfi_no', field_name: 'RFI #', field_type: 'Built-in', is_builtin: true },
         { id: 'builtin_status', field_key: 'status', field_name: 'Status', field_type: 'Built-in', is_builtin: true },
-        { id: 'builtin_remarks', field_key: 'remarks', field_name: 'Remarks', field_type: 'Built-in', is_builtin: true },
-        { id: 'builtin_attachments', field_key: 'attachments', field_name: 'Attachments', field_type: 'Built-in', is_builtin: true },
         { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', field_type: 'Built-in', is_builtin: true },
     ];
 
     useEffect(() => {
         const order = activeProject?.column_order || [
-            'serial', 'description', 'location', 'inspection_type',
-            ...(projectFields || []).map(f => f.field_key),
-            'status', 'remarks', 'attachments', 'actions'
+            'serial', 'rfi_no', 'status', 'actions'
         ];
         
         const allFields = [
@@ -406,7 +402,8 @@ export default function AdminDashboard() {
             newProjectName.trim(), 
             newProjectCode.trim(), 
             newProjectDesc.trim(),
-            newProjectTimezone
+            newProjectTimezone,
+            { rfi_start_number: parseInt(newProjectStartNumber, 10) || 1 }
         );
         if (result?.success) {
             showMsg('Project created');
@@ -429,7 +426,8 @@ export default function AdminDashboard() {
             subscription_status: editSubscriptionStatus,
             subscription_end: editSubscriptionEnd || null,
             is_locked: editIsLocked,
-            payment_remarks: editPaymentRemarks.trim()
+            payment_remarks: editPaymentRemarks.trim(),
+            rfi_start_number: parseInt(editStartNumber, 10) || 1
         });
         if (result?.success) {
             showMsg('Project details updated');
@@ -644,6 +642,11 @@ export default function AdminDashboard() {
                                             onChange={setNewProjectTimezone}
                                         />
                                     </div>
+                                    <div className="form-group">
+                                        <label>RFI Start #</label>
+                                        <input type="number" min="1" value={newProjectStartNumber}
+                                            onChange={e => setNewProjectStartNumber(e.target.value)} />
+                                    </div>
                                     <div className="form-group full-width">
                                         <label>Description</label>
                                         <input type="text" placeholder="Short description of the project scope..." value={newProjectDesc}
@@ -713,6 +716,21 @@ export default function AdminDashboard() {
                                                 <span className="detail-value" title={p.timezone}>
                                                     <Globe size={12} /> {p.timezone || 'UTC'}
                                                 </span>
+                                            )}
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">RFI Start #</span>
+                                            {editingProject === p.id ? (
+                                                <input 
+                                                    type="number"
+                                                    min="1"
+                                                    className="detail-input"
+                                                    value={editStartNumber}
+                                                    onChange={e => setEditStartNumber(e.target.value)}
+                                                    onClick={e => e.stopPropagation()}
+                                                />
+                                            ) : (
+                                                <span className="detail-value">{p.rfi_start_number || 1}</span>
                                             )}
                                         </div>
                                     </div>
@@ -818,6 +836,7 @@ export default function AdminDashboard() {
                                                 setEditSubscriptionEnd(p.subscription_end || '');
                                                 setEditIsLocked(p.is_locked || false);
                                                 setEditPaymentRemarks(p.payment_remarks || '');
+                                                setEditStartNumber(p.rfi_start_number || 1);
                                             }}>
                                                 Edit Project Details
                                             </button>

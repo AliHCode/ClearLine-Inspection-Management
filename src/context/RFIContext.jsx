@@ -38,9 +38,9 @@ function normalizeRfiRecord(rfi = {}) {
         ...rfi,
         id: rfi.id || `cached-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         serialNo: Number.isFinite(Number(rfi.serialNo)) ? Number(rfi.serialNo) : 0,
-        description: rfi.description || '',
-        location: rfi.location || '',
-        inspectionType: rfi.inspectionType || '',
+        description: rfi.description || rfi.customFields?.description || '',
+        location: rfi.location || rfi.customFields?.location || '',
+        inspectionType: rfi.inspectionType || rfi.inspection_type || rfi.customFields?.inspection_type || rfi.customFields?.inspectionType || '',
         filedDate,
         originalFiledDate: rfi.originalFiledDate || filedDate,
         status: rfi.status || RFI_STATUS.PENDING,
@@ -610,14 +610,15 @@ export function RFIProvider({ children }) {
             await enqueuePendingRFI({
                 projectId: activeProject.id,
                 payload: {
-                    description,
-                    location,
-                    inspectionType,
+                    description: description || customFields?.description || '',
+                    location: location || customFields?.location || '',
+                    inspectionType: inspectionType || customFields?.inspection_type || customFields?.inspectionType || '',
                     filedBy: effectiveFiledBy,
                     filedDate: effectiveFiledDate,
                     assignedTo: assignedTo || null,
                     images: queuedImages,
                     parentId,
+                    customFields
                 },
             });
 
@@ -694,9 +695,9 @@ export function RFIProvider({ children }) {
             const imageUrls = await normalizeImagesForSubmission(normalizedImagesInput);
             const newRfiData = {
                 // serialNo and rfiNo are now handled by DB triggers on insert
-                description,
-                location,
-                inspectionType,
+                description: description || customFields?.description || '',
+                location: location || customFields?.location || '',
+                inspectionType: inspectionType || customFields?.inspection_type || customFields?.inspectionType || '',
                 filedBy: effectiveFiledBy,
                 filedDate: effectiveFiledDate,
                 originalFiledDate: effectiveFiledDate,
@@ -707,7 +708,7 @@ export function RFIProvider({ children }) {
                 carryoverCount: 0,
                 carryoverTo: null,
                 images: imageUrls,
-                assignedTo: assignedTo || null,   // camelCase so formatForDB maps it correctly
+                assignedTo: assignedTo || null,
                 parentId,
                 customFields: customFields || {},
             };

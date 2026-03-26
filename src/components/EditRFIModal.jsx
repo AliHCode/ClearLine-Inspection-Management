@@ -4,13 +4,18 @@ import { INSPECTION_TYPES } from '../utils/constants';
 import FieldMarkupStudio from './FieldMarkupStudio';
 
 export default function EditRFIModal({ rfi, projectFields = [], orderedColumns = [], onSave, onClose }) {
-    const [description, setDescription] = useState(rfi.description || '');
-    const [location, setLocation] = useState(rfi.location || '');
-    const [inspectionType, setInspectionType] = useState(rfi.inspectionType || INSPECTION_TYPES[0]);
     const [remarks, setRemarks] = useState(rfi.remarks || '');
     const [existingImages, setExistingImages] = useState(rfi.images || []);
     const [newFiles, setNewFiles] = useState([]);
-    const [customFields, setCustomFields] = useState(rfi.customFields || {});
+    const [customFields, setCustomFields] = useState(() => {
+        // Merge legacy fields and custom fields into a single state for the editor
+        return {
+            description: rfi.description || '',
+            location: rfi.location || '',
+            inspection_type: rfi.inspectionType || rfi.inspection_type || '',
+            ...(rfi.customFields || {})
+        };
+    });
     const [markupTarget, setMarkupTarget] = useState(null); // { source: 'existing'|'new', index }
     const fileInputRef = useRef(null);
 
@@ -34,7 +39,7 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
 
     const orderedEditable = useMemo(() => {
         const fromAdmin = orderedColumns && orderedColumns.length > 0 ? orderedColumns : fallbackOrder;
-        const skip = new Set(['serial', 'status', 'actions']);
+        const skip = new Set(['serial', 'rfi_no', 'status', 'actions']);
         return fromAdmin.filter((col) => !skip.has(col.field_key));
     }, [orderedColumns, fallbackOrder]);
 
@@ -44,15 +49,15 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
 
     function handleSubmit(e) {
         e?.preventDefault?.();
-        if (!description.trim() || !location.trim()) return;
+        
+        // Agnostic validation: ensures at least one modular field or existing/new image exists
+        const hasData = Object.values(customFields).some(val => val && val.toString().trim().length > 0);
+        if (!hasData && existingImages.length === 0 && newFiles.length === 0) return;
 
         const confirmed = window.confirm('Save changes to this inspection?');
         if (!confirmed) return;
 
         onSave({
-            description: description.trim(),
-            location: location.trim(),
-            inspectionType,
             remarks: remarks.trim(),
             existingImages,
             newFiles,
@@ -287,8 +292,8 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                         {label}
                     </label>
                     <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
+                        value={customFields.description || ''}
+                        onChange={(e) => updateCustomFieldValue('description', e.target.value)}
                         rows={4}
                         required
                         autoFocus
@@ -307,8 +312,8 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                         {label}
                     </label>
                     <input
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        value={customFields.location || ''}
+                        onChange={(e) => updateCustomFieldValue('location', e.target.value)}
                         required
                         placeholder="e.g. Floor 3, Zone A"
                         style={inputStyle}
@@ -325,10 +330,11 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                         {label}
                     </label>
                     <select
-                        value={inspectionType}
-                        onChange={(e) => setInspectionType(e.target.value)}
+                        value={customFields.inspection_type || ''}
+                        onChange={(e) => updateCustomFieldValue('inspection_type', e.target.value)}
                         style={inputStyle}
                     >
+                        <option value="">- Select -</option>
                         {INSPECTION_TYPES.map((type) => (
                             <option key={type} value={type}>
                                 {type}
@@ -508,7 +514,7 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={!description.trim() || !location.trim()}
+                        disabled={!Object.values(customFields).some(v => v?.toString().trim()) && existingImages.length === 0 && newFiles.length === 0}
                         className="btn"
                         style={{
                             background: 'var(--clr-info)',
@@ -519,8 +525,8 @@ export default function EditRFIModal({ rfi, projectFields = [], orderedColumns =
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            opacity: !description.trim() || !location.trim() ? 0.6 : 1,
-                            cursor: !description.trim() || !location.trim() ? 'not-allowed' : 'pointer',
+                            opacity: (!Object.values(customFields).some(v => v?.toString().trim()) && existingImages.length === 0 && newFiles.length === 0) ? 0.6 : 1,
+                            cursor: (!Object.values(customFields).some(v => v?.toString().trim()) && existingImages.length === 0 && newFiles.length === 0) ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <Save size={16} /> Save Changes

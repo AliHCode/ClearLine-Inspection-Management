@@ -125,9 +125,11 @@ export default function ContractorDashboard() {
                 </div>
             );
         }
-        if (col.field_key === 'description') return rfi.description;
-        if (col.field_key === 'location') return rfi.location;
-        if (col.field_key === 'inspection_type') return rfi.inspectionType;
+        
+        if (col.field_key === 'description' || col.field_key === 'location' || col.field_key === 'inspection_type') {
+            return rfi[col.field_key] || rfi.inspectionType || rfi.customFields?.[col.field_key] || '—';
+        }
+
         if (col.field_key === 'status') return <StatusBadge status={rfi.status} />;
         if (col.field_key === 'remarks') return rfi.remarks || '—';
         if (col.field_key === 'attachments') return (rfi.images?.length || 0) > 0 ? `${rfi.images.length} file(s)` : '—';

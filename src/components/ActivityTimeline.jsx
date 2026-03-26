@@ -8,11 +8,13 @@ export default function ActivityTimeline({ rfis, limit = 5 }) {
         rfis.forEach(rfi => {
             // Filing event
             if (rfi.filedDate) {
+                const inspectionType = rfi.inspectionType || rfi.inspection_type || rfi.customFields?.inspection_type || 'RFI';
+                const location = rfi.location || rfi.customFields?.location || '';
                 events.push({
                     id: `${rfi.id}-filed`,
                     type: 'filed',
                     title: `RFI #${rfi.customFields?.rfi_no || rfi.serialNo} Submitted`,
-                    desc: `${rfi.inspectionType} inspection for ${rfi.location}`,
+                    desc: `${inspectionType} inspection${location ? ` for ${location}` : ''}`,
                     date: rfi.filedDate,
                     timestamp: new Date(rfi.originalFiledDate || rfi.filedDate).getTime(),
                     icon: <FileText size={16} />,

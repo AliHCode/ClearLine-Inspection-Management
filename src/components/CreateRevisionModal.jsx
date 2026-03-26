@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRFI } from '../context/RFIContext';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
@@ -16,14 +16,21 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
     
     // Initial state derived from the rejected parent
     const [formData, setFormData] = useState({
-        description: parentRfi.description || '',
-        location: parentRfi.location || '',
-        inspectionType: parentRfi.inspectionType || INSPECTION_TYPES[0],
         assignedTo: parentRfi.assignedTo || '',
         contractorRemarks: '',
-        customFields: typeof parentRfi.customFields === 'string' 
-            ? JSON.parse(parentRfi.customFields || '{}') 
-            : { ...(parentRfi.customFields || {}) }
+        customFields: (() => {
+            const base = typeof parentRfi.customFields === 'string' 
+                ? JSON.parse(parentRfi.customFields || '{}') 
+                : { ...(parentRfi.customFields || {}) };
+            
+            // Merge legacy fields for seamless revision
+            return {
+                description: parentRfi.description || '',
+                location: parentRfi.location || '',
+                inspection_type: parentRfi.inspectionType || parentRfi.inspection_type || '',
+                ...base
+            };
+        })()
     });
 
     const [files, setFiles] = useState([]);
@@ -58,7 +65,9 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
             let nextCode = '';
             if (parentCode.includes('-R')) {
                 const parts = parentCode.split('-R');
-                nextCode = `${parts[0]}-R${parseInt(parts[1], 10) + 1}`;
+                const revNum = parseInt(parts[parts.length - 1], 10);
+                const base = parts.slice(0, -1).join('-R');
+                nextCode = `${base}-R${revNum + 1}`;
             } else {
                 nextCode = `${parentCode}-R1`;
             }
@@ -72,9 +81,6 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
             };
 
             const payload = {
-                description: formData.description,
-                location: formData.location,
-                inspectionType: formData.inspectionType,
                 filedBy: user.id,
                 assignedTo: formData.assignedTo || null,
                 images: uploadedUrls,
@@ -96,6 +102,17 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
     };
 
     const rfiNo = parentRfi.customFields?.rfi_no || 'RFI';
+
+    const displayFields = useMemo(() => {
+        const fields = [
+            { key: 'description', name: 'Description', icon: <Info size={16} /> },
+            { key: 'location', name: 'Location', icon: <MapPin size={16} /> },
+            { key: 'inspection_type', name: 'Inspection Type', icon: <Layers size={16} /> },
+            ...(projectFields || []).map(f => ({ key: f.field_key, name: f.field_name, icon: <Info size={16} /> }))
+        ];
+        // Filter out fields that have no data in parent
+        return fields.filter(f => formData.customFields[f.key]);
+    }, [projectFields, formData.customFields]);
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ backdropFilter: 'blur(4px)', backgroundColor: 'rgba(15, 23, 42, 0.7)' }}>
@@ -142,42 +159,16 @@ export default function CreateRevisionModal({ parentRfi, onClose, onSuccess }) {
                         <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '1rem', fontWeight: 600 }}>Original Details</h3>
                         
                         <div style={{ display: 'grid', gap: '1.25rem' }}>
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <div style={{ color: '#64748b', marginTop: '0.2rem' }}><Info size={16} /></div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Description</div>
-                                    <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: 500 }}>{formData.description}</div>
+                            {displayFields.map(field => (
+                                <div key={field.key} style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <div style={{ color: '#64748b', marginTop: '0.2rem' }}>{field.icon}</div>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>{field.name}</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: 500 }}>{formData.customFields[field.key] || '—'}</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <div style={{ color: '#64748b', marginTop: '0.2rem' }}><MapPin size={16} /></div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Location</div>
-                                    <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: 500 }}>{formData.location}</div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <div style={{ color: '#64748b', marginTop: '0.2rem' }}><Layers size={16} /></div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Inspection Type</div>
-                                    <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: 500 }}>{formData.inspectionType}</div>
-                                </div>
-                            </div>
+                            ))}
                         </div>
-
-                        {/* Custom Fields Grid */}
-                        {projectFields && projectFields.length > 0 && (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    {projectFields.map(field => (
-                                        <div key={field.id}>
-                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>{field.field_name}</div>
-                                            <div style={{ fontSize: '0.85rem', color: '#475569' }}>{formData.customFields[field.field_key] || '—'}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* RIGHT SIDE: Revision Action Area */}

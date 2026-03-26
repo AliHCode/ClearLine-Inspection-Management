@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { X, Calendar, MapPin, Tag, MessageSquare, History, List, Upload, CheckCircle, ClipboardList, XCircle } from 'lucide-react';
 import ThreadedComments from './ThreadedComments';
 import AuditLog from './AuditLog';
@@ -9,7 +9,7 @@ import { useRFI } from '../context/RFIContext';
 import { useAuth } from '../context/AuthContext';
 import { RFI_STATUS } from '../utils/constants';
 
-export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) {
+export default function RFIDetailModal({ rfi, projectFields = [], orderedColumns = [], onClose, externalScrollTrigger }) {
     const [activeTab, setActiveTab] = useState('review');
     const [tabScrollTrigger, setTabScrollTrigger] = useState(0);
     const { rfis, updateRFI } = useRFI();
@@ -17,6 +17,29 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
     const fileInputRef = useRef(null);
     const [resolveFile, setResolveFile] = useState(null);
     const [isResolving, setIsResolving] = useState(false);
+
+    const mergedData = useMemo(() => {
+        if (!rfi) return {};
+        return {
+            description: rfi.description || '',
+            location: rfi.location || '',
+            inspection_type: rfi.inspectionType || rfi.inspection_type || '',
+            ...(rfi.customFields || {})
+        };
+    }, [rfi]);
+
+    const displayColumns = useMemo(() => {
+        const skip = new Set(['serial', 'rfi_no', 'status', 'actions', 'remarks', 'attachments']);
+        const columns = orderedColumns && orderedColumns.length > 0 
+            ? orderedColumns 
+            : [
+                { field_key: 'description', field_name: 'Description' },
+                { field_key: 'location', field_name: 'Location' },
+                { field_key: 'inspection_type', field_name: 'Inspection Type' },
+                ...(projectFields || [])
+            ];
+        return columns.filter(col => !skip.has(col.field_key));
+    }, [orderedColumns, projectFields]);
 
     async function handleResolve() {
         if (!resolveFile) {
@@ -73,6 +96,8 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
         setActiveTab(tab);
     };
 
+    const rfiNo = rfi.customFields?.rfi_no || rfi.serialNo;
+
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
             <div className="modal-content rfi-detail-modal universal-tabbed" onClick={(e) => e.stopPropagation()}>
@@ -80,10 +105,10 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                     <div className="modal-title rfi-detail-title">
                         <div>
                             <div className="rfi-title-row">
-                                <h2>RFI #{rfi.customFields?.rfi_no || rfi.serialNo}</h2>
+                                <h2>RFI #{rfiNo}</h2>
                                 <StatusBadge status={rfi.status} />
                             </div>
-                            <p>{rfi.description}</p>
+                            <p>{mergedData.description || mergedData.inspection_type || 'RFI Details'}</p>
                         </div>
                         <button className="btn-close" onClick={onClose}>
                             <X size={24} color="var(--clr-text-secondary)" />
@@ -162,14 +187,25 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                         <div className="rfi-tab-panel-full details-panel">
                             <h4 className="panel-heading">Inspection Details</h4>
                             <div className="rfi-detail-grid-universal">
-                                <div className="rfi-detail-item">
-                                    <MapPin size={20} />
-                                    <div><div className="rfi-detail-label">Location</div><div className="rfi-detail-value">{rfi.location}</div></div>
-                                </div>
-                                <div className="rfi-detail-item">
-                                    <Tag size={20} />
-                                    <div><div className="rfi-detail-label">Type</div><div className="rfi-detail-value">{rfi.inspectionType}</div></div>
-                                </div>
+                                {displayColumns.map(col => {
+                                    const value = mergedData[col.field_key];
+                                    if (!value) return null;
+                                    
+                                    let icon = <List size={20} />;
+                                    if (col.field_key === 'location') icon = <MapPin size={20} />;
+                                    if (col.field_key === 'inspection_type' || col.field_key === 'description') icon = <Tag size={20} />;
+
+                                    return (
+                                        <div className="rfi-detail-item" key={col.field_key}>
+                                            {icon}
+                                            <div>
+                                                <div className="rfi-detail-label">{col.field_name || col.field_key}</div>
+                                                <div className="rfi-detail-value">{value}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                
                                 <div className="rfi-detail-item">
                                     <Calendar size={20} />
                                     <div><div className="rfi-detail-label">Submission Date</div><div className="rfi-detail-value">{formatDateDisplay(rfi.originalFiledDate)}</div></div>
@@ -178,17 +214,6 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                                     <UserAvatar name={rfi.filerName} avatarUrl={rfi.filerAvatarUrl} size={40} />
                                     <div><div className="rfi-detail-label">Filed By</div><div className="rfi-detail-value">{rfi.filerName}</div><div className="rfi-detail-subvalue">{rfi.filerCompany}</div></div>
                                 </div>
-                                {rfi.customFields && Object.entries(rfi.customFields)
-                                    .filter(([key]) => key !== 'rfi_no' && key !== 'parentId')
-                                    .map(([key, value]) => (
-                                    <div className="rfi-detail-item" key={key}>
-                                        <List size={20} />
-                                        <div>
-                                            <div className="rfi-detail-label">{key.replace(/_/g, ' ').toUpperCase()}</div>
-                                            <div className="rfi-detail-value">{value || '—'}</div>
-                                        </div>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     )}
@@ -208,18 +233,25 @@ export default function RFIDetailModal({ rfi, onClose, externalScrollTrigger }) 
                     {activeTab === 'revisions' && (
                         <div className="rfi-tab-panel-full revision-panel">
                             <div className="revision-timeline universal">
-                                {lineage.map((item, idx) => (
-                                    <div key={item.id} className={`revision-node ${item.id === rfi.id ? 'current' : ''}`}>
-                                        <div className="revision-connector"><div className="node-dot"></div>{idx < lineage.length - 1 && <div className="node-line"></div>}</div>
-                                        <div className="revision-card">
-                                            <div className="revision-card-header"><span className="revision-version">V{idx + 1} - RFI #{item.customFields?.rfi_no || item.serialNo}</span><StatusBadge status={item.status} /></div>
-                                            <div className="revision-card-meta"><span>{item.status === 'pending' ? `Filed on ${formatDateDisplay(item.filedDate)}` : `${item.status === 'rejected' ? 'Rejected' : 'Approved'} on ${formatDateDisplay(item.reviewedAt?.split('T')[0] || item.filedDate)}`}</span></div>
-                                            <div className="revision-card-desc">{item.description}</div>
-                                            {item.remarks && <div className="revision-card-remarks"><strong>Feedback:</strong> {item.remarks}</div>}
-                                            {item.id === rfi.id && <div className="current-badge">Currently Viewing</div>}
+                                {lineage.map((item, idx) => {
+                                    const itemData = {
+                                        description: item.description || '',
+                                        inspection_type: item.inspectionType || item.inspection_type || '',
+                                        ...(item.customFields || {})
+                                    };
+                                    return (
+                                        <div key={item.id} className={`revision-node ${item.id === rfi.id ? 'current' : ''}`}>
+                                            <div className="revision-connector"><div className="node-dot"></div>{idx < lineage.length - 1 && <div className="node-line"></div>}</div>
+                                            <div className="revision-card">
+                                                <div className="revision-card-header"><span className="revision-version">V{idx + 1} - RFI #{item.customFields?.rfi_no || item.serialNo}</span><StatusBadge status={item.status} /></div>
+                                                <div className="revision-card-meta"><span>{item.status === 'pending' ? `Filed on ${formatDateDisplay(item.filedDate)}` : `${item.status === 'rejected' ? 'Rejected' : 'Approved'} on ${formatDateDisplay(item.reviewedAt?.split('T')[0] || item.filedDate)}`}</span></div>
+                                                <div className="revision-card-desc">{itemData.description || itemData.inspection_type || 'Revision Details'}</div>
+                                                {item.remarks && <div className="revision-card-remarks"><strong>Feedback:</strong> {item.remarks}</div>}
+                                                {item.id === rfi.id && <div className="current-badge">Currently Viewing</div>}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

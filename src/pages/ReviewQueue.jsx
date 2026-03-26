@@ -13,14 +13,14 @@ import CancelModal from '../components/CancelModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw, User } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw, User, UserPlus } from 'lucide-react';
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const location = useLocation();
     const { user } = useAuth();
     const { approveRFI, updateRFI, rejectRFI, cancelRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId } = useProject();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectFields } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
@@ -91,7 +91,7 @@ export default function ReviewQueue() {
     const FILTER_EXCLUDED_COLUMNS = new Set(['serial', 'actions', 'attachments']);
     const visibleColumns = useMemo(() => {
         if (user?.role === 'consultant') {
-            return orderedTableColumns.filter(col => col.field_key !== 'remarks' && col.field_key !== 'attachments');
+            return orderedTableColumns.filter(col => col.field_key !== 'remarks' && col.field_key !== 'attachments' && col.field_key !== 'inspection_type');
         }
         return orderedTableColumns;
     }, [orderedTableColumns, user?.role]);
@@ -102,12 +102,10 @@ export default function ReviewQueue() {
     );
 
     const getColumnRawValue = (rfi, fieldKey) => {
-        if (fieldKey === 'description') return rfi.description;
-        if (fieldKey === 'location') return rfi.location;
-        if (fieldKey === 'inspection_type') return rfi.inspectionType;
         if (fieldKey === 'status') return rfi.status;
         if (fieldKey === 'remarks') return rfi.remarks;
-        return rfi.customFields?.[fieldKey];
+        // Check top-level first (legacy) then customFields
+        return rfi[fieldKey] || rfi.customFields?.[fieldKey];
     };
 
     const normalizeFilterValue = (value) => {
@@ -645,9 +643,9 @@ export default function ReviewQueue() {
             );
         }
 
-        if (col.field_key === 'description') return rfi.description;
-        if (col.field_key === 'location') return rfi.location;
-        if (col.field_key === 'inspection_type') return rfi.inspectionType;
+        if (col.field_key === 'description' || col.field_key === 'location' || col.field_key === 'inspection_type') {
+            return rfi[col.field_key] || rfi.inspectionType || rfi.customFields?.[col.field_key] || '—';
+        }
         if (col.field_key === 'status') return <StatusBadge status={rfi.status} />;
         if (col.field_key === 'remarks') return rfi.remarks || '';
 
@@ -877,7 +875,7 @@ export default function ReviewQueue() {
                                                 <td className="col-assign" data-label="Assigned To">
                                                     {(rfi.assigneeName || rfi.reviewerName) ? (
                                                         <span className={`assign-badge ${(rfi.assignedTo === user.id || rfi.reviewedBy === user.id) ? 'is-me' : ''}`}>
-                                                            {(rfi.assignedTo === user.id || rfi.reviewedBy === user.id) ? '📌 You' : (rfi.assigneeName || rfi.reviewerName)}
+                                                            {(rfi.assignedTo === user.id || rfi.reviewedBy === user.id) ? <><UserPlus size={14} className="badge-icon" /> You</> : (rfi.assigneeName || rfi.reviewerName)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-muted">— Auto —</span>
@@ -1041,6 +1039,8 @@ export default function ReviewQueue() {
                 <RFIDetailModal
                     key={detailTarget.id}
                     rfi={detailTarget}
+                    projectFields={projectFields}
+                    orderedColumns={orderedTableColumns}
                     onClose={() => setDetailTarget(null)}
                     externalScrollTrigger={scrollTrigger}
                 />

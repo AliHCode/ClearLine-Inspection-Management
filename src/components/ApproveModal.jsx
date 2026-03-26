@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { X, Upload, Brush, Send, Camera, MapPin } from 'lucide-react';
 import FieldMarkupStudio from './FieldMarkupStudio';
 
@@ -54,6 +54,16 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
 
+    const mergedData = useMemo(() => {
+        if (!rfi) return {};
+        return {
+            description: rfi.description || '',
+            location: rfi.location || '',
+            inspection_type: rfi.inspectionType || rfi.inspection_type || '',
+            ...(rfi.customFields || {})
+        };
+    }, [rfi]);
+
     function toMentionKey(name) { return name.toLowerCase().replace(/\s+/g, ''); }
     function appendMention(name) {
         const mention = `@${toMentionKey(name)}`;
@@ -93,7 +103,7 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
                         </div>
                         <div className="ram-subtitle">
                             <strong>RFI #{rfi.customFields?.rfi_no || rfi.serialNo}</strong>
-                            {rfi.location && <><span className="ram-dot">·</span><MapPin size={12} />{rfi.location}</>}
+                            {mergedData.location && <><span className="ram-dot">·</span><MapPin size={12} />{mergedData.location}</>}
                         </div>
                     </div>
                     <button className="ram-close" onClick={onClose}><X size={18} /></button>
@@ -103,7 +113,7 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
                 <div className="ram-body">
                     {/* Pills */}
                     <div className="ram-pills">
-                        <PillTag><span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>TYPE</span> {rfi.inspectionType}</PillTag>
+                        {mergedData.inspection_type && <PillTag><span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>TYPE</span> {mergedData.inspection_type}</PillTag>}
                         <PillTag><span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>FILED BY</span> <span style={{ width:20, height:20, borderRadius:'50%', background:'#3b82f6', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', color:'#fff', fontWeight:700 }}>{(rfi.filerName||'?')[0].toUpperCase()}</span>{rfi.filerName}</PillTag>
                     </div>
 
