@@ -850,9 +850,10 @@ export default function DailyRFISheet() {
                                         <tr>
                                             {newEntryColumns.map(col => {
                                                 const style = getTableColumnStyle(col.field_key);
-                                                let label = col.field_name;
-                                                if (col.field_key === 'description' || col.field_key === 'location') label += ' *';
-                                                if (!col.is_builtin && col.is_required) label += ' *';
+                                                let label = col.field_name || (col.field_key.charAt(0).toUpperCase() + col.field_key.slice(1).replace(/_/g, ' '));
+                                                // Identify if the field should be marked as required
+                                                const isRequired = col.is_required || col.field_key === 'description' || col.field_key === 'location';
+                                                if (isRequired) label += ' *';
                                                 return <th key={col.field_key} style={style}>{label}</th>;
                                             })}
                                             <th key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>Assign To</th>

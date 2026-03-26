@@ -223,8 +223,8 @@ export function ProjectProvider({ children }) {
         const BUILT_IN_COLUMNS = [
             { id: 'builtin_serial', field_key: 'serial', field_name: 'Sr#', is_builtin: true },
             { id: 'builtin_rfi_no', field_key: 'rfi_no', field_name: 'RFI #', is_builtin: true },
-            { id: 'builtin_status', field_key: 'status', is_builtin: true },
-            { id: 'builtin_actions', field_key: 'actions', is_builtin: true },
+            { id: 'builtin_status', field_key: 'status', field_name: 'Status', is_builtin: true },
+            { id: 'builtin_actions', field_key: 'actions', field_name: 'Actions', is_builtin: true },
         ];
 
         const allFields = [
