@@ -158,8 +158,10 @@ export function ProjectProvider({ children }) {
         }
         // These keys are already rendered as hardcoded table columns everywhere —
         // keep them out of projectFields so they don't appear twice.
+        // Reset state immediately for the new project to prevent stale fields from previous project
+        setProjectFields([]);
         setLoadingFields(true);
-        setFieldsResolvedProjectId((prev) => (prev === projectId ? prev : null));
+        setFieldsResolvedProjectId(null);
         try {
             const { data, error } = await supabase
                 .from('project_fields')

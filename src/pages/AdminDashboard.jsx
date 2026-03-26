@@ -1036,54 +1036,126 @@ export default function AdminDashboard() {
                                                         <ArrowUp size={16} />
                                                     </button>
                                                     <button type="button" className="btn btn-sm btn-ghost" disabled={i === orderedFields.length - 1} onClick={() => moveField(i, 'down')} style={{ padding: '0.2rem', color: i === orderedFields.length - 1 ? '#cbd5e1' : '#64748b' }}>
-                                                        <ArrowDown size={16} />
-                                                    </button>
-                                                </td>
-                                                <td style={{ fontWeight: 600, color: f.is_builtin ? 'var(--clr-text-secondary)' : 'var(--clr-brand-primary)' }}>{f.field_name}</td>
-                                                <td><code style={{ fontSize: '0.8rem', background: 'var(--clr-bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>{f.field_key}</code></td>
-                                                <td>{f.is_builtin ? 'Built-in' : (FIELD_TYPES.find(t => t.value === f.field_type)?.label || f.field_type)}</td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    <input
-                                                        type="number"
-                                                        min={80}
-                                                        max={640}
-                                                        value={columnWidthsDraft[f.field_key] ?? getDefaultColumnWidth(f.field_key)}
-                                                        onChange={(e) => {
-                                                            const nextWidth = sanitizeColumnWidth(e.target.value, getDefaultColumnWidth(f.field_key));
-                                                            setColumnWidthsDraft((prev) => ({ ...prev, [f.field_key]: nextWidth }));
-                                                            setIsReordering(true);
-                                                        }}
-                                                        style={{ width: '88px' }}
-                                                    />
-                                                </td>
-                                                <td>
-                                                    {!f.is_builtin && f.field_type === 'select' && Array.isArray(f.options) ? (
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                                            {f.options.map((o, idx) => (
-                                                                <span key={idx} style={{ background: 'var(--clr-bg-secondary)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem' }}>{o}</span>
-                                                            ))}
-                                                        </div>
-                                                    ) : '—'}
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    <input type="checkbox" checked={f.is_required || f.is_builtin} disabled={f.is_builtin} onChange={() => !f.is_builtin && handleToggleRequired(f)} />
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    {!f.is_builtin ? (
-                                                        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--clr-danger)' }}
-                                                            onClick={() => handleDeleteField(f.id)} title="Delete custom field">
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    ) : (
-                                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Fixed</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        <Save size={16} /> Save Column Layout
+                                    </button>
+                                )}
+                                <button className="btn btn-sm btn-dark" onClick={() => setShowNewField(!showNewField)}>
+                                    <Plus size={16} /> Add Column
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Stale/Loading State Protection */}
+                        {(loadingFields || fieldsResolvedProjectId !== activeProject?.id) ? (
+                            <div className="admin-loading-placeholder" style={{ 
+                                padding: '4rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', color: '#64748b'
+                            }}>
+                                <RefreshCw size={32} className="spinner" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                                <p style={{ fontWeight: 500 }}>Syncing fields for {activeProject?.name}...</p>
+                                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>This prevents accidentally modifying columns from the previous project.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="admin-help-text" style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1.5rem', fontStyle: 'italic' }}>
+                                    Drag the right edge of each header below to resize columns visually.
+                                </p>
+
+                                <div className="admin-field-designer-wrapper">
+                                    <div className="table-preview-interactive">
+                                        <div className="preview-header-row">
+                                            {orderedFields.map((f, i) => (
+                                                <div 
+                                                    key={f.field_key} 
+                                                    className="preview-th"
+                                                    style={{ width: getDraftWidth(f.field_key) }}
+                                                >
+                                                    <div className="th-content">
+                                                        <span className="th-label">{f.field_name}</span>
+                                                        <span className="th-width-tag">{getDraftWidth(f.field_key)}PX</span>
+                                                        {!f.is_builtin && <button className="btn-remove-preview" onClick={() => handleDeleteField(f.id)}>×</button>}
+                                                    </div>
+                                                    <div className="resizer-handle" onMouseDown={(e) => startResize(e, f.field_key)} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="preview-data-row">
+                                            {orderedFields.map((f) => (
+                                                <div key={f.field_key} className="preview-td" style={{ width: getDraftWidth(f.field_key) }}>
+                                                    Sample {f.field_name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="admin-table-container premium-card">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '80px' }}>ORDER</th>
+                                                <th>COLUMN NAME</th>
+                                                <th>KEY</th>
+                                                <th>TYPE</th>
+                                                <th style={{ width: '120px' }}>WIDTH (PX)</th>
+                                                <th>OPTIONS</th>
+                                                <th style={{ width: '100px', textAlign: 'center' }}>REQUIRED</th>
+                                                <th style={{ width: '100px', textAlign: 'center' }}>ACTIONS</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {orderedFields.map((f, idx) => (
+                                                <tr key={f.field_key} className={f.is_builtin ? 'row-builtin' : ''}>
+                                                    <td>
+                                                        <div className="reorder-btns">
+                                                            <button className="btn-reorder" onClick={() => moveField(idx, 'up')} disabled={idx === 0}><ArrowUp size={14} /></button>
+                                                            <button className="btn-reorder" onClick={() => moveField(idx, 'down')} disabled={idx === orderedFields.length - 1}><ArrowDown size={14} /></button>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                            {f.is_builtin ? <Shield size={14} style={{ color: '#94a3b8' }} /> : <Tag size={14} style={{ color: 'var(--clr-brand-primary)' }} />}
+                                                            <span style={{ fontWeight: 600 }}>{f.field_name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="code-font">{f.field_key}</td>
+                                                    <td><span className={`badge-type ${f.field_type}`}>{f.field_type || 'Custom'}</span></td>
+                                                    <td>
+                                                        <input 
+                                                            type="number"
+                                                            className="admin-input-small"
+                                                            value={getDraftWidth(f.field_key)}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value, 10) || 80;
+                                                                setColumnWidthsDraft(prev => ({ ...prev, [f.field_key]: val }));
+                                                                setIsReordering(true);
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td>
+                                                        {f.options && Array.isArray(f.options) && f.options.length > 0 ? (
+                                                            <div className="option-pills">
+                                                                {f.options.map((o, i) => <span key={i} className="option-pill">{o}</span>)}
+                                                            </div>
+                                                        ) : <span className="text-muted">—</span>}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <input type="checkbox" checked={f.is_required} disabled={f.is_builtin}
+                                                            onChange={() => handleToggleRequired(f)} />
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {f.is_builtin ? (
+                                                            <span className="badge-fixed">Fixed</span>
+                                                        ) : (
+                                                            <button className="btn-delete-field" onClick={() => handleDeleteField(f.id)}><Trash2 size={16} /></button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
