@@ -1,7 +1,8 @@
 const DB_NAME = 'saa-offline-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_PENDING_RFIS = 'pending-rfis';
 const STORE_PENDING_ACTIONS = 'pending-actions';
+const STORE_RFI_CACHE = 'rfi-cache';
 
 function openDb() {
     return new Promise((resolve, reject) => {
@@ -29,6 +30,10 @@ function openDb() {
                 store.createIndex('by_project', 'projectId', { unique: false });
                 store.createIndex('by_type', 'type', { unique: false });
                 store.createIndex('by_created_at', 'createdAt', { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains(STORE_RFI_CACHE)) {
+                db.createObjectStore(STORE_RFI_CACHE, { keyPath: 'userId_projectId' });
             }
         };
     });
@@ -199,4 +204,34 @@ export function deserializeQueuedImages(serializedImages = []) {
         }
         return null;
     }).filter(Boolean);
+}
+
+/** -------------------------
+ *   RFI CACHE (IndexedDB)
+ *  ------------------------- */
+export async function setRfiCache(userId, projectId, rfis) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_RFI_CACHE, 'readwrite');
+        const store = tx.objectStore(STORE_RFI_CACHE);
+        const entry = {
+            userId_projectId: `${userId}_${projectId}`,
+            rfis,
+            cachedAt: new Date().toISOString(),
+        };
+        const req = store.put(entry);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+    });
+}
+
+export async function getRfiCache(userId, projectId) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_RFI_CACHE, 'readonly');
+        const store = tx.objectStore(STORE_RFI_CACHE);
+        const req = store.get(`${userId}_${projectId}`);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
 }

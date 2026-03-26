@@ -15,18 +15,16 @@ import {
     removePendingAction,
     serializeImagesForQueue,
     deserializeQueuedImages,
+    setRfiCache,
+    getRfiCache,
 } from '../utils/offlineQueue';
 import { pushSupportStatus, syncPushSubscriptionForUser } from '../utils/pushNotifications';
 import { buildNotificationOpenPath } from '../utils/notificationLinks';
 
 const RFIContext = createContext(null);
 const NOTIFICATION_PROMPT_SEEN_KEY = 'proway_notification_prompt_seen_v1';
-const RFI_CACHE_PREFIX = 'saa_rfis_cache_v1';
 const DISMISSED_NOTIFICATIONS_KEY = 'proway_dismissed_notifications_v1';
 
-function rfiCacheKey(userId, projectId) {
-    return `${RFI_CACHE_PREFIX}:${userId || 'anon'}:${projectId || 'none'}`;
-}
 
 function normalizeRfiRecord(rfi = {}) {
     const fallbackDate = new Date().toISOString().slice(0, 10);
@@ -137,30 +135,28 @@ export function RFIProvider({ children }) {
     const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
     const unreadCount = visibleNotifications.filter(n => !n.is_read).length;
 
-    const restoreRfiCache = useCallback((projectId) => {
+    const restoreRfiCache = useCallback(async (projectId) => {
         if (!projectId || !user?.id) return false;
         try {
-            const raw = localStorage.getItem(rfiCacheKey(user.id, projectId));
-            if (!raw) return false;
-            const parsed = JSON.parse(raw);
-            const normalized = normalizeRfisArray(parsed.rfis);
+            const cached = await getRfiCache(user.id, projectId);
+            if (!cached || !cached.rfis) return false;
+            
+            const normalized = normalizeRfisArray(cached.rfis);
             if (normalized.length === 0) return false;
             setRfis(normalized);
             return true;
-        } catch {
+        } catch (error) {
+            console.warn('Error restoring RFI cache from IndexedDB:', error);
             return false;
         }
     }, [user?.id]);
 
-    const persistRfiCache = useCallback((projectId, nextRfis) => {
+    const persistRfiCache = useCallback(async (projectId, nextRfis) => {
         if (!projectId || !user?.id) return;
         try {
-            localStorage.setItem(rfiCacheKey(user.id, projectId), JSON.stringify({
-                rfis: nextRfis || [],
-                cachedAt: new Date().toISOString(),
-            }));
-        } catch {
-            // Ignore storage failures.
+            await setRfiCache(user.id, projectId, nextRfis || []);
+        } catch (error) {
+            console.warn('Error persisting RFI cache to IndexedDB:', error);
         }
     }, [user?.id]);
 
