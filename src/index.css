@@ -2838,7 +2838,7 @@ input:checked+.premium-slider:before {
 }
 
 /* ============================================
-   MOBILE LANDSCAPE FULLSCREEN (V74)
+   FULLSCREEN MODE (Desktop + Mobile)
    ============================================ */
 .is-fullscreen-page {
   position: fixed !important;
@@ -2848,49 +2848,76 @@ input:checked+.premium-slider:before {
   bottom: 0 !important;
   z-index: 9999 !important;
   background: var(--clr-bg) !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100vw !important;
+  height: 100vh !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   padding: 0 !important;
+  margin: 0 !important;
 }
 
-.is-fullscreen-page > .app-header {
+/* Hide header and spacer in fullscreen */
+.is-fullscreen-page > .app-header,
+.is-fullscreen-page .app-header-spacer {
   display: none !important;
+  height: 0 !important;
 }
 
+/* Remove all inner page constraints in fullscreen */
+.is-fullscreen-page .rfi-sheet-page,
+.is-fullscreen-page .review-page {
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Tight, compact sheet header - glued to top */
 .is-fullscreen-page .sheet-header {
   position: sticky;
   top: 0;
   z-index: 1000;
   background: var(--clr-bg);
-  padding: 1rem 1.5rem 0.55rem;
-  /* Match typical sheet padding but ensure it's tight */
-  margin: 0;
+  padding: 0.5rem 1rem !important;
+  margin: 0 !important;
   border-bottom: 1px solid var(--clr-border);
 }
 
-@media (max-width: 768px) {
-  .is-fullscreen-page .sheet-header {
-    padding: 0.75rem 0.5rem 0.5rem !important;
-  }
-  
-  .is-fullscreen-page .rfi-table-wrapper {
-    padding: 0 !important;
-  }
+/* Table section fills remaining space */
+.is-fullscreen-page .sheet-section {
+  flex: 1 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
 .is-fullscreen-page .rfi-table-wrapper {
   overflow-x: auto;
-  border-radius: 0;
-  /* Let it flow edge to edge horizontally */
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .is-fullscreen-page .rfi-table {
   min-width: 1000px;
-  /* Ensure horizontal scroll in landscape if needed */
+}
+
+/* Mobile fullscreen: even tighter header */
+@media (max-width: 768px) {
+  .is-fullscreen-page .sheet-header {
+    padding: 0.35rem 0.5rem !important;
+  }
+
+  .is-fullscreen-page .sheet-tabs-container {
+    display: none !important;
+  }
+  
+  .is-fullscreen-page .new-entry-launcher {
+    padding: 0.5rem !important;
+  }
 }
 
 .landscape-hint {
