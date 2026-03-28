@@ -255,7 +255,7 @@ export function RFIProvider({ children }) {
                     }
                 }
             });
-            return `${prefix}-${(maxNum + 1).toString().padStart(3, '0')}`;
+            return `${prefix}-${maxNum + 1}`;
         } else {
             const { data: parent, error: pError } = await supabase
                 .from('rfis')
@@ -264,7 +264,7 @@ export function RFIProvider({ children }) {
                 .single();
             if (pError) throw pError;
 
-            const parentCode = parent.custom_fields?.rfi_no || `${prefix}-001`;
+            const parentCode = parent.custom_fields?.rfi_no || `${prefix}-1`;
             if (parentCode.includes('-R')) {
                 const parts = parentCode.split('-R');
                 const nextRev = parseInt(parts[1], 10) + 1;
@@ -759,7 +759,7 @@ export function RFIProvider({ children }) {
             
             // Generate RFI code for offline
             const prefix = activeProject?.code || 'RR007';
-            let offlineRfiNo = `${prefix}-001`;
+            let offlineRfiNo = `${prefix}-1`;
             if (!parentId) {
                 let maxB = 0;
                 rfis.forEach(r => {
@@ -774,10 +774,10 @@ export function RFIProvider({ children }) {
                         }
                     }
                 });
-                offlineRfiNo = `${prefix}-${(maxB + 1).toString().padStart(3, '0')}`;
+                offlineRfiNo = `${prefix}-${maxB + 1}`;
             } else {
                 const par = rfis.find(r => r.id === parentId);
-                const pCode = par?.customFields?.rfi_no || `${prefix}-001`;
+                const pCode = par?.customFields?.rfi_no || `${prefix}-1`;
                 if (pCode.includes('-R')) {
                     const pts = pCode.split('-R');
                     offlineRfiNo = `${pts[0]}-R${parseInt(pts[1], 10) + 1}`;

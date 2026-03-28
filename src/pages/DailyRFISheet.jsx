@@ -582,7 +582,7 @@ export default function DailyRFISheet() {
                         }
                     });
                     const sequenceStart = Math.max(maxB, (activeProject?.rfi_start_number || 1) - 1);
-                    predictedNo = `${prefix}-${(sequenceStart + idx + 1).toString().padStart(3, '0')}`;
+                    predictedNo = `${prefix}-${sequenceStart + idx + 1}`;
                 } else {
                     predictedNo = row.customFields?.rfi_no || '—';
                 }
