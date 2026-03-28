@@ -77,9 +77,11 @@ export default function ContractorDashboard() {
     // --- Chart Data Preparation ---
     const pieData = [
         { name: 'Approved', value: stats.todayApproved, color: 'var(--clr-success)' },
+        { name: 'Cond. Approved', value: stats.todayConditionallyApproved || 0, color: '#14b8a6' },
         { name: 'Pending', value: stats.todayPending, color: 'var(--clr-warning)' },
         { name: 'Rejected', value: stats.todayRejected, color: 'var(--clr-danger)' },
-        { name: 'Info Req.', value: stats.todayTotal - (stats.todayApproved + stats.todayPending + stats.todayRejected), color: 'var(--clr-brand-secondary)' },
+        { name: 'Info Req.', value: stats.todayInfoRequested || 0, color: 'var(--clr-brand-secondary)' },
+        { name: 'Cancelled', value: stats.todayCancelled || 0, color: '#6b7280' },
     ];
 
     // Group RFIs by date for the area chart (last 7 days of activity)
@@ -187,7 +189,7 @@ export default function ContractorDashboard() {
 
                 <div className="bento-grid">
                     {/* Stats Section */}
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<FileText size={20} />}
                             label="Total Filed"
@@ -198,7 +200,7 @@ export default function ContractorDashboard() {
                             color="#3b82f6"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<Clock size={20} />}
                             label="Awaiting"
@@ -209,7 +211,7 @@ export default function ContractorDashboard() {
                             color="#f59e0b"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<CheckCircle size={20} />}
                             label="Approved"
@@ -220,7 +222,18 @@ export default function ContractorDashboard() {
                             color="#10b981"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
+                        <StatsCard
+                            icon={<CheckCircle size={20} />}
+                            label="Cond. App"
+                            value={stats.todayConditionallyApproved || 0}
+                            subtitle="With Comments"
+                            trend="up"
+                            trendValue="Daily"
+                            color="#14b8a6"
+                        />
+                    </div>
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<XCircle size={20} />}
                             label="Rejected"
@@ -229,6 +242,17 @@ export default function ContractorDashboard() {
                             trend="up"
                             trendValue="+2%"
                             color="#ef4444"
+                        />
+                    </div>
+                    <div className="bento-span-2">
+                        <StatsCard
+                            icon={<AlertTriangle size={20} />}
+                            label="Cancelled"
+                            value={stats.todayCancelled || 0}
+                            subtitle="Voided"
+                            trend="down"
+                            trendValue="Daily"
+                            color="#6b7280"
                         />
                     </div>
 

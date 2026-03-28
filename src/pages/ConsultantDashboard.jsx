@@ -37,15 +37,19 @@ export default function ConsultantDashboard() {
     const statusBreakdown = useMemo(() => {
         const reviewedToday = rfis.filter((r) => r.reviewedAt && r.reviewedAt.startsWith(today));
         const approvedToday = reviewedToday.filter((r) => r.status === 'approved').length;
+        const conditionallyApprovedToday = reviewedToday.filter((r) => r.status === 'conditional_approve').length;
         const rejectedToday = reviewedToday.filter((r) => r.status === 'rejected').length;
         const infoRequestedToday = reviewedToday.filter((r) => r.status === 'info_requested').length;
+        const cancelledToday = reviewedToday.filter((r) => r.status === 'cancelled').length;
         const pendingQueue = queue.all.length;
 
         return [
             { name: 'Approved', value: approvedToday, color: 'var(--clr-success)' },
+            { name: 'Cond. Approved', value: conditionallyApprovedToday, color: '#14b8a6' },
             { name: 'Pending', value: pendingQueue, color: 'var(--clr-warning)' },
             { name: 'Rejected', value: rejectedToday, color: 'var(--clr-danger)' },
             { name: 'Info Req.', value: infoRequestedToday, color: 'var(--clr-brand-secondary)' },
+            { name: 'Cancelled', value: cancelledToday, color: '#6b7280' },
         ];
     }, [rfis, today, queue.all.length]);
 
@@ -87,7 +91,7 @@ export default function ConsultantDashboard() {
 
                 <div className="bento-grid">
                     {/* Stats Section */}
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<Clock size={20} />}
                             label="Pending Review"
@@ -98,7 +102,7 @@ export default function ConsultantDashboard() {
                             color="#f59e0b"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<CheckCircle size={20} />}
                             label="Approved"
@@ -109,7 +113,18 @@ export default function ConsultantDashboard() {
                             color="#10b981"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
+                        <StatsCard
+                            icon={<CheckCircle size={20} />}
+                            label="Cond. App"
+                            value={statusBreakdown.find(s => s.name === 'Cond. Approved')?.value || 0}
+                            subtitle="With Comments"
+                            trend="up"
+                            trendValue="Daily"
+                            color="#14b8a6"
+                        />
+                    </div>
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<XCircle size={20} />}
                             label="Rejected"
@@ -120,11 +135,28 @@ export default function ConsultantDashboard() {
                             color="#ef4444"
                         />
                     </div>
-                    <div className="bento-span-3">
+                    <div className="bento-span-2">
+                        <StatsCard
+                            icon={<AlertTriangle size={20} />}
+                            label="Cancelled"
+                            value={statusBreakdown.find(s => s.name === 'Cancelled')?.value || 0}
+                            subtitle="Voided"
+                            trend="down"
+                            trendValue="Daily"
+                            color="#6b7280"
+                        />
+                    </div>
+                    <div className="bento-span-2">
                         <StatsCard
                             icon={<ClipboardCheck size={20} />}
                             label="Total Reviewed"
-                            value={(statusBreakdown.find(s => s.name === 'Approved')?.value || 0) + (statusBreakdown.find(s => s.name === 'Rejected')?.value || 0) + (statusBreakdown.find(s => s.name === 'Info Req.')?.value || 0)}
+                            value={
+                                (statusBreakdown.find(s => s.name === 'Approved')?.value || 0) +
+                                (statusBreakdown.find(s => s.name === 'Cond. Approved')?.value || 0) +
+                                (statusBreakdown.find(s => s.name === 'Rejected')?.value || 0) +
+                                (statusBreakdown.find(s => s.name === 'Cancelled')?.value || 0) +
+                                (statusBreakdown.find(s => s.name === 'Info Req.')?.value || 0)
+                            }
                             subtitle="Today's throughput"
                             trend="up"
                             trendValue="Verified"
