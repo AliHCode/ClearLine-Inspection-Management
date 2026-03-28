@@ -678,9 +678,9 @@ export default function DailyRFISheet() {
     }
 
     return (
-        <div className="page-wrapper">
+        <div className={`page-wrapper ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
             <Header />
-            <main className={`rfi-sheet-page ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
+            <main className="rfi-sheet-page">
                 <div className="sheet-header">
                     <div className="sheet-tabs-container">
                         <div 

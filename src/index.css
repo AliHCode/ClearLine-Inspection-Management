@@ -2063,6 +2063,10 @@ input:checked+.premium-slider:before {
 }
 
 /* Bento Sizing Utilities */
+.bento-span-2 {
+  grid-column: span 2;
+}
+
 .bento-span-3 {
   grid-column: span 3;
 }
@@ -2089,6 +2093,10 @@ input:checked+.premium-slider:before {
 
 @media (max-width: 1024px) {
 
+  .bento-span-2 {
+    grid-column: span 4;
+  }
+
   .bento-span-3,
   .bento-span-4 {
     grid-column: span 6;
@@ -2112,6 +2120,7 @@ input:checked+.premium-slider:before {
   }
 
   /* Force metric cards back to 2 columns (span 1 in a 2-column grid) */
+  .bento-span-2,
   .bento-span-3 {
     grid-column: span 1 !important;
   }
@@ -2845,6 +2854,11 @@ input:checked+.premium-slider:before {
   overflow-x: hidden !important;
   display: flex !important;
   flex-direction: column !important;
+  padding: 0 !important;
+}
+
+.is-fullscreen-page > .app-header {
+  display: none !important;
 }
 
 .is-fullscreen-page .sheet-header {
@@ -11555,3 +11569,45 @@ body,
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* Fullscreen Mode Modal Optimization */
+.is-fullscreen-page .modal-overlay {
+  padding: 0 !important;
+}
+
+.is-fullscreen-page .modal-content, 
+.is-fullscreen-page .rfi-detail-modal.universal-tabbed, 
+.is-fullscreen-page .modal.lightbox {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.is-fullscreen-page .rfi-universal-tabs {
+  padding: 0 0.5rem !important;
+}
+
+.is-fullscreen-page .modal-header, 
+.is-fullscreen-page .rfi-detail-header {
+  padding: 0.5rem 1rem !important;
+  min-height: auto !important;
+}
+
+.is-fullscreen-page .modal-header h2,
+.is-fullscreen-page .rfi-detail-header h2 {
+  font-size: 1.1rem !important;
+  margin: 0 !important;
+}
+
+.is-fullscreen-page .rfi-title-row {
+  margin-bottom: 2px !important;
+}
+
+.is-fullscreen-page .modal-body, 
+.is-fullscreen-page .rfi-universal-body {
+  padding: 0.5rem 1rem !important;
+}
+

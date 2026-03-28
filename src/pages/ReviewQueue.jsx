@@ -713,9 +713,9 @@ export default function ReviewQueue() {
     const isAnyFilterActive = activeFilterEntries.length > 0 || filterOptions.status !== 'all' || filterOptions.showOnlyMe;
 
     return (
-        <div className="page-wrapper">
+        <div className={`page-wrapper ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
             <Header />
-            <main className={`review-page ${isFullscreen ? 'is-fullscreen-page' : ''}`} ref={pageRef}>
+            <main className="review-page">
                 <div className="sheet-header">
                     <div className="sheet-tabs-container">{user?.role !== 'consultant' && (
                         <div className="sheet-tab active">
