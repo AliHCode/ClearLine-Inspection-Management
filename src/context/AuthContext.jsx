@@ -284,6 +284,9 @@ export function AuthProvider({ children }) {
 
     async function login(email, password) {
         setLoading(true);
+        // Reset authResolved so AppRoutes shows the spinner cleanly
+        // instead of briefly flashing the dashboard from a stale cache
+        setAuthResolved(false);
         try {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
@@ -294,6 +297,7 @@ export function AuthProvider({ children }) {
         } catch (error) {
             console.error('Login error:', error.message);
             setLoading(false);
+            setAuthResolved(true);
             return { success: false, error: 'Invalid email or password' };
         }
     }
@@ -360,6 +364,10 @@ export function AuthProvider({ children }) {
     }
 
     async function logout() {
+        // Immediately clear the user and authResolved so the UI shows the
+        // spinner / login page RIGHT NOW — no dashboard flash.
+        setUser(null);
+        setAuthResolved(false);
         setLoading(true);
         setManualLogoutFlag(true);
         // Clear cached profile so offline mode doesn't keep a stale session
@@ -373,7 +381,7 @@ export function AuthProvider({ children }) {
         }
         await supabase.auth.signOut();
         setMfaFactors([]);
-        // onAuthStateChange listener sets loading false, authResolved true, and user null
+        // onAuthStateChange SIGNED_OUT will confirm user=null, loading=false, authResolved=true
     }
 
     // --- MFA HELPERS ---
