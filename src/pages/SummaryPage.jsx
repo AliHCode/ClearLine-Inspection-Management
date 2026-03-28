@@ -236,7 +236,7 @@ function renderCell(rfi, fieldKey, index) {
 
 export default function SummaryPage() {
     const { rfis, loadingRfis } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap } = useProject();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle } = useProject();
     const today = getToday();
     const projectName = activeProject?.name || 'ProWay Project';
 
@@ -444,7 +444,7 @@ export default function SummaryPage() {
                                 <thead>
                                     <tr>
                                         {cols.map(c => (
-                                            <th key={c.field_key}>{c.field_name}</th>
+                                            <th key={c.field_key} style={getTableColumnStyle(c.field_key)}>{c.field_name}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -452,7 +452,7 @@ export default function SummaryPage() {
                                     {filtered.map((rfi, index) => (
                                         <tr key={rfi.id}>
                                             {cols.map(c => (
-                                                <td key={c.field_key}>
+                                                <td key={c.field_key} style={getTableColumnStyle(c.field_key)}>
                                                     {renderCell(rfi, c.field_key, index)}
                                                 </td>
                                             ))}

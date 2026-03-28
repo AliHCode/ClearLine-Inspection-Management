@@ -26,6 +26,7 @@ export function ProjectProvider({ children }) {
     const [projectFields, setProjectFields] = useState([]);
     const [orderedTableColumns, setOrderedTableColumns] = useState([]);
     const [columnWidthMap, setColumnWidthMap] = useState({});
+    const [columnStylesMap, setColumnStylesMap] = useState({});
     const [loadingFields, setLoadingFields] = useState(false);
     const [fieldsResolvedProjectId, setFieldsResolvedProjectId] = useState(null);
 
@@ -260,10 +261,17 @@ export function ProjectProvider({ children }) {
 
         setOrderedTableColumns(mappedFields);
         setColumnWidthMap(buildColumnWidthMap(mappedFields, activeProject?.column_widths || {}));
+        setColumnStylesMap(activeProject?.column_styles || {});
     }, [projectFields, activeProject]);
 
     function getTableColumnStyle(fieldKey) {
-        return getColumnWidthStyle(fieldKey, columnWidthMap);
+        const widthStyle = getColumnWidthStyle(fieldKey, columnWidthMap);
+        const customStyle = columnStylesMap[fieldKey] || {};
+        return {
+            ...widthStyle,
+            ...(customStyle.align && { textAlign: customStyle.align }),
+            ...(customStyle.color && customStyle.color !== 'inherit' && { color: customStyle.color })
+        };
     }
 
     // ─── Project Accessibility ───
@@ -492,7 +500,7 @@ export function ProjectProvider({ children }) {
 
     return (
         <ProjectContext.Provider value={{
-            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers,
+            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, columnStylesMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers,
             fetchProjects, changeActiveProject, createProject, deleteProject, updateProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,

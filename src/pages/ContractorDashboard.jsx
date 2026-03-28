@@ -259,7 +259,7 @@ export default function ContractorDashboard() {
                                     <thead>
                                         <tr>
                                             {contractorVisibleColumns.slice(0, 4).map((col) => (
-                                                <th key={col.field_key} style={{ fontSize: '0.85rem', color: 'var(--clr-text-muted)' }}>{col.field_name}</th>
+                                                <th key={col.field_key} style={{ fontSize: '0.85rem', color: 'var(--clr-text-muted)', ...getTableColumnStyle(col.field_key) }}>{col.field_name}</th>
                                             ))}
                                             <th style={{ fontSize: '0.85rem', color: 'var(--clr-text-muted)' }}>Date</th>
                                         </tr>
@@ -268,7 +268,7 @@ export default function ContractorDashboard() {
                                         {myRfis.slice(0, 5).map((rfi, index) => (
                                             <tr key={rfi.id} style={{ borderBottom: '1px solid var(--clr-border)' }}>
                                                 {contractorVisibleColumns.slice(0, 4).map((col) => (
-                                                    <td key={`${rfi.id}_${col.field_key}`} style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem' }}>
+                                                    <td key={`${rfi.id}_${col.field_key}`} style={{ fontSize: '0.9rem', padding: '0.75rem 0.5rem', ...getTableColumnStyle(col.field_key) }}>
                                                         {renderContractorCell(rfi, col, index)}
                                                     </td>
                                                 ))}

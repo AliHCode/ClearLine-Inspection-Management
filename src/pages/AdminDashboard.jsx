@@ -12,8 +12,17 @@ import {
     Users, Shield, UserX, UserCheck, RefreshCw,
     FolderPlus, Trash2, Plus, GripVertical, ArrowUp, ArrowDown, Save,
     Building, Columns3, UserPlus, X, AlertCircle, Clock, Globe, Briefcase,
-    Search, ChevronDown, LifeBuoy, MessageSquare, Send, ArrowRight, Tag, Paperclip
+    Search, ChevronDown, LifeBuoy, MessageSquare, Send, ArrowRight, Tag, Paperclip, Paintbrush
 } from 'lucide-react';
+
+const STYLE_COLORS = [
+    { label: 'Default', value: 'inherit' },
+    { label: 'Info Blue', value: '#0ea5e9' },
+    { label: 'Success Green', value: '#10b981' },
+    { label: 'Warning Yellow', value: '#f59e0b' },
+    { label: 'Danger Red', value: '#f43f5e' },
+    { label: 'Neutral Slate', value: '#64748b' }
+];
 
 const FIELD_TYPES = [
     { value: 'text', label: 'Text' },
@@ -212,6 +221,8 @@ export default function AdminDashboard() {
     const [orderedFields, setOrderedFields] = useState([]);
     const [isReordering, setIsReordering] = useState(false);
     const [columnWidthsDraft, setColumnWidthsDraft] = useState({});
+    const [columnStylesDraft, setColumnStylesDraft] = useState({});
+    const [activeStyleColumn, setActiveStyleColumn] = useState(null);
     const [resizeState, setResizeState] = useState(null);
 
     const BUILT_IN_COLUMNS = [
@@ -244,6 +255,7 @@ export default function AdminDashboard() {
 
         setOrderedFields(mappedFields);
         setColumnWidthsDraft(buildColumnWidthMap(mappedFields, activeProject?.column_widths || {}));
+        setColumnStylesDraft(activeProject?.column_styles || {});
     }, [projectFields, activeProject]);
 
     useEffect(() => {
@@ -512,6 +524,7 @@ export default function AdminDashboard() {
                 .update({
                     column_order: columnOrderKeys,
                     column_widths: columnWidthsDraft,
+                    column_styles: columnStylesDraft,
                 })
                 .eq('id', activeProject.id);
             if (updateProjectError) {
@@ -975,6 +988,7 @@ export default function AdminDashboard() {
                                                 <th>COLUMN DETAIL</th>
                                                 <th style={{ width: '120px' }}>TYPE</th>
                                                 <th style={{ width: '130px' }}>WIDTH</th>
+                                                <th style={{ width: '100px' }}>STYLE</th>
                                                 <th>OPTIONS</th>
                                                 <th style={{ width: '100px', textAlign: 'center' }}>REQUIRED</th>
                                                 <th style={{ width: '100px', textAlign: 'center' }}>ACTIONS</th>
@@ -1014,6 +1028,48 @@ export default function AdminDashboard() {
                                                             />
                                                             <span className="designer-input-suffix">px</span>
                                                         </div>
+                                                    </td>
+                                                    <td className="designer-td" style={{ position: 'relative', overflow: 'visible' }}>
+                                                        <button 
+                                                            className="btn btn-ghost btn-sm" 
+                                                            style={{ 
+                                                                padding: '0.35rem 0.5rem', 
+                                                                color: columnStylesDraft[f.field_key]?.color !== 'inherit' && columnStylesDraft[f.field_key]?.color ? columnStylesDraft[f.field_key].color : '#64748b',
+                                                                backgroundColor: activeStyleColumn === f.field_key ? '#f1f5f9' : 'transparent',
+                                                                display: 'flex', gap: '0.35rem', alignItems: 'center'
+                                                            }} 
+                                                            onClick={() => setActiveStyleColumn(activeStyleColumn === f.field_key ? null : f.field_key)}
+                                                        >
+                                                            <Paintbrush size={14} /> Style
+                                                        </button>
+                                                        {activeStyleColumn === f.field_key && (
+                                                            <div style={{ position: 'absolute', top: '100%', left: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', zIndex: 9999, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', minWidth: '220px' }}>
+                                                                <div style={{ marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Alignment</div>
+                                                                <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem' }}>
+                                                                    {['left', 'center', 'right'].map(align => (
+                                                                        <button key={align} className="btn btn-sm" style={{ flex: 1, backgroundColor: columnStylesDraft[f.field_key]?.align === align ? '#3b82f6' : '#f8fafc', color: columnStylesDraft[f.field_key]?.align === align ? '#ffffff' : '#334155', border: '1px solid #e2e8f0' }} onClick={() => {
+                                                                            setColumnStylesDraft(prev => ({ ...prev, [f.field_key]: { ...(prev[f.field_key] || {}), align } }));
+                                                                            setIsReordering(true);
+                                                                        }}>
+                                                                            {align.charAt(0).toUpperCase()}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <div style={{ marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Text Color</div>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                                    {STYLE_COLORS.map(color => (
+                                                                        <button key={color.value} className="btn btn-sm" style={{ justifyContent: 'flex-start', background: '#fff', border: columnStylesDraft[f.field_key]?.color === color.value ? '2px solid ' + (color.value === 'inherit' ? '#94a3b8' : color.value) : '2px solid transparent' }} onClick={() => {
+                                                                            setColumnStylesDraft(prev => ({ ...prev, [f.field_key]: { ...(prev[f.field_key] || {}), color: color.value } }));
+                                                                            setIsReordering(true);
+                                                                            setActiveStyleColumn(null);
+                                                                        }}>
+                                                                            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: color.value === 'inherit' ? '#94a3b8' : color.value, marginRight: '0.5rem' }}></div>
+                                                                            {color.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="designer-td">
                                                         {f.options && Array.isArray(f.options) && f.options.length > 0 ? (
