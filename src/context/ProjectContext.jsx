@@ -76,7 +76,14 @@ export function ProjectProvider({ children }) {
     // ─── Fetch Projects ───
     const fetchProjects = useCallback(async () => {
         if (!user) return;
-        setProjectsResolved(false);
+
+        // Only reset projectsResolved if it's not already true (cache-restored).
+        // If the cache path already set projectsResolved=true, we silently
+        // refresh in the background without flashing the global spinner again.
+        setProjectsResolved(prev => {
+            if (!prev) return false;   // already false, keep it
+            return prev;               // already true from cache — leave it
+        });
         
         // Only show global loader if we have no projects yet
         setProjects(prev => {
@@ -129,14 +136,24 @@ export function ProjectProvider({ children }) {
         }
     }, [user, persistProjectCache, restoreProjectCache]);
 
+    const lastProjectUserId = useRef(null);
+
     useEffect(() => {
         if (!user) {
+            lastProjectUserId.current = null;
             setProjects([]);
             setActiveProject(null);
             setLoadingProjects(false);
             setProjectsResolved(true);
             return;
         }
+
+        // Only do a full reset + cache restore cycle when the actual user
+        // identity changes (login / switch). If the same user's profile object
+        // is simply being refreshed by fetchProfile (e.g. email added), skip
+        // the reset to avoid a second spinner flash.
+        if (lastProjectUserId.current === user.id) return;
+        lastProjectUserId.current = user.id;
 
         // Reset states when user changes to avoid leakage from previous session
         setLoadingProjects(true);
