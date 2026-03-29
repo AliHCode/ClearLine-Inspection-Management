@@ -1020,7 +1020,10 @@ export default function ReviewQueue() {
                     onClose={() => setDetailTarget(null)}
                     externalScrollTrigger={scrollTrigger}
                     // Decision Action Overrides
-                    onApprove={() => { setApproveMode('full'); setApproveTarget(detailTarget); }}
+                    onApprove={() => { 
+                        setApproveMode(detailTarget.status === 'verification_pending' ? 'verify' : 'full'); 
+                        setApproveTarget(detailTarget); 
+                    }}
                     onConditional={() => { setApproveMode('conditional'); setApproveTarget(detailTarget); }}
                     onReject={() => setRejectTarget(detailTarget)}
                     onCancel={() => setCancelTarget(detailTarget)}
