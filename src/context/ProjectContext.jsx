@@ -515,9 +515,12 @@ export function ProjectProvider({ children }) {
         }
     }
 
+    // ─── Assignment mode convenience getter ───
+    const assignmentMode = activeProject?.assignment_mode || 'direct';
+
     return (
         <ProjectContext.Provider value={{
-            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, columnStylesMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers,
+            projects, activeProject, loadingProjects, projectsResolved, projectFields, orderedTableColumns, columnWidthMap, columnStylesMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectMembers, assignmentMode,
             fetchProjects, changeActiveProject, createProject, deleteProject, updateProject,
             addProjectField, updateProjectField, deleteProjectField,
             assignUserToProject, removeUserFromProject, fetchProjectMembers,

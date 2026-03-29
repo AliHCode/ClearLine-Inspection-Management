@@ -20,7 +20,7 @@ export default function DailyRFISheet() {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { activeProject, projectFields, orderedTableColumns, getTableColumnStyle, columnWidthMap } = useProject();
+    const { activeProject, projectFields, orderedTableColumns, getTableColumnStyle, columnWidthMap, assignmentMode } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const { createRFI, uploadImages, updateRFI, getRFIsForDate, resubmitRFI, deleteRFI, consultants, rfis, pendingSyncCount, canUserEditRfi, minDate } = useRFI();
     const [currentDate, setCurrentDate] = useState(getToday());
@@ -492,18 +492,27 @@ export default function DailyRFISheet() {
                 return <td key={col.field_key} style={style} data-label="Review Date">{rfi.reviewedAt ? formatDateDisplay(rfi.reviewedAt.split('T')[0]) : '—'}</td>;
             case 'assigned_to':
                 const consultantDisplayName = rfi.reviewerName || rfi.assigneeName;
+                const modeLabel = assignmentMode === 'open' ? 'Open Queue' 
+                    : assignmentMode === 'claim' ? (consultantDisplayName || 'Unclaimed')
+                    : (consultantDisplayName || 'Auto');
+                const modeBg = assignmentMode === 'open' && !consultantDisplayName ? '#dbeafe'
+                    : assignmentMode === 'claim' && !consultantDisplayName ? '#fef3c7'
+                    : consultantDisplayName ? 'var(--clr-bg-secondary)' : 'transparent';
+                const modeColor = assignmentMode === 'open' && !consultantDisplayName ? '#2563eb'
+                    : assignmentMode === 'claim' && !consultantDisplayName ? '#d97706'
+                    : 'var(--clr-text-main)';
                 return (
                     <td key={col.field_key} style={style} data-label="Assigned To">
                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ 
-                                background: consultantDisplayName ? 'var(--clr-bg-secondary)' : 'transparent',
-                                padding: consultantDisplayName ? '4px 8px' : '0',
+                                background: modeBg,
+                                padding: '4px 8px',
                                 borderRadius: '6px',
                                 fontSize: '0.85rem',
-                                color: 'var(--clr-text-main)',
+                                color: modeColor,
                                 fontWeight: 500
                             }}>
-                                {consultantDisplayName || 'Auto'}
+                                {modeLabel}
                             </span>
                         </div>
                     </td>
@@ -857,25 +866,27 @@ export default function DailyRFISheet() {
                                                 if (isRequired) label += ' *';
                                                 return <th key={col.field_key} style={style}>{label}</th>;
                                             })}
-                                            <th key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>Assign To</th>
+                                            {assignmentMode === 'direct' && <th key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>Assign To</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {newRows.map((row, idx) => (
                                             <tr key={row.tempId}>
                                                 {newEntryColumns.map(col => renderNewEntryCell(row, col, idx))}
-                                                <td key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>
-                                                    <select
-                                                        className="cell-select"
-                                                        value={row.assignedTo}
-                                                        onChange={(e) => updateRow(row.tempId, 'assignedTo', e.target.value)}
-                                                    >
-                                                        <option value="">— Auto —</option>
-                                                        {consultants.map((c) => (
-                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </td>
+                                                {assignmentMode === 'direct' && (
+                                                    <td key="assign_to" className="col-assign" style={getTableColumnStyle('assigned_to')}>
+                                                        <select
+                                                            className="cell-select"
+                                                            value={row.assignedTo}
+                                                            onChange={(e) => updateRow(row.tempId, 'assignedTo', e.target.value)}
+                                                        >
+                                                            <option value="">— Auto —</option>
+                                                            {consultants.map((c) => (
+                                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>

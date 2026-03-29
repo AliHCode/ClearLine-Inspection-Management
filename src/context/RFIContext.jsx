@@ -906,6 +906,37 @@ export function RFIProvider({ children }) {
         }
     }
 
+    /** Claim an RFI (Claim mode) — consultant takes ownership */
+    async function claimRFI(rfiId, consultantId) {
+        const targetRfi = rfis.find(r => r.id === rfiId);
+        if (!targetRfi) return;
+
+        // Prevent double-claiming
+        if (targetRfi.assignedTo && targetRfi.assignedTo !== consultantId) {
+            toast.error('This RFI has already been claimed by another consultant.');
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('rfis').update({
+                assigned_to: consultantId,
+            }).eq('id', rfiId);
+            if (error) throw error;
+
+            // Optimistic local update
+            setRfis(prev => prev.map(r => r.id === rfiId ? {
+                ...r,
+                assignedTo: consultantId,
+                assigneeName: user?.name || 'You',
+            } : r));
+
+            toast.success(`Claimed RFI #${targetRfi.customFields?.rfi_no || targetRfi.serialNo}`);
+        } catch (error) {
+            console.error("Error claiming RFI:", error);
+            toast.error('Failed to claim RFI.');
+        }
+    }
+
     /** Upload Images to Storage with Auto-Compression */
     async function uploadImages(files) {
         if (!files || files.length === 0) return [];
@@ -2044,6 +2075,7 @@ export function RFIProvider({ children }) {
                 uploadImages,
                 createRFI,
                 assignRFI,
+                claimRFI,
                 approveRFI,
                 bulkApproveRFI,
                 bulkAssignRFI,

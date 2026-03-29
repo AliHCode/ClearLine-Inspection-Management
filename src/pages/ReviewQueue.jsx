@@ -13,14 +13,14 @@ import CancelModal from '../components/CancelModal';
 import RFIDetailModal from '../components/RFIDetailModal';
 import UserAvatar from '../components/UserAvatar';
 import { exportToExcel, exportToPDF, generateDailyReport } from '../utils/exportUtils';
-import { CheckCircle, XCircle, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw, User, UserPlus } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, X, FileDown, Table, ClipboardList, Filter, Maximize2, Minimize2, RotateCcw, User, UserPlus, Hand } from 'lucide-react';
 
 export default function ReviewQueue() {
     const [searchParams, setSearchParams] = useSearchParams();
     const location = useLocation();
     const { user } = useAuth();
-    const { approveRFI, updateRFI, rejectRFI, cancelRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi, minDate } = useRFI();
-    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectFields } = useProject();
+    const { approveRFI, updateRFI, rejectRFI, cancelRFI, claimRFI, getReviewQueue, rfis, contractors, canUserEditRfi, canUserDiscussRfi, minDate } = useRFI();
+    const { activeProject, orderedTableColumns, columnWidthMap, getTableColumnStyle, loadingFields, fieldsResolvedProjectId, projectFields, assignmentMode } = useProject();
     const activeProjectName = activeProject?.name || 'ProWay Project';
     const [currentDate, setCurrentDate] = useState(getToday());
     const [approveTarget, setApproveTarget] = useState(null);
@@ -134,9 +134,14 @@ export default function ReviewQueue() {
 
             // 2. Assignment Filter
             if (filterOptions.showOnlyMe) {
-                const isAssignedToMe = rfi.assignedTo === user.id;
-                const wasReviewedByMe = rfi.reviewedBy === user.id;
-                if (!isAssignedToMe && !wasReviewedByMe) return false;
+                if (assignmentMode === 'open') {
+                    // In open mode, "My Queue" = RFIs I have acted on
+                    if (rfi.reviewedBy !== user.id) return false;
+                } else {
+                    const isAssignedToMe = rfi.assignedTo === user.id;
+                    const wasReviewedByMe = rfi.reviewedBy === user.id;
+                    if (!isAssignedToMe && !wasReviewedByMe) return false;
+                }
             }
 
             // 3. Column (Advanced) Filters
@@ -167,9 +172,13 @@ export default function ReviewQueue() {
         // but NOT the status filter itself (to show potential results in current scope)
         const scopedItems = baseItems.filter((rfi) => {
             if (filterOptions.showOnlyMe) {
-                const isAssignedToMe = rfi.assignedTo === user.id;
-                const wasReviewedByMe = rfi.reviewedBy === user.id;
-                if (!isAssignedToMe && !wasReviewedByMe) return false;
+                if (assignmentMode === 'open') {
+                    if (rfi.reviewedBy !== user.id) return false;
+                } else {
+                    const isAssignedToMe = rfi.assignedTo === user.id;
+                    const wasReviewedByMe = rfi.reviewedBy === user.id;
+                    if (!isAssignedToMe && !wasReviewedByMe) return false;
+                }
             }
             return activeFilterEntries.every(([fieldKey, selectedValues]) => {
                 const rfiValue = normalizeFilterValue(getColumnRawValue(rfi, fieldKey));
@@ -478,12 +487,38 @@ export default function ReviewQueue() {
         const isAssignee = rfi.assignedTo === user.id;
         const isReviewer = rfi.reviewedBy === user.id;
         const isNotAssigned = !rfi.assignedTo && !rfi.reviewedBy;
-        
-        // SECURITY: If the RFI is assigned to/reviewed by someone else, show NOTHING.
-        // If it's your assignment OR you were the one who reviewed it, you get the buttons.
-        if (!isAssignee && !isReviewer && !isNotAssigned) {
-            return null;
+
+        // ─── CLAIM MODE: show Claim button if unclaimed ───
+        if (assignmentMode === 'claim') {
+            if (rfi.status === 'pending' && !rfi.assignedTo) {
+                return (
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                            className="btn btn-sm btn-claim"
+                            onClick={() => claimRFI(rfi.id, user.id)}
+                            title="Claim this RFI for review"
+                        >
+                            <Hand size={14} /> Claim
+                        </button>
+                    </div>
+                );
+            }
+            // If claimed by someone else, show nothing
+            if (rfi.assignedTo && rfi.assignedTo !== user.id && rfi.reviewedBy !== user.id) {
+                return null;
+            }
         }
+
+        // ─── OPEN MODE: any consultant can act on any pending RFI ───
+        if (assignmentMode === 'open') {
+            // No assignment restrictions — all consultants see action buttons
+        } else if (assignmentMode === 'direct') {
+            // DIRECT MODE: original security — only assigned/reviewer/unassigned
+            if (!isAssignee && !isReviewer && !isNotAssigned) {
+                return null;
+            }
+        }
+        // For claim mode: if we reach here, user is the claimer or reviewer
 
         const showFullApprove = rfi.status !== 'approved';
         const showConditionalApprove = rfi.status !== 'conditional_approve';
@@ -874,9 +909,24 @@ export default function ReviewQueue() {
                                                 ))}
                                                 <td className="col-assign" data-label="Assigned To">
                                                     {(() => {
-                                                        // Always show the consultant name: prefer reviewerName (consultant who acted), then assigneeName (originally assigned consultant when still pending)
                                                         const consultantName = rfi.reviewerName || rfi.assigneeName;
                                                         const isMe = rfi.reviewedBy === user.id || (rfi.status === 'pending' && rfi.assignedTo === user.id);
+                                                        
+                                                        if (assignmentMode === 'open') {
+                                                            if (consultantName) {
+                                                                return <span className={`assign-badge ${isMe ? 'is-me' : ''}`}>{isMe ? <><UserPlus size={14} className="badge-icon" /> You</> : consultantName}</span>;
+                                                            }
+                                                            return <span className="assign-badge mode-open-badge">Open</span>;
+                                                        }
+                                                        
+                                                        if (assignmentMode === 'claim') {
+                                                            if (consultantName) {
+                                                                return <span className={`assign-badge ${isMe ? 'is-me' : ''}`}>{isMe ? <><UserPlus size={14} className="badge-icon" /> You</> : consultantName}</span>;
+                                                            }
+                                                            return <span className="assign-badge mode-claim-badge">Unclaimed</span>;
+                                                        }
+                                                        
+                                                        // Direct mode
                                                         if (!consultantName) return <span className="text-muted">— Auto —</span>;
                                                         return (
                                                             <span className={`assign-badge ${isMe ? 'is-me' : ''}`}>

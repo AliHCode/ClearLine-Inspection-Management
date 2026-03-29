@@ -212,6 +212,7 @@ export default function AdminDashboard() {
     const [editSubscriptionEnd, setEditSubscriptionEnd] = useState('');
     const [editIsLocked, setEditIsLocked] = useState(false);
     const [editPaymentRemarks, setEditPaymentRemarks] = useState('');
+    const [editAssignmentMode, setEditAssignmentMode] = useState('direct');
 
     // Field creation form
     const [showNewField, setShowNewField] = useState(false);
@@ -442,7 +443,8 @@ export default function AdminDashboard() {
             subscription_end: editSubscriptionEnd || null,
             is_locked: editIsLocked,
             payment_remarks: editPaymentRemarks.trim(),
-            rfi_start_number: parseInt(editStartNumber, 10) || 1
+            rfi_start_number: parseInt(editStartNumber, 10) || 1,
+            assignment_mode: editAssignmentMode
         });
         if (result?.success) {
             showMsg('Project details updated');
@@ -453,6 +455,7 @@ export default function AdminDashboard() {
             setEditSubscriptionEnd('');
             setEditIsLocked(false);
             setEditPaymentRemarks('');
+            setEditAssignmentMode('direct');
         } else {
             showMsg('Error: ' + (result?.error || 'Update failed'));
         }
@@ -843,6 +846,36 @@ export default function AdminDashboard() {
                                                 />
                                             </div>
                                         )}
+
+                                        {/* Assignment Mode */}
+                                        <div className="detail-item" style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
+                                            <span className="detail-label">RFI Assignment Mode</span>
+                                            {editingProject === p.id ? (
+                                                <div className="assignment-mode-toggle" onClick={e => e.stopPropagation()}>
+                                                    {[
+                                                        { value: 'direct', label: 'Direct', desc: 'Contractor assigns a specific consultant' },
+                                                        { value: 'open', label: 'Open Queue', desc: 'All consultants see all RFIs, first to act wins' },
+                                                        { value: 'claim', label: 'Claim', desc: 'Consultants claim RFIs before reviewing' }
+                                                    ].map(opt => (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            className={`mode-option ${editAssignmentMode === opt.value ? 'active' : ''}`}
+                                                            onClick={() => setEditAssignmentMode(opt.value)}
+                                                        >
+                                                            <span className="mode-label">{opt.label}</span>
+                                                            <span className="mode-desc">{opt.desc}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="detail-value">
+                                                    <span className={`mode-badge mode-${p.assignment_mode || 'direct'}`}>
+                                                        {{ direct: '👤 Direct Assignment', open: '🌐 Open Queue', claim: '✋ Claim System' }[p.assignment_mode || 'direct']}
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="project-card-actions" onClick={e => e.stopPropagation()}>
@@ -861,6 +894,7 @@ export default function AdminDashboard() {
                                                 setEditIsLocked(p.is_locked || false);
                                                 setEditPaymentRemarks(p.payment_remarks || '');
                                                 setEditStartNumber(p.rfi_start_number || 1);
+                                                setEditAssignmentMode(p.assignment_mode || 'direct');
                                             }}>
                                                 Edit Project Details
                                             </button>
