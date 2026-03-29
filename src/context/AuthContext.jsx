@@ -13,10 +13,7 @@ const INSTANCE_ID_KEY = 'saa_instance_id';
 function getLocalInstanceId() {
     let id = localStorage.getItem(INSTANCE_ID_KEY);
     if (!id) {
-        // Fallback for non-secure contexts (IP access) where crypto.randomUUID is undefined
-        id = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-            ? crypto.randomUUID() 
-            : `inst-${Math.random().toString(36).slice(2, 11)}-${Date.now().toString(36)}`;
+        id = crypto.randomUUID();
         localStorage.setItem(INSTANCE_ID_KEY, id);
     }
     return id;
@@ -35,25 +32,11 @@ function setManualLogoutFlag(value) {
 }
 
 export function AuthProvider({ children }) {
-    // ── INITIAL PRE-MOUNT CHECK ──────────────────────────────────────────
-    // Determine the user's initial personality (cached or new) before any renders.
-    const getInitialAuthState = () => {
-        if (wasManualLogout()) return { user: null, authResolved: true }; 
-        try {
-            const cached = localStorage.getItem(PROFILE_CACHE_KEY);
-            if (!cached) return { user: null, authResolved: true }; // New user — show login instantly
-            const profile = JSON.parse(cached);
-            if (profile && profile.id) {
-                return { user: profile, authResolved: false }; // Returning user — stay in "loading" while verifying
-            }
-        } catch { /* session corrupted */ }
-        return { user: null, authResolved: true };
-    };
-
-    const initialState = getInitialAuthState();
-    const [user, setUser] = useState(initialState.user);
-    const [loading, setLoading] = useState(!initialState.authResolved);
-    const [authResolved, setAuthResolved] = useState(initialState.authResolved);
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    // authResolved = true as soon as we know the initial auth state (from cache or network).
+    // This is what the global spinner gates on — so cache-restored sessions show the app instantly.
+    const [authResolved, setAuthResolved] = useState(false);
     const [mfaFactors, setMfaFactors] = useState([]);
     const initialized = useRef(false);
     const isFetchingProfileRef = useRef(null); // Tracks the ID being fetched
@@ -67,21 +50,6 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         if (initialized.current) return;
         initialized.current = true;
-
-        let initializationTimeout;
-
-        // Failsafe: if Supabase Auth doesn't respond within 5 seconds, 
-        // force resolve so the user sees the Login page instead of a hang.
-        initializationTimeout = setTimeout(() => {
-            setAuthResolved(prev => {
-                if (!prev) {
-                    console.warn('Supabase Auth initialization timed out. Forcing resolve.');
-                    setLoading(false);
-                    return true;
-                }
-                return prev;
-            });
-        }, 5000);
 
         // ── Visibilitychange: prevent stuck spinner when tab resumes from background ──
         function handleVisibilityChange() {
@@ -134,7 +102,6 @@ export function AuthProvider({ children }) {
         });
 
         return () => {
-            clearTimeout(initializationTimeout);
             subscription.unsubscribe();
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };

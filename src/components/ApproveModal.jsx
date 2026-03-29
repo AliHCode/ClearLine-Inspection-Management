@@ -6,7 +6,6 @@ function StatusBadgeStrip({ mode }) {
     const cfg = {
         full: { label: 'AWAITING APPROVAL', bg: '#fffbeb', color: '#b45309', dot: '#f59e0b' },
         conditional: { label: 'AWAITING CONDITIONS', bg: '#fff7ed', color: '#c2410c', dot: '#f97316' },
-        verify: { label: 'VERIFICATION PENDING', bg: '#ecfdf5', color: '#059669', dot: '#10b981' },
     }[mode] || { label: 'AWAITING APPROVAL', bg: '#fffbeb', color: '#b45309', dot: '#f59e0b' };
 
     return (
@@ -82,12 +81,11 @@ export default function ApproveModal({ rfi, onApprove, onClose, contractors = []
 
     const markupImage = markupIndex !== null ? files[markupIndex] : null;
     const isConditional = mode === 'conditional';
-    const isVerify = mode === 'verify';
-    const accentColor = isConditional ? '#f97316' : (isVerify ? '#6366f1' : '#059669');
-    const accentBg = isConditional ? '#fff7ed' : (isVerify ? '#f5f3ff' : '#ecfdf5');
-    const focusShadow = isConditional ? 'rgba(249,115,22,0.15)' : (isVerify ? 'rgba(99,102,241,0.15)' : 'rgba(5,150,105,0.15)');
-    const title = isVerify ? 'Finalize Verification' : (isConditional ? 'Conditionally Approve' : 'Approve Inspection');
-    const confirmLabel = isVerify ? 'Verify & Finalize' : (isConditional ? 'Confirm Conditions' : 'Confirm Approval');
+    const accentColor = isConditional ? '#f97316' : '#059669';
+    const accentBg = isConditional ? '#fff7ed' : '#ecfdf5';
+    const focusShadow = isConditional ? 'rgba(249,115,22,0.15)' : 'rgba(5,150,105,0.15)';
+    const title = isConditional ? 'Conditionally Approve' : 'Approve Inspection';
+    const confirmLabel = isConditional ? 'Confirm Conditions' : 'Confirm Approval';
     const canSubmit = isConditional ? (remarks.trim() && assignedTo) : assignedTo;
 
     return (
