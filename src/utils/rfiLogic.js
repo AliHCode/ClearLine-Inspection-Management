@@ -105,7 +105,7 @@ export function getStatsForDate(allRfis, targetDate) {
     const { all } = getRFIsForDate(allRfis, targetDate);
     return {
         total: all.length,
-        pending: all.filter((r) => r.status === RFI_STATUS.PENDING).length,
+        pending: all.filter((r) => r.status === RFI_STATUS.PENDING || r.status === RFI_STATUS.VERIFICATION_PENDING).length,
         approved: all.filter((r) => r.status === RFI_STATUS.APPROVED).length,
         rejected: all.filter((r) => r.status === RFI_STATUS.REJECTED).length,
         infoRequested: all.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,
@@ -120,7 +120,7 @@ export function getPendingRFIs(allRfis, targetDate) {
     return allRfis
         .filter(
             (rfi) =>
-                rfi.status === RFI_STATUS.PENDING && 
+                (rfi.status === RFI_STATUS.PENDING || rfi.status === RFI_STATUS.VERIFICATION_PENDING) && 
                 rfi.filedDate <= targetDate &&
                 targetDate <= realToday
         )
@@ -147,7 +147,7 @@ export function getReviewQueue(allRfis, targetDate) {
     // Pending RFIs for today (only if not in the future)
     const pending = allRfis.filter(
         (rfi) =>
-            rfi.status === RFI_STATUS.PENDING &&
+            (rfi.status === RFI_STATUS.PENDING || rfi.status === RFI_STATUS.VERIFICATION_PENDING) &&
             rfi.filedDate <= targetDate &&
             targetDate <= realToday
     );
@@ -165,7 +165,7 @@ export function getReviewQueue(allRfis, targetDate) {
 export function getOverallStats(allRfis) {
     return {
         total: allRfis.length,
-        pending: allRfis.filter((r) => r.status === RFI_STATUS.PENDING).length,
+        pending: allRfis.filter((r) => r.status === RFI_STATUS.PENDING || r.status === RFI_STATUS.VERIFICATION_PENDING).length,
         approved: allRfis.filter((r) => r.status === RFI_STATUS.APPROVED).length,
         rejected: allRfis.filter((r) => r.status === RFI_STATUS.REJECTED).length,
         infoRequested: allRfis.filter((r) => r.status === RFI_STATUS.INFO_REQUESTED).length,

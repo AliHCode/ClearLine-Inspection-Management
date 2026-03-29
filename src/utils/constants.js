@@ -17,6 +17,7 @@ export const RFI_STATUS = {
   REJECTED: 'rejected',
   INFO_REQUESTED: 'info_requested',
   CONDITIONAL_APPROVE: 'conditional_approve',
+  VERIFICATION_PENDING: 'verification_pending',
   CANCELLED: 'cancelled',
 };
 
@@ -34,6 +35,7 @@ export const STATUS_COLORS = {
   rejected: { bg: '#fee2e2', text: '#991b1b', border: '#f87171' },
   info_requested: { bg: '#e0e7ff', text: '#3730a3', border: '#818cf8' },
   conditional_approve: { bg: '#fffbeb', text: '#b45309', border: '#fcd34d' },
+  verification_pending: { bg: '#f3e8ff', text: '#6b21a8', border: '#c084fc' },
   cancelled: { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
 };
 

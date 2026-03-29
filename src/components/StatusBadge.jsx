@@ -5,9 +5,11 @@ export default function StatusBadge({ status }) {
         ? 'Cond. Approved' 
         : status === 'info_requested' 
             ? 'Info Req.' 
-            : status === 'cancelled'
-                ? 'Cancelled'
-                : status.charAt(0).toUpperCase() + status.slice(1);
+            : status === 'verification_pending'
+                ? 'Verification Pending'
+                : status === 'cancelled'
+                    ? 'Cancelled'
+                    : status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
         <span

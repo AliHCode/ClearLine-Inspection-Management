@@ -409,7 +409,10 @@ export default function DailyRFISheet() {
 
     // ─── Ordered column rendering helpers ───
     const NEW_ENTRY_SKIP_COLS = ['status', 'remarks'];
-    const newEntryColumns = orderedTableColumns.filter(col => !NEW_ENTRY_SKIP_COLS.includes(col.field_key));
+    let newEntryColumns = orderedTableColumns.filter(col => !NEW_ENTRY_SKIP_COLS.includes(col.field_key));
+    if (assignmentMode !== 'direct') {
+        newEntryColumns = newEntryColumns.filter(c => c.field_key !== 'assigned_to');
+    }
 
     const displayTableColumns = (() => {
         let cols = activeTab === 'rejected' ? (() => {
@@ -434,8 +437,10 @@ export default function DailyRFISheet() {
             cols = cols.filter(c => c.field_key !== 'remarks' && c.field_key !== 'attachments' && c.field_key !== 'inspection_type');
         }
 
-        // Add "Assigned To" at the very end if not already present, but only for direct mode
-        if (assignmentMode === 'direct' && !cols.find(c => c.field_key === 'assigned_to')) {
+        // Hide "Assigned To" entirely if mode is not direct, otherwise ensure it is present
+        if (assignmentMode !== 'direct') {
+            cols = cols.filter(c => c.field_key !== 'assigned_to');
+        } else if (!cols.find(c => c.field_key === 'assigned_to')) {
             cols.push({ field_key: 'assigned_to', field_name: 'Assigned To' });
         }
         return cols;

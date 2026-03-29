@@ -51,9 +51,9 @@ export default function RFIDetailModal({ rfi, projectFields = [], orderedColumns
         setIsResolving(true);
         try {
             await updateRFI(rfi.id, {
-                status: 'approved',
+                status: RFI_STATUS.VERIFICATION_PENDING,
                 appendFiles: [resolveFile],
-                remarks: 'Conditions resolved via final photo upload.'
+                remarks: 'Proof submitted. Awaiting final consultant verification.'
             });
             onClose();
         } catch (error) {
@@ -132,13 +132,17 @@ export default function RFIDetailModal({ rfi, projectFields = [], orderedColumns
                     {activeTab === 'review' && (
                         <div className="rfi-tab-panel-full review-panel">
                             <h4 className="panel-heading">Review Verdict</h4>
-                            {rfi.status === RFI_STATUS.PENDING ? (
+                            {rfi.status === RFI_STATUS.PENDING || rfi.status === RFI_STATUS.VERIFICATION_PENDING ? (
                                 <div className="rfi-verdict-card pending">
                                     <div className="verdict-status">
                                         <ClipboardList size={24} />
-                                        <span>Awaiting Review</span>
+                                        <span>{rfi.status === RFI_STATUS.VERIFICATION_PENDING ? 'Verification Pending' : 'Awaiting Review'}</span>
                                     </div>
-                                    <p className="verdict-helper">This RFI is currently in the queue and has not been reviewed by a consultant yet.</p>
+                                    <p className="verdict-helper">
+                                        {rfi.status === RFI_STATUS.VERIFICATION_PENDING 
+                                            ? 'Proof has been submitted and is awaiting your final verification.' 
+                                            : 'This RFI is currently in the queue and has not been reviewed by a consultant yet.'}
+                                    </p>
                                     
                                     {assignmentMode === 'claim' && !rfi.assignedTo && user?.role === 'consultant' && (
                                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>

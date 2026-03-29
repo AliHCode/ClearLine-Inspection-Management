@@ -63,7 +63,7 @@ export default function ReviewQueue() {
 
     const getStatusMatch = (rfi, status) => {
         if (status === 'all') return true;
-        if (status === 'to_review') return rfi.status === 'pending';
+        if (status === 'to_review') return rfi.status === 'pending' || rfi.status === 'verification_pending';
         if (status === 'approved') return rfi.status === 'approved';
         if (status === 'conditional') return rfi.status === 'conditional_approve';
         if (status === 'rejected') return rfi.status === 'rejected';
@@ -90,11 +90,16 @@ export default function ReviewQueue() {
 
     const FILTER_EXCLUDED_COLUMNS = new Set(['serial', 'actions', 'attachments']);
     const visibleColumns = useMemo(() => {
-        if (user?.role === 'consultant') {
-            return orderedTableColumns.filter(col => col.field_key !== 'remarks' && col.field_key !== 'attachments' && col.field_key !== 'inspection_type');
+        let cols = orderedTableColumns;
+        if (assignmentMode !== 'direct') {
+            cols = cols.filter(col => col.field_key !== 'assigned_to');
         }
-        return orderedTableColumns;
-    }, [orderedTableColumns, user?.role]);
+        
+        if (user?.role === 'consultant') {
+            return cols.filter(col => col.field_key !== 'remarks' && col.field_key !== 'attachments' && col.field_key !== 'inspection_type');
+        }
+        return cols;
+    }, [orderedTableColumns, user?.role, assignmentMode]);
 
     const filterableColumns = useMemo(
         () => visibleColumns.filter((col) => !FILTER_EXCLUDED_COLUMNS.has(col.field_key)),
@@ -190,7 +195,7 @@ export default function ReviewQueue() {
             total: scopedItems.length,
             all_today: baseItems.length,
             my_queue: baseItems.filter(r => r.assignedTo === user.id || r.reviewedBy === user.id).length,
-            pending: scopedItems.filter(r => r.status === 'pending').length,
+            pending: scopedItems.filter(r => r.status === 'pending' || r.status === 'verification_pending').length,
             approved: scopedItems.filter(r => r.status === 'approved').length,
             conditional: scopedItems.filter(r => r.status === 'conditional_approve').length,
             rejected: scopedItems.filter(r => r.status === 'rejected').length
@@ -519,6 +524,43 @@ export default function ReviewQueue() {
             }
         }
         // For claim mode: if we reach here, user is the claimer or reviewer
+
+        if (rfi.status === 'verification_pending') {
+            return (
+                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                    <button
+                        onClick={() => {
+                            setApproveMode('full');
+                            setApproveTarget(rfi);
+                            setRejectTarget(null);
+                            setDetailTarget(null);
+                        }}
+                        title="Approve Proof"
+                        className="btn btn-sm"
+                        style={{
+                            background: 'var(--clr-success-bg)', color: 'var(--clr-success)', border: '1px solid var(--clr-success)',
+                            borderRadius: '8px', padding: '5px 8px', fontSize: '0.75rem', display: 'flex', gap: '3px', alignItems: 'center', fontWeight: 'bold', cursor: 'pointer'
+                        }}
+                    >
+                        <CheckCircle size={14} /> Verify
+                    </button>
+                    <button
+                        onClick={() => {
+                            setRejectTarget(rfi);
+                            setDetailTarget(null);
+                        }}
+                        title="Deny Proof"
+                        className="btn btn-sm"
+                        style={{
+                            background: 'var(--clr-danger-bg)', color: 'var(--clr-danger)', border: '1px solid var(--clr-danger)',
+                            borderRadius: '8px', padding: '5px 8px', fontSize: '0.75rem', display: 'flex', gap: '3px', alignItems: 'center', fontWeight: 'bold', cursor: 'pointer'
+                        }}
+                    >
+                        <XCircle size={14} /> Deny
+                    </button>
+                </div>
+            );
+        }
 
         const showFullApprove = rfi.status !== 'approved';
         const showConditionalApprove = rfi.status !== 'conditional_approve';
